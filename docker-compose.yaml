@@ -1,12 +1,20 @@
-# OpenClaw Fleet — Mission Control + Gateway
+# OpenClaw Fleet
 #
-# Start: docker compose up -d
-# Access: http://localhost:3000 (Mission Control UI)
-#         http://localhost:8000 (Mission Control API)
-#         http://localhost:9400 (OCF Gateway)
+# Mission Control (from vendor/) + OCF Gateway
+#
+# Setup:
+#   cp .env.example .env
+#   # Edit .env — set LOCAL_AUTH_TOKEN (min 50 chars)
+#   docker compose up -d --build
+#
+# Access:
+#   Mission Control UI:  http://localhost:3000
+#   Mission Control API: http://localhost:8000
+#   OCF Gateway:         http://localhost:9400
 
 services:
-  # === Mission Control (from openclaw-mission-control) ===
+
+  # --- Infrastructure ---
 
   db:
     image: postgres:16-alpine
@@ -17,7 +25,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -27,21 +35,26 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
 
-  mission-control-backend:
+  # --- Mission Control (from vendor/openclaw-mission-control) ---
+
+  backend:
     build:
       context: ./vendor/openclaw-mission-control
       dockerfile: backend/Dockerfile
+    env_file:
+      - path: ./vendor/openclaw-mission-control/backend/.env
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mission_control}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
-      DB_AUTO_MIGRATE: "true"
+      DB_AUTO_MIGRATE: ${DB_AUTO_MIGRATE:-true}
       AUTH_MODE: ${AUTH_MODE:-local}
       LOCAL_AUTH_TOKEN: ${LOCAL_AUTH_TOKEN}
       BASE_URL: ${BASE_URL:-http://localhost:8000}
@@ -52,35 +65,57 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "127.0.0.1:8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
 
-  mission-control-frontend:
+  frontend:
     build:
       context: ./vendor/openclaw-mission-control/frontend
-      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-auto}
+        NEXT_PUBLIC_AUTH_MODE: ${AUTH_MODE:-local}
     environment:
-      NEXT_PUBLIC_API_URL: ${BASE_URL:-http://localhost:8000}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-auto}
+      NEXT_PUBLIC_AUTH_MODE: ${AUTH_MODE:-local}
     depends_on:
-      - mission-control-backend
+      - backend
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
 
-  # === OCF Gateway (our code) ===
+  webhook-worker:
+    build:
+      context: ./vendor/openclaw-mission-control
+      dockerfile: backend/Dockerfile
+    command: ["python", "scripts/rq-docker", "worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-mission_control}
+      AUTH_MODE: ${AUTH_MODE:-local}
+      LOCAL_AUTH_TOKEN: ${LOCAL_AUTH_TOKEN}
+      BASE_URL: ${BASE_URL:-http://localhost:8000}
+      RQ_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- OCF Gateway (our code) ---
 
   ocf-gateway:
     build:
       context: .
       dockerfile: gateway/Dockerfile
     environment:
-      OCF_MISSION_CONTROL_URL: http://mission-control-backend:8000
+      OCF_MISSION_CONTROL_URL: http://backend:8000
       OCF_GATEWAY_PORT: "9400"
     volumes:
       - ./agents:/app/agents:ro
       - ./config:/app/config:ro
     depends_on:
-      - mission-control-backend
+      - backend
     ports:
-      - "127.0.0.1:9400:9400"
+      - "127.0.0.1:${OCF_GATEWAY_PORT:-9400}:9400"
+    restart: unless-stopped
 
 volumes:
   postgres_data:
