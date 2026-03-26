@@ -14,3 +14,8 @@ projects:
   ocf-tag:
     path: /home/jfortin/openclaw-fleet/agents/accountability-generator
     description: The Accountability Generator
+
+  nnrt:
+    path: /home/jfortin/Narrative-to-Neutral-Report-Transformer
+    description: Narrative-to-Neutral Report Transformer
+    repo: https://github.com/cyberpunk042/Narrative-to-Neutral-Report-Transformer
