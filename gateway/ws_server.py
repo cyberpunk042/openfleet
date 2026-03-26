@@ -29,7 +29,18 @@ from uuid import uuid4
 import yaml
 
 AGENTS_DIR = Path(__file__).parent.parent / "agents"
+CONFIG_DIR = Path(__file__).parent.parent / "config"
 GATEWAY_VERSION = "2026.3.26"
+
+
+def _load_projects() -> Dict[str, Dict[str, Any]]:
+    """Load project registry from config/projects.yaml."""
+    projects_path = CONFIG_DIR / "projects.yaml"
+    if not projects_path.exists():
+        return {}
+    with open(projects_path) as f:
+        data = yaml.safe_load(f) or {}
+    return data.get("projects", {})
 
 
 class Session:
@@ -65,6 +76,7 @@ class GatewayProtocol:
         self.agent_configs: Dict[str, Dict] = {}
         self.sessions: Dict[str, Session] = {}
         self._load_agent_configs()
+        self.projects = _load_projects()
 
     async def handle_connection(self, websocket) -> None:
         """Handle a single WebSocket connection."""
@@ -209,7 +221,20 @@ class GatewayProtocol:
         agent_config = self.agent_configs.get(agent_name, {})
         agent_dir = AGENTS_DIR / agent_name if agent_name else None
 
-        print(f"[gateway] Executing: agent={agent_name} msg={message[:80]}...", flush=True)
+        # Resolve target project
+        project_name = params.get("project", "")
+        work_dir = None
+        if project_name and project_name in self.projects:
+            work_dir = Path(self.projects[project_name]["path"])
+        else:
+            for pn, pc in self.projects.items():
+                if pc.get("default"):
+                    work_dir = Path(pc["path"])
+                    project_name = pn
+                    break
+
+        proj = f" project={project_name}" if project_name else ""
+        print(f"[gateway] Executing: agent={agent_name}{proj} msg={message[:80]}...", flush=True)
 
         # Record user message
         session.add_message("user", message)
@@ -217,7 +242,8 @@ class GatewayProtocol:
         # Execute via Claude Code (in executor to avoid blocking the event loop)
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
-            None, self._execute_claude, message, agent_config, agent_dir
+            None, self._execute_claude, message, agent_config, agent_dir,
+            work_dir,
         )
 
         # Record assistant response
@@ -246,7 +272,8 @@ class GatewayProtocol:
     # --- Claude Code execution ---
 
     def _execute_claude(
-        self, prompt: str, agent_config: Dict, agent_dir: Path = None
+        self, prompt: str, agent_config: Dict, agent_dir: Path = None,
+        work_dir: Path = None,
     ) -> Dict:
         """Execute a prompt via Claude Code CLI. Runs in a thread."""
         if not shutil.which("claude"):
@@ -275,8 +302,13 @@ class GatewayProtocol:
 
         cmd.append(prompt)
 
-        # Execute
-        cwd = str(agent_dir) if agent_dir and agent_dir.exists() else "."
+        # Execute — work_dir (project) takes precedence over agent_dir
+        if work_dir and work_dir.exists():
+            cwd = str(work_dir)
+        elif agent_dir and agent_dir.exists():
+            cwd = str(agent_dir)
+        else:
+            cwd = "."
         try:
             result = subprocess.run(
                 cmd, capture_output=True, text=True, timeout=300, cwd=cwd,

@@ -1,0 +1,16 @@
+# Projects the fleet can operate on
+# Each project has a path and optional CLAUDE.md override
+
+projects:
+  openclaw-fleet:
+    path: /home/jfortin/openclaw-fleet
+    description: The fleet itself
+    default: true
+
+  aicp:
+    path: /home/jfortin/devops-expert-local-ai
+    description: AI Control Platform
+
+  ocf-tag:
+    path: /home/jfortin/openclaw-fleet/agents/accountability-generator
+    description: The Accountability Generator
