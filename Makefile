@@ -106,7 +106,7 @@ gateway:
 	fi
 
 gateway-stop:
-	@pkill -f "openclaw-gatewa" 2>/dev/null && echo "Gateway stopped" || echo "Gateway not running"
+	@pkill -x openclaw-gateway 2>/dev/null && echo "Gateway stopped" || echo "Gateway not running"
 
 # Refresh auth token and restart gateway
 refresh-auth:
