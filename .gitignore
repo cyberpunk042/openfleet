@@ -16,5 +16,5 @@ vendor/
 workspace-gateway-*/
 workspace-mc-*/
 projects/
-skills/
+/skills/
 logs/
