@@ -43,6 +43,14 @@ monitor:
 chat:
 	@bash scripts/chat-agent.sh $(MSG)
 
+# Watch agent events in real-time: make watch [AGENT=architect]
+watch:
+	@bash scripts/ws-monitor.sh $(if $(AGENT),--agent $(AGENT))
+
+# List all gateway sessions
+sessions:
+	@bash scripts/ws-monitor.sh --sessions
+
 # ─── Agents ─────────────────────────────────────────────────────────────────
 
 agents:
