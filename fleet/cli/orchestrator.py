@@ -73,6 +73,9 @@ async def run_orchestrator_cycle(
     # Step 1: Process pending approvals
     await _process_approvals(mc, irc, board_id, config, state, dry_run)
 
+    # Step 1.5: Create approvals for review tasks that lack them
+    await _ensure_review_approvals(mc, board_id, tasks, state, dry_run)
+
     # Step 2: Transition review → done for approved tasks
     await _transition_approved_reviews(mc, irc, board_id, tasks, state, dry_run)
 
@@ -136,6 +139,54 @@ async def _process_approvals(
                     f"(confidence={approval.confidence:.0f}%)")
         except Exception as e:
             state.errors.append(f"approve {approval.id[:8]}: {e}")
+
+
+# ─── Step 1.5: Ensure Review Tasks Have Approvals ────────────────────────
+
+
+async def _ensure_review_approvals(
+    mc: MCClient,
+    board_id: str,
+    tasks: list[Task],
+    state: OrchestratorState,
+    dry_run: bool,
+) -> None:
+    """Create approvals for review tasks that don't have any.
+
+    Agents sometimes move tasks to review without calling fleet_task_complete
+    (e.g., due to MCP env var issues). This ensures those tasks aren't stuck.
+    """
+    review_tasks = [t for t in tasks if t.status == TaskStatus.REVIEW]
+    if not review_tasks:
+        return
+
+    try:
+        all_approvals = await mc.list_approvals(board_id)
+    except Exception:
+        return
+
+    tasks_with_approvals = {a.task_id for a in all_approvals}
+
+    for task in review_tasks:
+        if task.id in tasks_with_approvals:
+            continue
+
+        if dry_run:
+            print(f"  [dry_run] WOULD create approval for orphaned review: "
+                  f"{task.id[:8]} {task.title[:40]}")
+            continue
+
+        try:
+            await mc.create_approval(
+                board_id,
+                task_ids=[task.id],
+                action_type="task_completion",
+                confidence=85.0,
+                rubric_scores={"completeness": 80, "quality": 80},
+                reason=f"Auto-created by orchestrator — task in review without approval",
+            )
+        except Exception:
+            pass  # Non-critical, will retry next cycle
 
 
 # ─── Step 2: Transition Approved Reviews ─────────────────────────────────

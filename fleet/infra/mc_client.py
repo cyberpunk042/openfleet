@@ -124,6 +124,7 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
         comment: Optional[str] = None,
         custom_fields: Optional[dict] = None,
         tag_ids: Optional[list[str]] = None,
+        depends_on: Optional[list[str]] = None,
     ) -> Task:
         """Update a task."""
         payload: dict = {}
@@ -135,6 +136,8 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
             payload["custom_field_values"] = custom_fields
         if tag_ids:
             payload["tag_ids"] = tag_ids
+        if depends_on is not None:
+            payload["depends_on_task_ids"] = depends_on
 
         resp = await self._client.patch(
             f"/api/v1/boards/{board_id}/tasks/{task_id}",
