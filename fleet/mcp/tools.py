@@ -294,6 +294,22 @@ def register_tools(server: FastMCP) -> None:
                 pass
             return {"ok": True, "status": "review", "pr": None}
 
+        # Run tests before proceeding (quality gate)
+        test_passed = True
+        test_summary = ""
+        try:
+            ok, test_output = await ctx.gh._run(
+                ["python", "-m", "pytest", "--tb=line", "-q"], cwd=cwd,
+            )
+            if ok:
+                test_summary = test_output.strip().split("\n")[-1] if test_output.strip() else "passed"
+            else:
+                test_passed = False
+                lines = test_output.strip().split("\n") if test_output else []
+                test_summary = lines[-1] if lines else "tests failed"
+        except Exception:
+            test_summary = "no tests found"
+
         # Get branch
         _, branch = await ctx.gh._run(["git", "branch", "--show-current"], cwd=cwd)
         branch = branch.strip()
@@ -401,20 +417,24 @@ def register_tools(server: FastMCP) -> None:
 
         # Create approval for quality gate
         try:
+            test_score = 85 if test_passed else 30
+            confidence = 85.0 if test_passed else 50.0
             await ctx.mc.create_approval(
                 board_id,
                 task_ids=[ctx.task_id],
                 action_type="task_completion",
-                confidence=85.0,  # Agent self-assessment default
+                confidence=confidence,
                 rubric_scores={
                     "correctness": 85,
                     "completeness": 85,
                     "quality": 85,
+                    "tests": test_score,
                 },
                 reason=(
                     f"Task completed by {agent_name}. "
                     f"PR: {pr.url}. "
                     f"{len(commits)} commit(s), {len(diff_stat)} file(s) changed. "
+                    f"Tests: {test_summary}. "
                     f"Summary: {summary[:200]}"
                 ),
             )
