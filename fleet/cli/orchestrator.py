@@ -73,13 +73,16 @@ async def run_orchestrator_cycle(
     # Step 1: Ensure review tasks have approvals (so fleet-ops can review them)
     await _ensure_review_approvals(mc, board_id, tasks, state, dry_run)
 
-    # Step 2: Dispatch unblocked inbox tasks to assigned agents
+    # Step 2: Wake fleet-ops urgently if there are pending approvals to process
+    await _wake_lead_for_reviews(mc, irc, board_id, tasks, agent_name_map, state, dry_run)
+
+    # Step 3: Dispatch unblocked inbox tasks to assigned agents
     await _dispatch_ready_tasks(mc, irc, board_id, tasks, agent_map, state, dry_run)
 
-    # Step 3: Evaluate parent task completion (all children done → parent to review)
+    # Step 4: Evaluate parent task completion (all children done → parent to review)
     await _evaluate_parents(mc, irc, board_id, tasks, state, dry_run)
 
-    # Step 4: Wake driver agents (PM, fleet-ops) on heartbeat interval
+    # Step 5: Wake driver agents (PM, fleet-ops) on heartbeat interval
     await _wake_drivers(mc, irc, board_id, tasks, agent_name_map, config, state, dry_run)
 
     return state
@@ -173,6 +176,88 @@ async def _transition_approved_reviews(
                 state.tasks_transitioned += 1
         except Exception as e:
             state.errors.append(f"transition {task.id[:8]}: {e}")
+
+
+# ─── Step 2: Wake Fleet-Ops for Pending Reviews ─────────────────────────
+
+_last_review_wake: Optional[datetime] = None
+
+
+async def _wake_lead_for_reviews(
+    mc: MCClient,
+    irc: IRCClient,
+    board_id: str,
+    tasks: list[Task],
+    agent_name_map: dict,
+    state: OrchestratorState,
+    dry_run: bool,
+) -> None:
+    """Wake fleet-ops when there are pending approvals to process.
+
+    More urgent than the 30-min heartbeat — checks every 5 minutes.
+    If fleet-ops already has an active review task, skips.
+    """
+    global _last_review_wake
+
+    review_count = sum(1 for t in tasks if t.status == TaskStatus.REVIEW)
+    if review_count == 0:
+        return
+
+    now = datetime.now()
+    if _last_review_wake and (now - _last_review_wake).total_seconds() < 300:
+        return
+
+    fleet_ops = agent_name_map.get("fleet-ops")
+    if not fleet_ops or not fleet_ops.session_key:
+        return
+
+    # Check if fleet-ops already has an active task
+    has_active = any(
+        t.custom_fields.agent_name == "fleet-ops"
+        and t.status in (TaskStatus.INBOX, TaskStatus.IN_PROGRESS)
+        for t in tasks
+    )
+    if has_active:
+        _last_review_wake = now
+        return
+
+    if dry_run:
+        print(f"  [dry_run] WOULD wake fleet-ops for {review_count} pending reviews")
+        _last_review_wake = now
+        return
+
+    try:
+        pending = await mc.list_approvals(board_id, status="pending")
+        if not pending:
+            return
+
+        approval_list = "\n".join(
+            f"- task {a.task_id[:8]} (confidence={a.confidence:.0f}%)"
+            for a in pending[:5]
+        )
+
+        await mc.create_task(
+            board_id,
+            title=f"[review] Process {len(pending)} pending approvals",
+            description=(
+                f"You have {len(pending)} pending approvals and "
+                f"{review_count} tasks in review.\n\n"
+                f"Pending approvals:\n{approval_list}\n\n"
+                f"Use fleet_agent_status() for the full picture.\n"
+                f"For each: review the work, then fleet_approve() or reject.\n"
+                f"See your HEARTBEAT.md for the full review chain process."
+            ),
+            priority="high",
+            assigned_agent_id=fleet_ops.id,
+            custom_fields={
+                "agent_name": "fleet-ops",
+                "task_type": "subtask",
+            },
+        )
+        _last_review_wake = now
+        state.drivers_woken += 1
+    except Exception as e:
+        state.errors.append(f"wake fleet-ops for reviews: {e}")
 
 
 # ─── Step 3: Dispatch Ready Tasks ───────────────────────────────────────
