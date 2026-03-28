@@ -174,6 +174,11 @@ echo ""
 bash scripts/setup-mc.sh
 echo ""
 
+# Step 10: Start sync daemon (task↔PR sync, worktree cleanup, IRC notifications)
+echo "=== Starting Sync Daemon ==="
+bash scripts/fleet-sync-daemon.sh &
+echo ""
+
 echo "╔══════════════════════════════════════╗"
 echo "║     Fleet Setup Complete             ║"
 echo "╚══════════════════════════════════════╝"

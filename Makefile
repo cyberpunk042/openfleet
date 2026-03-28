@@ -153,9 +153,18 @@ logs:
 fleet-setup:
 	python3 -m gateway.setup
 
-# Sync tasks ↔ PRs (merge detection, auto-close, worktree cleanup)
+# Sync tasks ↔ PRs (one-shot: merge detection, auto-close, worktree cleanup)
 sync:
 	@bash scripts/fleet-sync.sh
+
+# Start sync daemon (background, 60s interval)
+sync-start:
+	@bash scripts/fleet-sync-daemon.sh &
+	@echo "Sync daemon started in background"
+
+# Stop sync daemon
+sync-stop:
+	@if [ -f .sync.pid ]; then kill $$(cat .sync.pid) 2>/dev/null && echo "Sync daemon stopped" || echo "Not running"; rm -f .sync.pid; else echo "Not running"; fi
 
 # Configure board custom fields and tags
 board-setup:

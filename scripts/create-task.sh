@@ -159,6 +159,12 @@ echo "Title: $TITLE"
 [[ -n "$AGENT_NAME" ]] && echo "Assigned: $AGENT_NAME"
 echo "Priority: $PRIORITY"
 
+# Notify IRC
+NOTIFY_AGENT="${AGENT_NAME:-human}"
+bash "$FLEET_DIR/scripts/notify-irc.sh" \
+    --agent "$NOTIFY_AGENT" --event "TASK CREATED" \
+    --title "$TITLE" 2>/dev/null || true
+
 # Dispatch if requested
 if [[ "$DISPATCH" == "true" && -n "$AGENT_NAME" ]]; then
     echo ""

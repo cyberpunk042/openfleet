@@ -19,3 +19,4 @@ projects/
 /skills/
 logs/
 .irc.pid
+.sync.pid
