@@ -35,7 +35,7 @@ integrate:
 
 # Dispatch task: make dispatch AGENT=architect TASK=<uuid> [PROJECT=nnrt]
 dispatch:
-	@bash scripts/dispatch-task.sh $(AGENT) $(TASK) $(if $(PROJECT),--project $(PROJECT))
+	@.venv/bin/python -m fleet dispatch $(AGENT) $(TASK) $(if $(PROJECT),--project $(PROJECT)) 2>/dev/null || bash scripts/dispatch-task.sh $(AGENT) $(TASK) $(if $(PROJECT),--project $(PROJECT))
 
 # Monitor a task in real-time: make monitor TASK=<uuid>
 monitor:
