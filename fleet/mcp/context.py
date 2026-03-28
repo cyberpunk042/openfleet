@@ -73,7 +73,10 @@ class FleetMCPContext:
             else:
                 token = env.get("LOCAL_AUTH_TOKEN", "")
                 base_url = env.get("OCF_MISSION_CONTROL_URL", "http://localhost:8000")
-            self._mc = MCClient(base_url=base_url, token=token)
+            # Use SQLite cache for API response caching
+            from fleet.infra.cache_sqlite import SQLiteCache
+            cache = SQLiteCache()
+            self._mc = MCClient(base_url=base_url, token=token, cache=cache)
         return self._mc
 
     @property
