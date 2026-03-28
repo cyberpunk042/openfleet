@@ -87,28 +87,20 @@ for acc in accounts:
         fleet_account = acc
         break
 
-if fleet_account:
-    # Update existing
-    fleet_account['host'] = 'localhost'
-    fleet_account['port'] = $IRC_PORT
-    fleet_account['nick'] = '$IRC_NICK'
-    fleet_account['channels'] = ['$IRC_CHANNEL']
-    fleet_account['dmPolicy'] = 'open'
-    fleet_account['allowFrom'] = []
-    print('   IRC channel updated')
-else:
-    accounts.append({
-        'id': 'fleet',
-        'host': 'localhost',
-        'port': $IRC_PORT,
-        'nick': '$IRC_NICK',
-        'channels': ['$IRC_CHANNEL'],
-        'dmPolicy': 'open',
-        'allowFrom': [],
-    })
-    print('   IRC channel configured')
-
-channels['irc'] = {'accounts': accounts}
+# OpenClaw expects accounts as a record keyed by account ID, not an array
+channels['irc'] = {
+    'accounts': {
+        'fleet': {
+            'host': 'localhost',
+            'port': $IRC_PORT,
+            'nick': '$IRC_NICK',
+            'channels': ['$IRC_CHANNEL'],
+            'dmPolicy': 'open',
+            'allowFrom': ['*'],
+        }
+    }
+}
+print('   IRC channel configured')
 
 # Set channel defaults for fleet notifications
 defaults = channels.setdefault('defaults', {})
@@ -137,9 +129,9 @@ for agent in $AGENTS; do
         continue
     fi
 
-    openclaw agents bind "$agent" --channel irc --account fleet --target "$IRC_CHANNEL" 2>/dev/null || true
+    openclaw agents bind --agent "$agent" --bind "irc:fleet" 2>/dev/null || true
 done
-echo "   Agents bound to $IRC_CHANNEL"
+echo "   Agents bound to IRC (irc:fleet)"
 
 echo ""
 echo "=== IRC Setup Complete ==="
