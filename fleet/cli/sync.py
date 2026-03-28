@@ -175,6 +175,9 @@ async def _run_sync() -> int:
                 if ok:
                     actions += 1
 
+    # PR hygiene check — detect conflicts, stale PRs, orphaned PRs
+    await _check_pr_hygiene(mc, gh, irc, board_id, tasks, actions)
+
     if actions == 0:
         print("  Nothing to sync")
     else:
@@ -182,6 +185,103 @@ async def _run_sync() -> int:
 
     await mc.close()
     return 0
+
+
+async def _check_pr_hygiene(mc, gh, irc, board_id, tasks, actions_count) -> None:
+    """Check all open PRs across fleet projects for hygiene issues."""
+    from fleet.core.pr_hygiene import assess_pr_hygiene
+
+    loader = ConfigLoader()
+    projects = loader.load_projects()
+
+    all_open_prs: list[dict] = []
+    for name, proj in projects.items():
+        if proj.local or not proj.owner:
+            continue
+        try:
+            ok, output = await gh._run([
+                "gh", "pr", "list", "--repo", f"{proj.owner}/{proj.repo}",
+                "--state", "open", "--json", "number,title,url,createdAt",
+            ])
+            if ok and output.strip():
+                import json
+                prs = json.loads(output)
+                for pr in prs:
+                    pr["mergeable"] = "UNKNOWN"
+                    # Check mergeable state per PR
+                    try:
+                        ok2, merge_info = await gh._run([
+                            "gh", "pr", "view", str(pr["number"]),
+                            "--repo", f"{proj.owner}/{proj.repo}",
+                            "--json", "mergeable",
+                        ])
+                        if ok2:
+                            merge_data = json.loads(merge_info)
+                            pr["mergeable"] = merge_data.get("mergeable", "UNKNOWN")
+                    except Exception:
+                        pass
+                    pr["created_at"] = pr.get("createdAt", "")
+                    all_open_prs.append(pr)
+        except Exception:
+            continue
+
+    if not all_open_prs:
+        return
+
+    report = assess_pr_hygiene(tasks, all_open_prs)
+
+    if not report.has_issues:
+        return
+
+    for issue in report.issues:
+        if issue.issue_type == "conflicting":
+            print(f"  CONFLICT: PR #{issue.pr_number} — {issue.pr_title[:40]}")
+            # Create resolve-conflict task if task exists
+            if issue.task_id:
+                try:
+                    agents = await mc.list_agents()
+                    agent_id = next(
+                        (a.id for a in agents if a.name == issue.target_agent), None
+                    )
+                    await mc.create_task(
+                        board_id,
+                        title=f"Resolve conflict: PR #{issue.pr_number} — {issue.pr_title[:30]}",
+                        description=(
+                            f"PR #{issue.pr_number} has merge conflicts.\n"
+                            f"URL: {issue.pr_url}\n\n"
+                            f"{issue.recommended_action}\n\n"
+                            f"Rebase branch against main, resolve conflicts, force-push."
+                        ),
+                        priority="high",
+                        assigned_agent_id=agent_id,
+                        custom_fields={
+                            "agent_name": issue.target_agent,
+                            "parent_task": issue.task_id,
+                            "task_type": "blocker",
+                            "pr_url": issue.pr_url,
+                        },
+                    )
+                    print(f"    Created resolve-conflict task → {issue.target_agent}")
+                except Exception as e:
+                    print(f"    ERROR creating conflict task: {e}")
+
+        elif issue.issue_type == "stale":
+            print(f"  STALE: PR #{issue.pr_number} — task done, PR still open")
+            # Close stale PRs whose tasks are done
+            try:
+                repo = issue.pr_url.split("/pull/")[0].replace("https://github.com/", "")
+                ok, _ = await gh._run([
+                    "gh", "pr", "close", str(issue.pr_number),
+                    "--repo", repo,
+                    "--comment", "Closing — task completed via different path.",
+                ])
+                if ok:
+                    print(f"    Closed PR #{issue.pr_number}")
+            except Exception:
+                pass
+
+        elif issue.issue_type == "long_open":
+            print(f"  STALE: PR #{issue.pr_number} open too long — {issue.description[:50]}")
 
 
 def _find_worktree(task_id: str) -> str | None:
