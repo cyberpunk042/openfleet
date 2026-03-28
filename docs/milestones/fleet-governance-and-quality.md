@@ -1,6 +1,43 @@
 # Fleet Governance, Quality, and Communication Architecture
 
-## Requirements (from user, verbatim scope)
+## User Requirements — Exact Quotes (traceability anchor)
+
+Every milestone below must trace to these. These are the user's exact words — not paraphrased, not interpreted.
+
+> "i did not see a changelog in the PR btw. and the PR I usually generate myself via copilot or claude code are much more elevated. high quality and visually appealing and exploiting the markdown. maybe we need more skill for markdowns in general and for PR message and message with refs and links and general and cross referencing everywhere, task, inner message, publish message, repos, urls"
+
+> "There are also operations that deserve an internal message and there are time the AI has to know to put in pause and/or create a task to another agent and whatnot. There is still a lot left."
+
+> "WE need order and logic for when to use what and how to use it and make it very easy and simple and reduce the complexity and make sure we do not be lazy or minimize or underuse a feature."
+
+> "The AIs can communicated and thats not nothing, they can even create future tasks for themselves or other agents or lift warnings about something or suggestion or improvement like the fact that we are missing an Agent X or Y or Z and whatnot or that we lack this skill or that or this or that we lack this knowledge or this or that."
+
+> "we are also going to need to explore the lounge repo and site (https://thelounge.chat/) and see how to setup this so I can talk with the publish AI messages and where we would for instance warn me about important CVE or security issue in general or bug or suggestion or fix or blocking or issue and so on... all the logic that is needed and that the Agent would need to logically use and we would probably need one agent that will keep order in all this and offer feature like backup of the IRC and stuff like this revolving around its SRP evolutions."
+
+> "There is going to be a lot of governance and automation and enhancement needed around the agents and the work and tooling and workflow and so on."
+
+> "all I said about making it smart and tooling for the agent and making it easy. all this was lost and is very important.... you have to make things fluid and clear and tag things and make sure that the flow everywhere at all level is top notch"
+
+> "we need to be honest and then we will get back to work to move toward it at a normal pace, not rushing but aiming for quality solutions instead"
+
+> "make sure we meet high standards and requirements to deliver a godlike solution"
+
+> "Some things are about how we remember and how we do things and then there is the per-cases where you have skills and workflows that popup for execution and such."
+
+### Key themes extracted from above:
+1. **Smart tooling that makes it EASY** — skills handle complexity, agents focus on work
+2. **Fluid and clear at every level** — tagged, linked, navigable, top notch flow
+3. **Rich markdown everywhere** — visually appealing, exploiting the format fully
+4. **Cross-referencing everywhere** — tasks, messages, repos, URLs, all connected
+5. **Agent intelligence** — create tasks, warn, suggest, detect gaps, pause when needed
+6. **Order and logic** — clear rules for when to use what surface, reduce complexity
+7. **The Lounge for IRC** — web client, human talks with agents, CVE/security alerts
+8. **Governance agent** — keeps order, IRC backup, SRP-based evolution
+9. **Quality over speed** — godlike standard, not rushing
+
+---
+
+## Requirements (detailed scope)
 
 Every single one of these is a requirement, not a nice-to-have.
 
