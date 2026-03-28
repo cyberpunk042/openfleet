@@ -88,11 +88,30 @@ if [[ "$PREFLIGHT_OK" != "true" ]]; then
     exit 1
 fi
 
-# Install Python deps
-echo "  Installing Python dependencies..."
-pip install -q -e "$FLEET_DIR" 2>/dev/null || pip install -q -e "$FLEET_DIR" --break-system-packages 2>/dev/null || {
-    echo "  WARN: pip install failed — some scripts may not work"
-}
+# uv (Python version + venv manager)
+if command -v uv >/dev/null 2>&1; then
+    echo "  uv: OK"
+else
+    echo "  uv: NOT FOUND — installing..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null
+    export PATH="$HOME/.local/bin:$PATH"
+fi
+
+# Set up Python venv with 3.11+
+echo "  Setting up Python venv..."
+if [[ ! -d "$FLEET_DIR/.venv" ]]; then
+    uv venv --python 3.11 "$FLEET_DIR/.venv" 2>/dev/null || {
+        echo "  WARN: Could not create Python 3.11 venv"
+    }
+fi
+
+# Install fleet package in venv
+if [[ -d "$FLEET_DIR/.venv" ]]; then
+    uv pip install --python "$FLEET_DIR/.venv/bin/python" -q -e "$FLEET_DIR" 2>/dev/null || {
+        echo "  WARN: Fleet package install failed"
+    }
+    echo "  Python venv: OK (.venv with Python 3.11+)"
+fi
 echo ""
 
 # Step 1: Install OpenClaw
