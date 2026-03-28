@@ -103,6 +103,22 @@ def post_memory(board_id, content, tags):
     api("POST", f"/api/v1/boards/{board_id}/memory",
         {"content": content, "tags": tags, "source": "fleet-sync"})
 
+def notify_irc(agent, event, title="", url=""):
+    """Send notification to IRC via notify-irc.sh."""
+    fleet_dir = os.environ.get("FLEET_DIR", ".")
+    script = os.path.join(fleet_dir, "scripts", "notify-irc.sh")
+    if not os.path.isfile(script):
+        return
+    cmd = ["bash", script, "--agent", agent, "--event", event]
+    if title:
+        cmd.extend(["--title", title])
+    if url:
+        cmd.extend(["--url", url])
+    try:
+        subprocess.run(cmd, capture_output=True, timeout=15)
+    except:
+        pass
+
 def update_task_status(board_id, task_id, status, comment=None):
     data = {"status": status}
     if comment:
@@ -142,6 +158,7 @@ for task in tasks:
             post_memory(board_id,
                 f"**Merged**: {title}\nPR: {pr_url}",
                 ["merged", custom.get("project", "fleet")])
+            notify_irc("fleet", "MERGED", title, pr_url)
             actions += 1
         else:
             print(f"    FAIL: merge failed — {output}")
@@ -154,6 +171,7 @@ for task in tasks:
         post_memory(board_id,
             f"**Completed**: {title}\nPR: {pr_url} (merged)",
             ["completed", custom.get("project", "fleet")])
+        notify_irc("fleet", "TASK DONE", title, pr_url)
         actions += 1
 
     # ── Task in "done" → cleanup worktree ──

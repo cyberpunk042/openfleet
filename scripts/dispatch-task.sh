@@ -178,3 +178,9 @@ async def send():
 
 asyncio.run(send())
 PYEOF
+
+# Notify IRC
+bash "$FLEET_DIR/scripts/notify-irc.sh" \
+    --agent "$AGENT_NAME" --event "DISPATCHED" \
+    --title "$TASK_TITLE" \
+    --url "http://localhost:3000" 2>/dev/null || true
