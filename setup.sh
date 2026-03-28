@@ -162,11 +162,15 @@ echo ""
 bash scripts/register-agents.sh
 echo ""
 
-# Step 7: Start the fleet (gateway must be up before MC connects)
+# Step 7: Set up IRC channel for fleet observation
+bash scripts/setup-irc.sh
+echo ""
+
+# Step 8: Start the fleet (gateway must be up before MC connects)
 bash scripts/start-fleet.sh
 echo ""
 
-# Step 8: Start Mission Control + connect gateway + sync templates + push SOUL.md
+# Step 9: Start Mission Control + connect gateway + sync templates + push SOUL.md
 bash scripts/setup-mc.sh
 echo ""
 
@@ -179,10 +183,15 @@ echo "  Mission Control UI:  http://localhost:3000"
 echo "  Mission Control API: http://localhost:8000"
 echo "  OpenClaw Gateway:    ws://localhost:18789"
 echo "  OpenClaw Control UI: http://localhost:18789"
+echo "  IRC Server:          localhost:6667 (#fleet)"
+echo ""
+echo "Connect to IRC:"
+echo "  make irc-connect"
 echo ""
 echo "Manage:"
-echo "  make status    — check fleet health"
+echo "  make status    — fleet overview"
+echo "  make watch     — real-time agent events"
+echo "  make sync      — sync tasks ↔ PRs"
 echo "  make mc-up     — start Mission Control"
-echo "  make mc-down   — stop Mission Control"
 echo "  make gateway   — start OpenClaw gateway"
 echo "  make logs      — view gateway logs"

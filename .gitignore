@@ -18,3 +18,4 @@ workspace-mc-*/
 projects/
 /skills/
 logs/
+.irc.pid

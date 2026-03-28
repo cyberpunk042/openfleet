@@ -1,5 +1,7 @@
 .PHONY: setup provision status dispatch create-task chat monitor agents agents-register \
-       mc-up mc-down mc-logs gateway gateway-stop gateway-restart refresh-auth logs fleet-setup clean
+       mc-up mc-down mc-logs irc-up irc-down irc-connect sync board-setup \
+       skills-list skills-install skill-install skills-sync integrate trace \
+       gateway gateway-stop gateway-restart refresh-auth logs fleet-setup changelog clean
 
 # ─── Setup & Provision ──────────────────────────────────────────────────────
 
@@ -99,6 +101,29 @@ mc-down:
 
 mc-logs:
 	docker compose logs -f --tail=50
+
+# IRC
+irc-up:
+	@bash scripts/setup-irc.sh
+
+irc-down:
+	@bash scripts/stop-irc.sh
+
+irc-connect:
+	@if command -v weechat >/dev/null 2>&1; then \
+		weechat -r "/server add fleet localhost/6667; /connect fleet; /join \#fleet"; \
+	elif command -v irssi >/dev/null 2>&1; then \
+		irssi -c localhost -p 6667 -n human --join=\#fleet; \
+	else \
+		echo "No IRC client found. Install weechat or irssi:"; \
+		echo "  sudo apt install weechat   # or"; \
+		echo "  sudo apt install irssi"; \
+		echo ""; \
+		echo "Then connect manually:"; \
+		echo "  /server add fleet localhost/6667"; \
+		echo "  /connect fleet"; \
+		echo "  /join \#fleet"; \
+	fi
 
 gateway:
 	@if ss -tlnp 2>/dev/null | grep -q ":18789"; then \
