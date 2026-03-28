@@ -1,0 +1,273 @@
+# DSPD Sprint 3 — Plane Configuration, Customization & Multi-Fleet Foundation
+#
+# Goal: Configure Plane from god-mode through full customization, designed
+# from day one for multi-fleet collaboration. Two fleets on different machines
+# will share the same Plane instance, same projects, same sprints.
+#
+# Plane is at http://localhost:8080/god-mode/ — needs full setup.
+# This is DSPD — we don't just install, we BUILD our project management surface.
+#
+# Key principle: everything scripted for IaC. A second fleet on another machine
+# should be able to connect to this same Plane instance flawlessly.
+
+sprint:
+  id: dspd-s3
+  name: "DSPD Sprint 3: Plane Configuration & Multi-Fleet Foundation"
+  start_date: 2026-03-29
+  end_date: 2026-04-15
+  goals:
+    - "Plane fully configured from god-mode through workspace"
+    - "Multi-fleet foundation: namespaced agents, shared projects"
+    - "Custom workflows, states, labels designed for fleet operations"
+    - "API key generated, IaC scripts for reproducible setup"
+    - "Second fleet can connect to same Plane without manual config"
+
+tasks:
+  - id: s3-epic
+    title: "DSPD Sprint 3: Plane configuration with multi-fleet foundation"
+    type: epic
+    priority: high
+    description: >
+      Configure Plane for fleet operations with multi-fleet collaboration
+      built in from day one. Two independent fleets (each with 10 agents)
+      share the same Plane workspace, same projects, same sprints.
+      Agents are namespaced by fleet ID (alpha-architect, bravo-devops).
+      Everything scripted — IaC for new fleet connection.
+
+  # ─── Phase 1: God-Mode & Admin ─────────────────────────────────────
+
+  - id: s3-god-mode
+    title: "Complete Plane god-mode setup — admin, instance config"
+    type: task
+    parent: s3-epic
+    priority: urgent
+    agent: devops
+    project: dspd
+    story_points: 3
+    description: >
+      Complete http://localhost:8080/god-mode/ initial setup:
+      1. Admin email + password (store in plane.env, NOT in code)
+      2. Instance name: "OpenClaw Fleet Management"
+      3. Instance URL: http://localhost:8080
+      4. SMTP: skip for now (local instance)
+      5. Complete wizard → admin can log in
+
+      After: admin dashboard accessible. Document the credentials location.
+
+  # ─── Phase 2: Workspace & Multi-Fleet Structure ────────────────────
+
+  - id: s3-workspace
+    title: "Create fleet workspace with multi-fleet member structure"
+    type: task
+    parent: s3-epic
+    depends_on: [s3-god-mode]
+    priority: high
+    agent: devops
+    project: dspd
+    story_points: 5
+    description: >
+      Create workspace designed for multi-fleet operation:
+
+      Workspace: "OpenClaw Fleet Management" (slug: fleet)
+
+      Member structure — each fleet registers its agents as workspace members:
+      - Members are prefixed with fleet ID: alpha-architect, alpha-devops, etc.
+      - Each fleet has its own API key for its agents
+      - Admin account shared (or separate admin per fleet)
+
+      For the first fleet (this machine):
+      1. Generate fleet identity if not exists (fleet/core/federation.py)
+      2. Register 10 agents as workspace members with fleet prefix
+      3. Generate fleet-specific API key: "fleet-{fleet_id}-integration"
+
+      Design: when a second fleet connects, it runs the same setup script
+      and registers its own 10 agents with its own prefix. Both fleets see
+      the same projects, issues, sprints — but agents are distinguishable.
+
+  - id: s3-projects
+    title: "Create projects with GitHub integration and module structure"
+    type: task
+    parent: s3-epic
+    depends_on: [s3-workspace]
+    priority: high
+    agent: devops
+    project: dspd
+    story_points: 5
+    description: >
+      Create Plane projects matching fleet ecosystem:
+
+      1. FLEET (openclaw-fleet)
+         - Description: Fleet operations, MCP tools, orchestrator, agents
+         - GitHub: cyberpunk042/openclaw-fleet (link in project settings)
+         - Modules: Core, Infrastructure, MCP, CLI, Agents, Tests
+
+      2. NNRT (Narrative-to-Neutral Report Transformer)
+         - Description: Fact extraction and accountability engine
+         - GitHub: cyberpunk042/Narrative-to-Neutral-Report-Transformer
+         - Modules: Intake, Structuring, Mapping, Pressure, Persistence
+
+      3. DSPD (DevOps Solution Product Development)
+         - Description: Project management platform (Plane customization)
+         - GitHub: cyberpunk042/devops-solution-product-development
+         - Modules: Setup, Integration, Sync, Customization
+
+      4. AICP (AI Control Platform)
+         - Description: Personal AI control workspace
+         - GitHub: cyberpunk042/devops-expert-local-ai
+
+      For each: enable Pages (wiki), Cycles (sprints), Modules, Estimates.
+
+  # ─── Phase 3: Custom Workflow & Metadata ───────────────────────────
+
+  - id: s3-states
+    title: "Configure workflow states — OCMC lifecycle mapping"
+    type: task
+    parent: s3-epic
+    depends_on: [s3-projects]
+    priority: high
+    agent: devops
+    project: dspd
+    story_points: 3
+    description: >
+      Configure Plane states per project to map to fleet lifecycle:
+
+      | Plane State | OCMC Status | Color | Description |
+      |-------------|-------------|-------|-------------|
+      | Backlog | (unplanned) | gray | Not yet scheduled |
+      | Todo | inbox | blue | Assigned, ready for dispatch |
+      | In Progress | in_progress | yellow | Agent working |
+      | In Review | review | purple | fleet-ops reviewing |
+      | Done | done | green | Approved and merged |
+      | Cancelled | (abandoned) | red | Closed without completion |
+
+      This mapping is critical for bidirectional sync.
+      Document in fleet config for sync engine to reference.
+
+  - id: s3-labels-properties
+    title: "Create labels, estimates, and custom properties"
+    type: task
+    parent: s3-epic
+    depends_on: [s3-projects]
+    priority: high
+    agent: devops
+    project: dspd
+    story_points: 5
+    description: >
+      Configure Plane metadata for fleet operations:
+
+      LABELS (workspace-wide, shared across fleets):
+        Task types: epic, story, task, subtask, blocker, request, concern
+        Projects: fleet, nnrt, dspd, aicp
+        Priority overrides: urgent, security-hold
+        Review: needs-review, approved, rejected, rework
+
+      LABELS (fleet-specific, prefixed):
+        Agents: {fleet-prefix}-architect, {fleet-prefix}-devops, etc.
+        Fleet: fleet:{fleet-id}
+
+      ESTIMATES:
+        Configure story point system: 1, 2, 3, 5, 8, 13
+        Enable estimates on all projects
+
+      CUSTOM PROPERTIES (per project):
+        - ocmc_task_id (text) — links Plane issue to OCMC task
+        - fleet_id (text) — which fleet created/owns this issue
+        - agent_name (text) — which agent is assigned (with fleet prefix)
+        - review_status (select: pending/in_review/approved/rejected)
+        - sprint_plan_id (text) — links to fleet sprint YAML
+
+      These properties enable bidirectional sync and multi-fleet attribution.
+
+  # ─── Phase 4: API & Security ───────────────────────────────────────
+
+  - id: s3-api-keys
+    title: "Generate API keys — per-fleet keys for secure integration"
+    type: task
+    parent: s3-epic
+    depends_on: [s3-workspace]
+    priority: high
+    agent: devops
+    project: dspd
+    story_points: 2
+    description: >
+      Generate API keys for fleet integration:
+
+      1. Fleet-specific key: "fleet-{fleet_id}" with full project access
+         → Store in fleet .env: PLANE_API_KEY, PLANE_URL, PLANE_WORKSPACE
+      2. Admin key: for workspace management operations
+         → Store in plane.env (admin-only, not shared with agents)
+
+      Design: each fleet connecting to this Plane instance generates its
+      own API key. Keys are scoped to workspace. This allows revoking
+      a fleet's access without affecting others.
+
+      Verify: curl -H "X-API-Key: <key>" http://localhost:8080/api/v1/workspaces/fleet/projects/
+
+  - id: s3-security
+    title: "Security review — credentials, network, API key scoping"
+    type: task
+    parent: s3-epic
+    depends_on: [s3-api-keys]
+    priority: medium
+    agent: devsecops-expert
+    project: dspd
+    story_points: 3
+    description: >
+      Security review of Plane configuration:
+      1. Admin credentials stored securely (plane.env, gitignored)
+      2. API keys scoped appropriately (workspace-level, not instance-level)
+      3. Network: port 8080 accessible only from local network (not internet)
+      4. Default passwords changed from plane.env template
+      5. Session timeout configured
+      6. CORS: restrict to localhost and local network
+      7. Multi-fleet key isolation: one fleet can't use another's key
+
+  # ─── Phase 5: IaC & Documentation ─────────────────────────────────
+
+  - id: s3-iac
+    title: "Script Plane configuration — IaC for reproducible setup"
+    type: task
+    parent: s3-epic
+    depends_on: [s3-labels-properties, s3-api-keys]
+    priority: high
+    agent: devops
+    project: dspd
+    story_points: 8
+    description: >
+      Create scripts/configure-plane.sh that automates Plane setup via API:
+
+      Phase A (requires admin key):
+      1. Create workspace (if not exists)
+      2. Create all projects with identifiers
+      3. Configure states per project
+      4. Create workspace-level labels
+
+      Phase B (requires fleet key):
+      1. Register fleet agents as members (with fleet prefix)
+      2. Create fleet-specific labels
+      3. Configure estimates per project
+      4. Set custom properties
+
+      Goal: second fleet on new machine runs:
+        ./setup.sh  (deploys Plane Docker if not running)
+        scripts/configure-plane.sh  (connects to existing Plane, registers fleet)
+      And it's fully integrated — same projects, new agents, own API key.
+
+  - id: s3-docs
+    title: "Document Plane setup — multi-fleet architecture, configuration"
+    type: task
+    parent: s3-epic
+    depends_on: [s3-iac]
+    priority: medium
+    agent: technical-writer
+    project: dspd
+    story_points: 3
+    description: >
+      Document the complete Plane setup:
+      1. Architecture: Plane + OCMC + fleet — how they connect
+      2. Multi-fleet model: how two fleets share Plane
+      3. Configuration reference: states, labels, properties, estimates
+      4. IaC guide: how configure-plane.sh works
+      5. New fleet onboarding: steps to connect a new fleet to existing Plane
+      6. State mapping reference for sync development (Sprint 4)
+      7. Troubleshooting: Docker, API access, auth issues
