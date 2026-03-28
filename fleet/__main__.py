@@ -15,6 +15,7 @@ COMMANDS = {
     "create": ("Create task (and optionally dispatch)", "fleet.cli.create", "run_create"),
     "dispatch": ("Dispatch task to agent", "fleet.cli.dispatch", "run_dispatch"),
     "digest": ("Generate daily fleet digest", "fleet.cli.digest", "run_digest"),
+    "project": ("Manage projects (add/list/check)", "fleet.cli.project", "run_project"),
     "quality": ("Run quality compliance checks", "fleet.cli.quality", "run_quality"),
     "auth": ("Check and refresh auth tokens", "fleet.cli.auth", "run_auth"),
     "board": ("Board management (info/tasks/cleanup/tags/fields)", "fleet.cli.board", "run_board"),
@@ -45,7 +46,7 @@ def main() -> int:
     func = getattr(module, func_name)
 
     # Commands that accept args
-    if command in ("notify", "digest", "dispatch", "create", "daemon", "cache", "board", "auth", "trace"):
+    if command in ("notify", "digest", "dispatch", "create", "daemon", "cache", "board", "auth", "trace", "project"):
         return func(sys.argv[2:])
     else:
         return func()
