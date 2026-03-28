@@ -1,0 +1,50 @@
+# Agent identities — display names, usernames, roles.
+#
+# agent_name: the technical ID used in commits, PRs, branches, MC
+# display_name: preferred name for IRC, board memory, human-facing
+# username: slug-compatible version of display_name
+#
+# All agents should have both. Display name appears in IRC and reports.
+# Agent name appears in git branches (fleet/<agent_name>/<task>)
+# and conventional commits (fleet(<agent_name>): ...).
+
+agents:
+  architect:
+    display_name: Architect
+    username: architect
+
+  software-engineer:
+    display_name: Software Engineer
+    username: software-engineer
+
+  qa-engineer:
+    display_name: QA Engineer
+    username: qa-engineer
+
+  ux-designer:
+    display_name: UX Designer
+    username: ux-designer
+
+  devops:
+    display_name: DevOps
+    username: devops
+
+  technical-writer:
+    display_name: Technical Writer
+    username: technical-writer
+
+  accountability-generator:
+    display_name: Accountability Generator
+    username: accountability-generator
+
+  fleet-ops:
+    display_name: Fleet Ops
+    username: fleet-ops
+
+  project-manager:
+    display_name: Project Manager
+    username: project-manager
+
+  devsecops-expert:
+    display_name: Cyberpunk-Zero
+    username: cyberpunk-zero
