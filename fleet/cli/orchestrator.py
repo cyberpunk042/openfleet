@@ -23,12 +23,14 @@ from typing import Optional
 
 from fleet.core.agent_lifecycle import AgentStatus, FleetLifecycle
 from fleet.core.models import Approval, Task, TaskStatus
+from fleet.core.notification_router import NotificationRouter
 from fleet.infra.config_loader import ConfigLoader
 from fleet.infra.irc_client import IRCClient
 from fleet.infra.mc_client import MCClient
 
-# Global fleet lifecycle tracker (persists across cycles)
+# Global state (persists across cycles)
 _fleet_lifecycle = FleetLifecycle()
+_notification_router = NotificationRouter(cooldown_seconds=300)
 
 
 # ─── Cycle State ─────────────────────────────────────────────────────────
@@ -396,8 +398,7 @@ async def _evaluate_parents(
                     await _notify_human(
                         title=f"Sprint milestone: {parent.title[:50]}",
                         message=f"All {len(children)} subtasks completed. Parent task ready for review.",
-                        priority="info",
-                        tags=["white_check_mark", "sprint"],
+                        event_type="sprint_milestone",
                     )
                 except Exception as e:
                     state.errors.append(f"parent {parent_id[:8]}: {e}")
@@ -509,20 +510,36 @@ async def _notify(irc: IRCClient, channel: str, message: str) -> None:
 async def _notify_human(
     title: str,
     message: str,
-    priority: str = "info",
+    event_type: str = "info",
+    source_agent: str = "orchestrator",
     url: str = "",
-    tags: list[str] | None = None,
+    severity: str = "",
 ) -> None:
-    """Best-effort ntfy notification to human."""
+    """Smart notification to human via ntfy with routing and deduplication."""
+    notification = _notification_router.classify(
+        event_type=event_type,
+        title=title,
+        message=message,
+        source_agent=source_agent,
+        url=url,
+        severity=severity,
+    )
+
+    if not _notification_router.should_send(notification):
+        return  # Dedup — already sent recently
+
     try:
         from fleet.infra.ntfy_client import NtfyClient
         ntfy = NtfyClient()
         await ntfy.publish(
-            title=title, message=message,
-            priority=priority, click_url=url,
-            tags=tags or [],
+            title=f"[{source_agent}] {title}",
+            message=message,
+            priority=notification.level.value,
+            click_url=url,
+            tags=notification.tags,
         )
         await ntfy.close()
+        _notification_router.mark_sent(notification)
     except Exception:
         pass
 
