@@ -526,6 +526,84 @@ def register_tools(server: FastMCP) -> None:
         return {"ok": True, "action": "Wait for human input."}
 
     @server.tool()
+    async def fleet_escalate(
+        title: str,
+        details: str,
+        task_id: str = "",
+        question: str = "",
+    ) -> dict:
+        """Escalate to human when you need direction, a decision, or can't proceed.
+
+        Use this when:
+        - A review needs human judgment (not just agent review)
+        - Requirements are unclear and you need clarification
+        - Multiple valid approaches and human should decide
+        - Something is too risky for autonomous agent decision
+
+        Args:
+            title: Short summary of what needs attention.
+            details: Full context — what you've found, what the options are.
+            task_id: Task this relates to (uses current task if not specified).
+            question: The specific question you need answered.
+        """
+        ctx = _get_ctx()
+        board_id = await ctx.resolve_board_id()
+        resolved_task_id = task_id or ctx.task_id
+
+        # Post to board memory for persistence
+        content = (
+            f"## \U0001f6a8 Escalation: {title}\n\n"
+            f"**From:** {ctx.agent_name or 'agent'}\n"
+            f"**Task:** {resolved_task_id[:8] if resolved_task_id else 'N/A'}\n\n"
+            f"### Details\n{details}\n\n"
+        )
+        if question:
+            content += f"### Question for Human\n{question}\n"
+
+        try:
+            await ctx.mc.post_memory(
+                board_id,
+                content=content,
+                tags=["escalation", "human-attention", f"agent:{ctx.agent_name or 'unknown'}"],
+                source=ctx.agent_name or "agent",
+            )
+        except Exception:
+            pass
+
+        # Post as task comment if task exists
+        if resolved_task_id:
+            try:
+                await ctx.mc.post_comment(
+                    board_id, resolved_task_id,
+                    f"## \U0001f6a8 Escalated to Human\n\n"
+                    f"**{title}**\n\n{details}\n\n"
+                    f"**Question:** {question}" if question else
+                    f"## \U0001f6a8 Escalated to Human\n\n"
+                    f"**{title}**\n\n{details}",
+                )
+            except Exception:
+                pass
+
+        # IRC alert — human sees this immediately
+        try:
+            await ctx.irc.notify(
+                "#alerts",
+                irc_tmpl.format_event(
+                    ctx.agent_name or "agent",
+                    "\U0001f6a8 NEEDS HUMAN",
+                    f"{title[:50]} — {question[:40]}" if question else title[:60],
+                ),
+            )
+        except Exception:
+            pass
+
+        return {
+            "ok": True,
+            "action": "Escalated. Wait for human response in board memory or task comment.",
+            "task_id": resolved_task_id,
+        }
+
+    @server.tool()
     async def fleet_task_create(
         title: str,
         description: str = "",
@@ -624,16 +702,20 @@ def register_tools(server: FastMCP) -> None:
         approval_id: str,
         decision: str = "approved",
         comment: str = "",
+        task_id: str = "",
     ) -> dict:
         """Approve or reject a pending task completion.
 
-        Use this to process approvals in the review queue.
-        fleet-ops and PM should use this during heartbeats.
+        When approving: task can transition review → done (board lead action).
+        When rejecting: task moves back to inbox for rework. MC notifies the
+        original agent with "Changes requested". Include specific feedback
+        in the comment so the agent knows what to fix.
 
         Args:
             approval_id: The approval ID to act on.
             decision: "approved" or "rejected".
-            comment: Optional comment explaining the decision.
+            comment: Reasoning for the decision. Required for rejections.
+            task_id: Task ID (optional, resolved from approval if not given).
         """
         ctx = _get_ctx()
         board_id = await ctx.resolve_board_id()
@@ -641,6 +723,10 @@ def register_tools(server: FastMCP) -> None:
         if decision not in ("approved", "rejected"):
             return {"ok": False, "error": "decision must be 'approved' or 'rejected'"}
 
+        if decision == "rejected" and not comment:
+            return {"ok": False, "error": "comment is required when rejecting — explain what needs fixing"}
+
+        # Resolve approval
         try:
             approval = await ctx.mc.approve_approval(
                 board_id, approval_id, status=decision, comment=comment,
@@ -648,20 +734,50 @@ def register_tools(server: FastMCP) -> None:
         except Exception as e:
             return {"ok": False, "error": str(e)}
 
+        resolved_task_id = task_id or approval.task_id
+        result: dict = {"ok": True, "approval_id": approval.id, "status": approval.status}
+
+        if decision == "approved" and resolved_task_id:
+            # Board lead moves review → done
+            try:
+                await ctx.mc.update_task(
+                    board_id, resolved_task_id,
+                    status="done",
+                    comment=f"**Approved by {ctx.agent_name or 'lead'}**: {comment}",
+                )
+                result["task_status"] = "done"
+            except Exception as e:
+                result["transition_error"] = str(e)
+
+        elif decision == "rejected" and resolved_task_id:
+            # Board lead moves review → inbox (rework)
+            # MC auto-notifies original agent with "Changes requested"
+            try:
+                await ctx.mc.update_task(
+                    board_id, resolved_task_id,
+                    status="inbox",
+                    comment=f"**Rejected by {ctx.agent_name or 'lead'}**: {comment}",
+                )
+                result["task_status"] = "inbox (rework)"
+            except Exception as e:
+                result["transition_error"] = str(e)
+
+        # IRC notification
         emoji = "\u2705" if decision == "approved" else "\u274c"
         try:
+            task_ref = resolved_task_id[:8] if resolved_task_id else approval_id[:8]
             await ctx.irc.notify(
                 "#fleet",
                 irc_tmpl.format_event(
                     ctx.agent_name or "agent",
                     f"{emoji} {decision.upper()}",
-                    f"approval {approval_id[:8]}",
+                    f"task {task_ref}: {comment[:50]}" if comment else f"task {task_ref}",
                 ),
             )
         except Exception:
             pass
 
-        return {"ok": True, "approval_id": approval.id, "status": approval.status}
+        return result
 
     @server.tool()
     async def fleet_agent_status() -> dict:
