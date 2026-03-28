@@ -8,6 +8,7 @@ AI agent workforce powered by [OpenClaw](https://openclaw.ai) + [Mission Control
 - Docker + Docker Compose
 - [Claude Code](https://claude.ai/claude-code) CLI (`npm install -g @anthropic-ai/claude-code`)
 - Claude Code authenticated (`claude auth login`)
+- GitHub CLI authenticated (`gh auth login`)
 - Git, curl, jq
 
 ## Setup
@@ -18,84 +19,81 @@ cd openclaw-fleet
 ./setup.sh
 ```
 
-Setup handles everything: installs OpenClaw, configures auth, registers agents, starts Mission Control (Docker), starts the gateway, provisions agent credentials, pushes SOUL.md instructions.
+Setup handles everything: OpenClaw, auth, IRC, agents, Mission Control, The Lounge,
+skills, templates, sync daemon, board monitor. Zero manual steps.
 
-## Usage
+## Daily Operations
 
-### Task lifecycle
+### 1. Open The Lounge (your command center)
+
+```
+http://localhost:9000  (user: fleet / pass: fleet)
+```
+
+Three channels:
+- **#fleet** — all fleet activity (tasks, agents, status)
+- **#alerts** — urgent items only (security, blockers, offline agents)
+- **#reviews** — PRs ready for review, merge events
+
+### 2. Create and dispatch work
 
 ```bash
-# Create and dispatch a task to an agent
-make create-task TITLE="Fix the auth module" AGENT=software-engineer DESC="..." DISPATCH=true
+# Create + dispatch to an agent on a project
+make create-task TITLE="Fix auth bug in pipeline" AGENT=software-engineer PROJECT=nnrt DISPATCH=true
 
-# Or create first, dispatch later
+# Or separate steps
 make create-task TITLE="Review architecture" AGENT=architect
 make dispatch AGENT=architect TASK=<uuid>
-
-# Monitor a task
-make monitor TASK=<uuid>
-
-# Chat with agents via board memory
-make chat MSG="Status update please"
-make chat MSG="@architect review the gateway config"
 ```
 
-### Fleet management
+### 3. Monitor progress
 
 ```bash
-make status          # agents, tasks, activity overview
-make provision       # re-sync after SOUL.md or config changes
-make refresh-auth    # refresh Claude Code token + restart gateway
-make agents          # list OpenClaw agents
+make status          # fleet overview (agents, tasks, activity)
+make watch           # real-time agent events via WebSocket
+make monitor TASK=<uuid>  # poll a specific task
+make trace TASK=<uuid>    # full task context (MC + git + worktree)
+make digest-preview  # preview today's daily digest
 ```
 
-### Infrastructure
+### 4. Review and merge
+
+PRs appear in **#reviews** with clickable links. Click → review on GitHub → merge.
+
+After merge, `make sync` (runs automatically every 60s) detects it and:
+- Moves task to "done" in MC
+- Cleans up the worktree
+- Posts merge notification to IRC
+
+Or: move task to "done" in MC → sync auto-merges the PR.
+
+### 5. Communicate with agents
 
 ```bash
-make gateway         # start OpenClaw gateway
-make gateway-stop    # stop gateway
-make gateway-restart # restart gateway
-make mc-up           # start Mission Control (Docker)
-make mc-down         # stop Mission Control
-make mc-logs         # tail MC logs
-make logs            # tail gateway logs
+make chat MSG="What's the status of the NNRT work?"
+make chat MSG="@architect review the pipeline changes"
 ```
 
-### Code integration
+Or type directly in IRC #fleet — agents see it.
 
-```bash
-# Integrate agent work into a target project
-make integrate TASK=<uuid> TARGET=/path/to/project
+## Fleet Skills (12)
 
-# Creates a branch, copies agent files, commits.
-# Add --push to push, --pr to create a PR.
-```
+| Skill | Purpose |
+|-------|---------|
+| `fleet-urls` | Resolve GitHub/MC URLs for cross-referencing |
+| `fleet-pr` | Create publication-quality PRs with changelog |
+| `fleet-comment` | Structured task comments (acceptance, progress, completion, blocker) |
+| `fleet-memory` | Tagged board memory (alerts, decisions, suggestions) |
+| `fleet-irc` | Structured IRC messages with emoji and URLs |
+| `fleet-commit` | Conventional commits with task references |
+| `fleet-task-update` | Task lifecycle (accept → progress → push → PR → review) |
+| `fleet-task-create` | Create follow-up tasks for other agents |
+| `fleet-alert` | Proactive alerts (security, quality, architecture) |
+| `fleet-pause` | Pause and escalate when stuck or uncertain |
+| `fleet-gap` | Detect missing capabilities in the fleet |
+| `fleet-report` | Post structured reports to MC |
 
-### Auto-start on boot
-
-```bash
-bash scripts/install-service.sh
-systemctl --user start openclaw-fleet-gateway
-loginctl enable-linger $USER
-```
-
-## Architecture
-
-```
-Human → make create-task / chat
-  ↓
-Mission Control (Docker: Postgres, Redis, FastAPI, Next.js)
-  ↓ chat.send via WebSocket
-OpenClaw Gateway (ws://localhost:18789)
-  ↓ Claude Code CLI backend
-Agent (reads TOOLS.md → does work → calls MC REST API)
-  ↓
-Mission Control (task updates, comments, board memory)
-  ↓
-Human → make status / monitor / integrate
-```
-
-## Agents
+## Agents (8)
 
 | Agent | Mode | Role |
 |-------|------|------|
@@ -106,50 +104,135 @@ Human → make status / monitor / integrate
 | devops | act | CI/CD, infrastructure, deployment |
 | technical-writer | edit | Documentation |
 | accountability-generator | think+edit | Accountability systems (ocf-tag) |
+| fleet-ops | think+act | Governance: monitoring, digests, quality, gaps |
 
-Agent definitions: `agents/<name>/agent.yaml` + `SOUL.md`
+## Makefile Reference
+
+### Setup & Provision
+| Command | Description |
+|---------|-------------|
+| `make setup` | Full setup from clone |
+| `make provision` | Re-sync after config changes |
+| `make board-setup` | Configure board custom fields + tags |
+| `make refresh-auth` | Refresh Claude Code token |
+
+### Task Lifecycle
+| Command | Description |
+|---------|-------------|
+| `make create-task TITLE=... AGENT=... PROJECT=... DISPATCH=true` | Create + dispatch |
+| `make dispatch AGENT=... TASK=... [PROJECT=...]` | Dispatch existing task |
+| `make monitor TASK=...` | Poll task progress |
+| `make trace TASK=...` | Full task context |
+| `make integrate TASK=... TARGET=...` | Integrate agent work |
+
+### Observation
+| Command | Description |
+|---------|-------------|
+| `make status` | Fleet overview |
+| `make watch [AGENT=...]` | Real-time WS events |
+| `make sessions` | List gateway sessions |
+| `make chat MSG=...` | Board memory chat |
+
+### Operations
+| Command | Description |
+|---------|-------------|
+| `make sync` | One-shot task↔PR sync |
+| `make sync-start` / `sync-stop` | Sync daemon |
+| `make monitor-start` / `monitor-stop` | Board monitor daemon |
+| `make digest` / `digest-preview` | Daily digest |
+| `make quality` | Quality enforcement check |
+| `make changelog` | Generate changelog |
+
+### Skills
+| Command | Description |
+|---------|-------------|
+| `make skills-list` | List installable marketplace skills |
+| `make skills-install` | Install configured skills |
+| `make skills-sync` | Re-sync skill packs |
+
+### Infrastructure
+| Command | Description |
+|---------|-------------|
+| `make gateway` / `gateway-stop` / `gateway-restart` | OpenClaw gateway |
+| `make mc-up` / `mc-down` / `mc-logs` | Mission Control (Docker) |
+| `make irc-up` / `irc-down` / `irc-connect` | IRC server |
+| `make lounge-up` / `lounge-down` / `lounge-open` | The Lounge |
+| `make agents` / `agents-register` | Agent management |
+| `make clean` | Remove Docker volumes |
+
+## Architecture
+
+```
+Human
+  │
+  ├── The Lounge (http://localhost:9000) ──→ IRC (#fleet, #alerts, #reviews)
+  │                                              ↑
+  ├── Mission Control (http://localhost:3000)     │ notify-irc.sh
+  │     ├── Tasks, Comments, Board Memory         │
+  │     ├── Custom Fields (project, branch, pr_url)
+  │     └── Tags (project:*, type:*, needs-review)
+  │                                              │
+  ├── make create-task / dispatch ───────────────┤
+  │     ↓                                        │
+  │   OpenClaw Gateway (ws://localhost:18789)     │
+  │     ↓ chat.send                              │
+  │   Agent (Claude Code backend)                │
+  │     ├── Reads TOOLS.md (credentials)         │
+  │     ├── Reads SOUL.md (role + standards + workflow)
+  │     ├── Uses fleet skills (12 skills)        │
+  │     ├── Works in git worktree                │
+  │     ├── Pushes branch + creates PR           │
+  │     └── Reports to MC + IRC ─────────────────┘
+  │
+  ├── fleet-sync daemon (60s) ── merge/close PRs, cleanup worktrees
+  ├── fleet-monitor daemon (5m) ── stale task alerts, agent health
+  └── fleet-ops agent ── daily digest, quality, gap detection
+```
 
 ## Project Structure
 
 ```
 openclaw-fleet/
-├── setup.sh                    # Full setup from scratch
-├── Makefile                    # All operations
-├── docker-compose.yaml         # Mission Control services
-├── agents/                     # Agent definitions
-│   ├── _template/              # Shared template (MC_WORKFLOW.md, .claude/settings.json)
-│   ├── architect/              # Agent role + config
+├── setup.sh                        # Full setup (11 steps)
+├── Makefile                        # 35+ operation targets
+├── docker-compose.yaml             # MC + The Lounge
+├── agents/                         # Agent definitions
+│   ├── _template/                  # Shared: STANDARDS.md, MC_WORKFLOW.md, markdown/
+│   ├── architect/
+│   ├── software-engineer/
+│   ├── fleet-ops/                  # Governance agent
 │   └── ...
-├── scripts/
-│   ├── configure-auth.sh       # Claude Code → OpenClaw auth bridge
-│   ├── configure-openclaw.sh   # Exec approval, CLI backend, permissions
-│   ├── create-task.sh          # Create MC tasks from CLI
-│   ├── dispatch-task.sh        # Dispatch tasks via gateway
-│   ├── monitor-task.sh         # Monitor task progress
-│   ├── chat-agent.sh           # Human↔agent board memory chat
-│   ├── fleet-status.sh         # Fleet overview
-│   ├── integrate-task.sh       # Workspace → project code integration
-│   ├── push-soul.sh            # Push SOUL.md to agent workspaces
-│   ├── refresh-auth.sh         # Detect and refresh rotated tokens
-│   ├── install-service.sh      # Install systemd user service
+├── .agents/skills/                 # Fleet skills (12, auto-discovered)
+├── scripts/                        # 25+ operational scripts
+├── config/
+│   ├── url-templates.yaml          # Project → GitHub URL mapping
+│   ├── skill-packs.yaml            # Marketplace skill sources
+│   ├── skill-assignments.yaml      # Skills → agents mapping
+│   ├── projects.yaml               # Project registry
+│   ├── thelounge/                  # The Lounge config
 │   └── ...
-├── gateway/                    # Fleet gateway (Python)
-├── config/                     # Fleet configuration
-├── systemd/                    # Service template (rendered by install-service.sh)
-├── vendor/                     # Mission Control (cloned at setup)
-└── workspace-mc-*/             # Agent workspaces (gitignored, MC-provisioned)
+├── patches/                        # OCMC vendor patches
+├── systemd/                        # Service template
+├── docs/milestones/                # Planning documents (F1-F5)
+├── projects/                       # Cloned project repos (gitignored)
+├── workspace-mc-*/                 # Agent workspaces (gitignored)
+└── vendor/                         # Mission Control (gitignored)
 ```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| Agents failing with 401 | `make refresh-auth` (token rotated) |
-| Agents blocked on exec approval | `bash scripts/configure-openclaw.sh` |
+| Agent 401 errors | `make refresh-auth` |
+| Agent blocked on exec | `bash scripts/configure-openclaw.sh` |
 | MC not reachable | `make mc-up` |
-| Gateway not starting | Check port 18789, validate `~/.openclaw/openclaw.json` |
+| IRC not connected | `make irc-up && make gateway-restart` |
+| The Lounge not loading | `make lounge-up` |
 | Task stuck in inbox | `make dispatch AGENT=<name> TASK=<uuid>` |
+| PR not merging | `make sync` (or check `make quality`) |
+| Gateway down | `make gateway` |
+| Stale tasks piling up | `make monitor-start` (alerts every 5min) |
 
 ## Built with AICP
 
-Developed and operated using [AICP](https://github.com/jfortin/devops-expert-local-ai) — AI Control Platform.
+Developed using [AICP](https://github.com/cyberpunk042/devops-expert-local-ai) — AI Control Platform.

@@ -184,6 +184,10 @@ digest:
 digest-preview:
 	@bash scripts/fleet-digest.sh --dry-run
 
+# Quality enforcement check
+quality:
+	@bash scripts/fleet-quality-check.sh
+
 # Configure board custom fields and tags
 board-setup:
 	@bash scripts/configure-board.sh
