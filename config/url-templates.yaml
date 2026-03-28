@@ -1,0 +1,28 @@
+# URL templates for cross-referencing across the fleet.
+# Used by skills and scripts to generate clickable links.
+#
+# Placeholders: {owner}, {repo}, {branch}, {path}, {sha}, {pr_number},
+#               {board_id}, {task_id}
+
+github:
+  pr: "https://github.com/{owner}/{repo}/pull/{pr_number}"
+  compare: "https://github.com/{owner}/{repo}/compare/main...{branch}"
+  file: "https://github.com/{owner}/{repo}/blob/{branch}/{path}"
+  commit: "https://github.com/{owner}/{repo}/commit/{sha}"
+  tree: "https://github.com/{owner}/{repo}/tree/{branch}"
+
+mc:
+  task: "http://localhost:3000/boards/{board_id}/tasks/{task_id}"
+  board: "http://localhost:3000/boards/{board_id}"
+
+# Project → GitHub repo mapping
+projects:
+  nnrt:
+    owner: cyberpunk042
+    repo: Narrative-to-Neutral-Report-Transformer
+  openclaw-fleet:
+    owner: cyberpunk042
+    repo: openclaw-fleet
+  aicp:
+    owner: cyberpunk042
+    repo: devops-expert-local-ai
