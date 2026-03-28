@@ -110,6 +110,8 @@ class TaskCustomFields:
     parent_task: Optional[str] = None
     task_type: Optional[str] = None
     plan_id: Optional[str] = None
+    # Review gates — populated by fleet_task_complete, read by fleet-ops (board lead)
+    review_gates: Optional[list] = None
     # Plane integration fields — set when a task is synced from a Plane issue
     plane_issue_id: Optional[str] = None
     plane_project_id: Optional[str] = None

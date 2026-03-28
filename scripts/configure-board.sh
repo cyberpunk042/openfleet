@@ -71,6 +71,8 @@ FIELDS = [
      "ui_visibility": "always", "description": "epic/story/task/subtask/blocker/request/concern"},
     {"field_key": "plan_id", "label": "Plan ID", "field_type": "text",
      "ui_visibility": "if_set", "description": "Sprint plan or grouping reference"},
+    {"field_key": "review_gates", "label": "Review Gates", "field_type": "json",
+     "ui_visibility": "if_set", "description": "Review gate status per reviewer [{agent, type, status, reason}]"},
 ]
 
 print("=== Configuring Board Custom Fields ===")

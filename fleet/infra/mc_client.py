@@ -430,6 +430,7 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
                 parent_task=custom.get("parent_task"),
                 task_type=custom.get("task_type"),
                 plan_id=custom.get("plan_id"),
+                review_gates=custom.get("review_gates"),
                 plane_issue_id=custom.get("plane_issue_id"),
                 plane_project_id=custom.get("plane_project_id"),
                 plane_workspace=custom.get("plane_workspace"),

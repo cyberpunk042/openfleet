@@ -15,6 +15,52 @@ from fleet.templates import irc as irc_tmpl
 from fleet.templates import memory as memory_tmpl
 from fleet.templates import pr as pr_tmpl
 
+# ─── Review Gate Builder ──────────────────────────────────────────────────
+
+
+def _build_review_gates(task_type: str, has_code: bool) -> list[dict]:
+    """Build review gates based on task type and whether it has code changes.
+
+    Returns a list of reviewer requirements for fleet-ops to orchestrate.
+    fleet-ops (board lead) is always the final reviewer.
+    """
+    gates: list[dict] = []
+
+    if has_code:
+        gates.append({
+            "agent": "qa-engineer",
+            "type": "required",
+            "status": "pending",
+            "reason": "",
+        })
+
+    if task_type in ("epic", "story") or "architect" in task_type:
+        gates.append({
+            "agent": "architect",
+            "type": "required",
+            "status": "pending",
+            "reason": "",
+        })
+
+    if task_type in ("blocker", "concern") or "security" in (task_type or ""):
+        gates.append({
+            "agent": "devsecops-expert",
+            "type": "required",
+            "status": "pending",
+            "reason": "",
+        })
+
+    # fleet-ops is always the final gate (as board lead)
+    gates.append({
+        "agent": "fleet-ops",
+        "type": "required",
+        "status": "pending",
+        "reason": "",
+    })
+
+    return gates
+
+
 # Shared context — initialized on first tool call
 _ctx: FleetMCPContext | None = None
 
@@ -215,14 +261,37 @@ def register_tools(server: FastMCP) -> None:
                             break
 
         if not cwd:
-            # No worktree — internal task, just complete
+            # No worktree — internal task, just complete with review gates
             comment = comment_tmpl.format_complete_no_changes(summary, ctx.agent_name or "agent")
+            task_type = ""
+            try:
+                task_data = await ctx.mc.get_task(board_id, ctx.task_id)
+                task_type = task_data.custom_fields.task_type or ""
+            except Exception:
+                pass
+            review_gates = _build_review_gates(task_type, has_code=False)
+            custom_update: dict = {}
+            if review_gates:
+                custom_update["review_gates"] = review_gates
             try:
                 await ctx.mc.update_task(
                     board_id, ctx.task_id, status="review", comment=comment,
+                    custom_fields=custom_update if custom_update else None,
                 )
             except Exception as e:
                 return {"ok": False, "error": str(e)}
+            # Create approval for fleet-ops to review
+            try:
+                await ctx.mc.create_approval(
+                    board_id,
+                    task_ids=[ctx.task_id],
+                    action_type="task_completion",
+                    confidence=85.0,
+                    rubric_scores={"completeness": 85, "quality": 85},
+                    reason=f"Completed by {ctx.agent_name or 'agent'}. Summary: {summary[:200]}",
+                )
+            except Exception:
+                pass
             return {"ok": True, "status": "review", "pr": None}
 
         # Get branch
@@ -292,11 +361,23 @@ def register_tools(server: FastMCP) -> None:
         except Exception as e:
             return {"ok": False, "error": f"PR creation failed: {e}"}
 
-        # Update MC custom fields
+        # Update MC custom fields + review gates
+        task_type = ""
+        try:
+            task_data = await ctx.mc.get_task(board_id, ctx.task_id)
+            task_type = task_data.custom_fields.task_type or ""
+        except Exception:
+            pass
+
+        review_gates = _build_review_gates(task_type, bool(pr.url))
+        custom_update = {"branch": branch, "pr_url": pr.url}
+        if review_gates:
+            custom_update["review_gates"] = review_gates
+
         try:
             await ctx.mc.update_task(
                 board_id, ctx.task_id,
-                custom_fields={"branch": branch, "pr_url": pr.url},
+                custom_fields=custom_update,
             )
         except Exception:
             pass
