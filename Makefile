@@ -49,7 +49,7 @@ monitor:
 
 # Full task trace (details, activity, worktree, commits): make trace TASK=<uuid>
 trace:
-	@bash scripts/trace-task.sh $(TASK)
+	@.venv/bin/python -m fleet trace $(TASK) 2>/dev/null || bash scripts/trace-task.sh $(TASK)
 
 # Chat with agents: make chat MSG="your message" or make chat MSG="@architect review this"
 chat:

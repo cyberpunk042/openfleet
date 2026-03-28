@@ -9,6 +9,7 @@ import sys
 COMMANDS = {
     "mcp-server": ("Start the Fleet MCP server (stdio)", "fleet.mcp.server", "run_server"),
     "status": ("Fleet overview (agents, tasks, activity)", "fleet.cli.status", "run_status"),
+    "trace": ("Full task trace (MC + git + worktree + PR)", "fleet.cli.trace", "run_trace"),
     "sync": ("Sync tasks ↔ PRs (merge, close, cleanup)", "fleet.cli.sync", "run_sync"),
     "notify": ("Send IRC notification", "fleet.cli.notify", "run_notify"),
     "create": ("Create task (and optionally dispatch)", "fleet.cli.create", "run_create"),
@@ -44,7 +45,7 @@ def main() -> int:
     func = getattr(module, func_name)
 
     # Commands that accept args
-    if command in ("notify", "digest", "dispatch", "create", "daemon", "cache", "board", "auth"):
+    if command in ("notify", "digest", "dispatch", "create", "daemon", "cache", "board", "auth", "trace"):
         return func(sys.argv[2:])
     else:
         return func()
