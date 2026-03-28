@@ -152,7 +152,245 @@ No tests are run against the branch. No human gets a chance to review.
 
 ---
 
-## Part 2: Existing Milestones Not Started
+## Part 2: Platform Capabilities We're Not Using (OCMC + OpenClaw Gateway)
+
+This is the result of deep investigation into the MC vendor code and gateway protocol.
+The platform already provides most of what we need for a proper review chain, event-driven
+triggers, and continuous operation. We built workarounds for things that already exist.
+
+### 2.1 OCMC Board Lead System — The Review Chain Already Exists
+
+OCMC has a **board lead** concept that we're completely ignoring:
+
+```
+Board Lead (is_board_lead: true):
+  - ONE agent per board designated as lead
+  - When any task moves to "review" → MC AUTO-ASSIGNS it to the lead
+  - Lead can: review → done (approve) or review → inbox (request changes)
+  - When lead sends back to inbox → MC notifies the ORIGINAL worker with "Changes requested"
+  - Lead MUST provide reasoning when approving (lead_reasoning field required)
+  - Lead can only modify tasks that are in "review" status
+  - Lead cannot self-assign tasks (prevents conflict of interest)
+```
+
+**This is fleet-ops.** fleet-ops should be the board lead. When any agent completes
+a task and moves to review, MC automatically assigns it to fleet-ops for review.
+fleet-ops evaluates, and either approves (→ done) or requests changes (→ inbox, back
+to the original agent with feedback).
+
+**We are currently bypassing this entire system** with the brainless auto-approve orchestrator.
+
+### 2.2 Board Configuration Gates — Built-In Quality Enforcement
+
+OCMC has 5 boolean flags we can configure on the board:
+
+| Flag | Current | Should Be | What It Does |
+|------|---------|-----------|-------------|
+| `require_approval_for_done` | **true** | true | Task can't move to done without approved approval |
+| `require_review_before_done` | **false** | **true** | Task MUST go through review before done (no skip) |
+| `comment_required_for_review` | **false** | **true** | Agent MUST post a comment to move task to review |
+| `block_status_changes_with_pending_approval` | **false** | **true** | Can't change status while approval pending |
+| `only_lead_can_change_status` | **false** | evaluate | Only board lead can change task status |
+
+**Enabling these 3 flags (`require_review_before_done`, `comment_required_for_review`,
+`block_status_changes_with_pending_approval`) would enforce the review chain at the
+platform level — not in our code.** MC would reject status changes that violate the flow.
+
+### 2.3 The Full Review Chain (Using What MC Already Provides)
+
+Here is how the task lifecycle SHOULD work, using OCMC's native capabilities:
+
+```
+1. AGENT WORKS
+   - Agent accepts task (inbox → in_progress)
+   - MC auto-assigns agent and records in_progress_at
+   - Agent does work, commits, pushes
+
+2. AGENT COMPLETES → REVIEW
+   - Agent calls fleet_task_complete
+   - Task moves to "review" (requires comment — enforced by MC)
+   - MC AUTO-ASSIGNS task to board lead (fleet-ops)
+   - fleet_task_complete creates approval with confidence + rubric
+   - IRC notification goes out
+   - fleet-ops is WOKEN by MC (assignee wake on task assign)
+
+3. FLEET-OPS REVIEWS (as board lead)
+   - fleet-ops reads the task, checks quality:
+     a. Were tests run? Did they pass?
+     b. Does the PR body have changelog, references?
+     c. Are conventional commits used?
+     d. Any security concerns?
+   - If code task → fleet-ops creates a review subtask for qa-engineer:
+     "Run tests for PR #{N} on branch fleet/{agent}/{task}"
+   - qa-engineer runs tests, reports results as comment
+   - fleet-ops evaluates qa results
+
+4. FLEET-OPS DECIDES
+   Option A: APPROVE (review → done)
+     - fleet-ops approves the approval with reasoning
+     - MC moves task to done (requires approved approval — enforced)
+     - Sync daemon detects done + open PR → merges
+     - MC unblocks dependent tasks (native dependency resolution)
+     - Orchestrator dispatches newly unblocked tasks
+
+   Option B: REQUEST CHANGES (review → inbox)
+     - fleet-ops moves task back to inbox
+     - MC auto-notifies original agent: "Changes requested"
+     - MC re-assigns to original agent (rework notification)
+     - Agent reads feedback, fixes issues, re-submits to review
+     - Cycle repeats
+
+   Option C: ESCALATE TO HUMAN
+     - fleet-ops posts to IRC #alerts: "Needs human attention"
+     - fleet-ops posts to board memory: detailed analysis + question
+     - fleet-ops calls fleet_pause on the task with specific question
+     - Human responds via:
+       a. IRC message (agents monitor)
+       b. Edit task description/comment in MC dashboard
+       c. Post to board memory with directive
+     - fleet-ops reads human response → continues review chain
+
+5. AFTER DONE — CHAIN CONTINUES
+   - MC unblocks dependent tasks (is_blocked becomes false)
+   - Orchestrator sees unblocked inbox tasks → dispatches to assigned agents
+   - Parent task: when all children done → orchestrator moves parent to review
+   - New cycle begins for each unlocked task
+```
+
+### 2.4 Multiple Reviewers — Gates on Tasks
+
+OCMC only supports single task assignment (`assigned_agent_id`). It doesn't have
+native multi-reviewer support. But we can model gates using custom fields + subtasks:
+
+**Gate Model (via custom fields):**
+
+```yaml
+# Task custom field: review_gates (json type)
+review_gates:
+  - agent: qa-engineer
+    type: required        # required | optional
+    status: pending       # pending | approved | rejected | skipped
+    reason: ""
+  - agent: fleet-ops
+    type: required
+    status: pending
+    reason: ""
+  - agent: architect      # for design tasks
+    type: optional
+    status: pending
+    reason: ""
+```
+
+**How this works with the review chain:**
+
+1. Agent completes work → fleet_task_complete populates `review_gates` based on task type:
+   - Code tasks: qa-engineer (required) + fleet-ops (required)
+   - Architecture tasks: architect (required) + fleet-ops (required)
+   - Documentation: fleet-ops (required)
+   - Security-related: devsecops-expert (required) + fleet-ops (required)
+   - Infrastructure: devsecops-expert (optional) + fleet-ops (required)
+
+2. MC assigns to fleet-ops (board lead) as first reviewer
+
+3. fleet-ops reads review_gates → creates review subtasks for each required reviewer:
+   ```
+   fleet_task_create(
+     title="Review: Run tests for S1-5 — PlaneClient",
+     agent_name="qa-engineer",
+     parent_task=task_id,
+     task_type="subtask",
+     depends_on=[]  # can start immediately
+   )
+   ```
+
+4. Each reviewer completes their review subtask → fleet-ops checks if all required
+   gates are approved → if yes, fleet-ops approves the parent task
+
+5. If any required reviewer rejects → fleet-ops sends back to inbox with feedback
+
+**The key insight:** fleet-ops is the **orchestrator of the review chain**, not a
+rubber stamp. fleet-ops creates review subtasks, tracks gate completion, and makes
+the final decision. Just like a real team lead.
+
+### 2.5 Gateway Capabilities We Should Exploit
+
+The OpenClaw gateway has capabilities we're not using at all:
+
+| Capability | What It Does | How We Should Use It |
+|------------|-------------|---------------------|
+| **`wake` method** | Actively wake any agent on demand | Orchestrator wakes agents when their tasks are ready |
+| **`nudge_board_agent()`** | Agent-to-agent message with deliver=true | PM nudges architect, fleet-ops nudges workers for rework |
+| **Gateway cron** | Scheduled tasks on the gateway itself | Heartbeat scheduling, periodic health checks |
+| **SSE `/approvals/stream`** | Real-time stream of approval changes | Orchestrator subscribes instead of polling |
+| **Webhooks** | Board webhooks with queue + retry + HMAC | MC fires webhooks on task changes → fleet handles |
+| **Activity events** | Full audit trail of all mutations | Fleet reads events for change detection instead of polling task list |
+| **Agent `agent.wait`** | Hold connection open waiting for agent completion | Orchestrator waits for review completion |
+| **Session compact/reset** | Manage session memory | Reset agent sessions that are too long |
+
+### 2.6 The Continuous-Running Engine Design
+
+Instead of a polling daemon that runs every 30 seconds, the fleet should have a
+**change-detection engine** that reacts to events:
+
+**Option A: Webhook-based (best)**
+```
+MC fires webhook on: task.status_changed, task.comment, approval.resolved
+  ↓
+Fleet webhook receiver (HTTP endpoint)
+  ↓
+Event router:
+  task.status_changed to "review" → Create review subtasks, wake fleet-ops
+  task.status_changed to "done" → Check parent completion, unblock deps, dispatch next
+  task.status_changed to "inbox" (rework) → Wake original agent with feedback
+  approval.resolved "approved" → Transition task review → done
+  approval.resolved "rejected" → Move task back to inbox with reason
+  task.comment → Check if human directive, route to relevant agent
+```
+
+**Option B: SSE stream (good)**
+```
+Orchestrator subscribes to /approvals/stream and polls /tasks every 30s
+  ↓
+On approval change → process immediately
+On task list change → detect status transitions → react
+```
+
+**Option C: Polling + wake (current, minimum viable)**
+```
+Orchestrator polls every 30s
+  ↓
+Detects changes → uses gateway wake to trigger agents
+  ↓
+Agents respond via heartbeat
+```
+
+**We should start with Option C (already built) and evolve to Option A.**
+
+### 2.7 Self-Healing: When Things Break, Someone Fixes Them
+
+> "I mean blocking if it was because the test fails for example or something like
+> that you just put someone on the idea of fixing it and so on. a real dev team."
+
+When a blocker occurs, the fleet should react like a real team:
+
+| Blocker | Who Detects | Who Fixes | How |
+|---------|------------|-----------|-----|
+| Tests fail | qa-engineer (during review) | software-engineer (original author) | QA creates fix task assigned to author |
+| PR has conflicts | fleet-ops (during sync) | software-engineer | fleet-ops creates resolve-conflicts task |
+| Missing dependency | devops (during build) | devops (self) or software-engineer | Agent creates blocker task |
+| Security concern | devsecops-expert | software-engineer + devops | Cyberpunk-Zero creates remediation task |
+| Architecture issue | architect (during review) | software-engineer | Architect creates rework task with design guidance |
+| Agent offline | fleet-ops (heartbeat check) | orchestrator | Orchestrator attempts wake, escalates if fails |
+| Human input needed | any agent (fleet_pause) | human | IRC alert + board memory with specific question |
+| Unclear requirements | any agent (fleet_pause) | PM + human | PM evaluates, human clarifies |
+
+**The principle:** Every blocker gets turned into a task assigned to someone.
+Nothing stays blocked without someone actively working to unblock it.
+If an automated fix fails, escalate. If escalation fails, alert human.
+
+---
+
+## Part 3: Existing Milestones Not Started
 
 From the design documents in `docs/milestones/`, these milestones were planned
 but have NOT been implemented:
@@ -227,35 +465,67 @@ but have NOT been implemented:
 
 ## Part 3: New Milestones Discovered Today
 
-### M200: Approval Flow Redesign — Agent-Reviewed, Not Auto-Stamped
+### M200: Task Lifecycle Redesign — Board Lead, Review Gates, Agent-Reviewed
 
 **Problem:** The orchestrator auto-approves at >= 80% confidence without any reasoning
-or validation. PRs get merged without review. Failing tests pass through.
+or validation. PRs get merged without review. Failing tests pass through. We bypass
+OCMC's built-in board lead and review system entirely.
 
-**What must happen:**
-1. When a task moves to review, the orchestrator creates a REVIEW task for the
-   appropriate reviewing agent:
-   - Code tasks → qa-engineer (run tests) + fleet-ops (quality check)
-   - Architecture tasks → architect (design review)
-   - Security tasks → devsecops-expert (security review)
-   - Documentation → technical-writer (accuracy review)
-2. The reviewing agent reads the task, checks the work:
-   - Runs tests if applicable
-   - Checks PR body quality (changelog, references)
-   - Checks conventional commit format
-   - Checks for security concerns
-3. The reviewing agent calls `fleet_approve()` with reasoning, or rejects with feedback
-4. Only AFTER agent review + approval can the task transition to done
-5. The sync daemon only merges PRs that have been agent-reviewed
+**Discovery:** OCMC already has a board lead system where review tasks are auto-assigned
+to the lead agent. It has board configuration gates that enforce review-before-done,
+comment-required-for-review, and approval blocking. We're using NONE of this.
+
+**The Full Redesign:**
+
+1. **fleet-ops becomes board lead** (`is_board_lead: true`)
+   - MC auto-assigns review tasks to fleet-ops
+   - fleet-ops is the review gatekeeper for all work
+
+2. **Enable board configuration gates:**
+   - `require_review_before_done: true` — tasks must go through review
+   - `comment_required_for_review: true` — agents must explain their work
+   - `block_status_changes_with_pending_approval: true` — no status change while approval pending
+
+3. **Review gates custom field** (`review_gates`, json type):
+   - Each task gets reviewers based on task type
+   - Code: qa-engineer (required) + fleet-ops (required)
+   - Architecture: architect (required) + fleet-ops (required)
+   - Security: devsecops-expert (required) + fleet-ops (required)
+   - fleet-ops creates review subtasks for each required reviewer
+
+4. **fleet-ops orchestrates the review chain:**
+   - Reads review_gates → creates review subtasks for each reviewer
+   - Tracks gate completion
+   - When all required gates pass → fleet-ops approves with reasoning
+   - When any gate fails → fleet-ops sends back to inbox with feedback
+   - When human attention needed → escalates to IRC with specific question
+
+5. **Human in the loop:**
+   - fleet-ops can escalate: "needs human attention"
+   - Human responds via IRC, task edit, or board memory
+   - fleet-ops reads response and continues the chain
+
+6. **Remove auto-approve from orchestrator** — the orchestrator should NOT approve tasks.
+   It should only:
+   - Dispatch unblocked inbox tasks
+   - Evaluate parent completion
+   - Wake driver agents
+   - Monitor health
+   Approval is fleet-ops' job as board lead, not the orchestrator's.
 
 **Milestones:**
 | # | Scope |
 |---|-------|
-| M200a | Design the review routing rules (which agent reviews which task type) |
-| M200b | Orchestrator creates review tasks instead of auto-approving |
-| M200c | Review agents have review-specific HEARTBEAT.md instructions |
-| M200d | fleet_approve includes test results and quality checklist |
-| M200e | Sync daemon checks for agent review before merging |
+| M200a | Set fleet-ops as board lead + enable 3 board config gates |
+| M200b | Design review_gates custom field schema + registration |
+| M200c | fleet_task_complete populates review_gates based on task type |
+| M200d | fleet-ops HEARTBEAT.md: review chain orchestration (create subtasks, track gates) |
+| M200e | qa-engineer HEARTBEAT.md: test execution for review subtasks |
+| M200f | Remove auto-approve from orchestrator, replace with review routing |
+| M200g | Sync daemon: only merge PRs with fleet-ops lead approval |
+| M200h | Rework flow: fleet-ops → inbox → original agent notified → fix → re-review |
+| M200i | Escalation flow: fleet-ops → IRC #alerts → human responds → fleet continues |
+| M200j | End-to-end test: full review chain from task completion to PR merge |
 
 ### M201: Quality Gates — Tests Must Pass Before Approval
 
@@ -392,6 +662,92 @@ Agents don't have personal judgment, don't adapt to situations, don't show initi
 | M206b | Add "review_approved" custom field or tag for reviewed PRs |
 | M206c | High-risk detection — security/infra tasks require human review |
 
+### M209: Continuous-Running Engine — Change Detection and Event-Driven Triggers
+
+**Problem:** The fleet operates on a 30-second polling loop. It can't react immediately
+to events. When a task completes, the next task waits up to 30 seconds to be dispatched.
+When a human responds, nobody notices for 30 seconds. The fleet feels sluggish and
+disconnected.
+
+**Discovery:** OCMC supports webhooks (with queue + retry + HMAC), SSE streaming for
+approvals, and activity events with full audit trail. The gateway supports `wake`,
+`nudge_board_agent()`, cron scheduling, and `agent.wait`. We use none of this.
+
+**The Continuous Engine Design:**
+
+1. **Phase 1: Webhook receiver** — Fleet HTTP endpoint that MC calls on events
+   - Register webhooks for: task.status_changed, task.comment, approval.resolved
+   - Webhook handler routes events to appropriate actions
+   - Immediate reaction instead of polling
+
+2. **Phase 2: Gateway cron** — Use gateway's native cron for heartbeats
+   - Instead of orchestrator creating heartbeat tasks, use gateway cron
+   - Gateway fires heartbeat directly to agent sessions on schedule
+   - More reliable than our daemon-based approach
+
+3. **Phase 3: Gateway wake for dispatching** — Use `wake` method with `deliver=true`
+   - When orchestrator dispatches a task, use gateway wake instead of `chat.send(deliver=false)`
+   - Agent is immediately woken and starts working
+   - No waiting for next heartbeat poll
+
+4. **Phase 4: Agent-to-agent nudge** — Use `nudge_board_agent()`
+   - When fleet-ops creates a review subtask for qa-engineer, nudge qa-engineer
+   - When PM creates a task for architect, nudge architect
+   - Immediate agent-to-agent communication
+
+5. **Phase 5: Activity event stream** — Read MC activity events for change detection
+   - Instead of polling task list, read activity_events table
+   - Detect: task.status_changed, task.comment, agent.heartbeat
+   - More efficient, captures exact changes
+
+**Milestones:**
+| # | Scope |
+|---|-------|
+| M209a | Design webhook receiver endpoint (fleet/infra/webhook_server.py) |
+| M209b | Register fleet webhooks on MC board for task + approval events |
+| M209c | Event router: map MC events → fleet actions |
+| M209d | Gateway wake integration in dispatch (deliver=true) |
+| M209e | Gateway cron for agent heartbeats (replace orchestrator heartbeat tasks) |
+| M209f | Agent-to-agent nudge via coordination_service |
+| M209g | Activity event polling as fallback (when webhooks aren't available) |
+| M209h | Full event-driven operation test: task change → immediate fleet reaction |
+
+### M210: Full OCMC Exploitation — Use What The Platform Provides
+
+**Problem:** We built custom solutions for things OCMC already handles natively.
+We bypass the board lead system, ignore board config gates, don't use webhooks,
+don't use SSE streams, don't use activity events, don't use agent wake properly.
+
+**What OCMC provides that we should use:**
+
+| OCMC Feature | What It Does | Current Usage | Should Be |
+|-------------|-------------|---------------|-----------|
+| Board lead (`is_board_lead`) | Auto-assigns review tasks to lead | Not set | fleet-ops = board lead |
+| `require_review_before_done` | Tasks must go through review | false | true |
+| `comment_required_for_review` | Agent must comment to enter review | false | true |
+| `block_status_changes_with_pending_approval` | No status change with pending approval | false | true |
+| Review → inbox rework flow | Lead sends back with notification | Not used | fleet-ops uses for rework |
+| `lead_reasoning` on approvals | Lead must provide reasoning | Bypassed by auto-approve | fleet-ops provides reasoning |
+| Task wake on assignment | MC wakes agent when task assigned | Partially used | Should be primary dispatch |
+| SSE `/approvals/stream` | Real-time approval updates | Not used | Orchestrator subscribes |
+| Webhooks | Event-driven task notifications | Not used | Primary event source |
+| Activity events | Full mutation audit trail | Not used | Change detection |
+| Dependency blocking | MC blocks transitions on unmet deps | Model exists, not fully exploited | Full dependency chain |
+| `auto_created` + `auto_reason` | Track agent-created tasks | Field exists on MC, we tried but got 409 | Need to verify MC support |
+| Task comments API | Structured comments per task | Used sparingly | Every status change has comment |
+| Agent heartbeat API | Health check + wake | Used but unreliable | Gateway cron + proper monitoring |
+| Board groups | Group multiple boards | Not used | Could organize per-project boards |
+
+**Milestones:**
+| # | Scope |
+|---|-------|
+| M210a | Configure fleet-ops as board lead |
+| M210b | Enable board config gates (3 flags) |
+| M210c | Verify and fix auto_created field support |
+| M210d | Use MC's task-wake-on-assignment for dispatch |
+| M210e | SSE subscription for real-time approval updates |
+| M210f | Audit: list every OCMC feature and our usage level |
+
 ### M207: Dependency and Flow Management
 
 **Problem:** MC blocks task creation with unmet dependencies. The sprint loader
@@ -443,70 +799,110 @@ heartbeat. Most agents have template-only HEARTBEAT.md files.
 
 ## Part 4: Milestone Priority and Sequencing
 
-### Critical Path (Must Fix Before Fleet Can Operate)
+### Tier 1: CRITICAL — Fleet Produces Safe, Reviewed Output
+
+These must be done FIRST. Without them, the fleet produces unreviewed, untested code
+and merges it blindly. The auto-approve must be replaced with proper review chain.
 
 ```
-M200 (Approval redesign)
-  ↓
-M201 (Quality gates / test validation)
-  ↓
-M206 (Fix sync daemon blind merging)
-  ↓
-M207a (Sprint loader fix)
+M210a-b (OCMC exploitation: board lead + config gates)
+  ↓  Enables the platform to enforce the review chain natively
+M200a-j (Task lifecycle redesign: board lead, review gates, review chain)
+  ↓  fleet-ops reviews all work, QA tests, architect reviews design
+M201a-d (Quality gates: tests must pass before approval)
+  ↓  No more broken code getting approved
+M206a-c (Fix sync daemon: no blind merging)
+  ↓  PRs only merge after proper agent review
+M207a-c (Dependency and flow: sprint loader fix, chain validation)
 ```
 
-Without these, the fleet produces unreviewed, untested code and merges it blindly.
+**Estimated: 5 major milestones, ~15 sub-milestones**
 
-### Foundation (Makes Everything Else Possible)
+### Tier 2: FOUNDATION — Agents Are Capable, Intelligent, Collaborative
 
-```
-M202 (Claude Code feature exploitation)
-  ↓
-M205 (Agent soul evolution)
-  ↓
-M203 (Communication protocol)
-  ↓
-M204 (Personal planning)
-```
-
-Without these, agents are dumb task runners instead of independent contributors.
-
-### Scale (Enables Multi-Project Autonomous Operation)
+Without these, agents are dumb task runners. With these, they're independent contributors
+who think, plan, communicate, and use the full power of Claude Code.
 
 ```
-M109-M117 (Agent command center — PRE/PROGRESS/POST)
-  ↓
-M148-M152 (Framework routing and distribution)
-  ↓
-M163-M169 (Lifecycle health and self-healing)
-  ↓
-M170-M177 (Project management and velocity)
-  ↓
-M178-M183 (Autonomous drivers)
-  ↓
-M153-M156 (Event chains)
+M202a-e (Claude Code feature exploitation: effort, dream, compact, memory)
+  ↓  Agents use the right mode for the right task
+M205a-d (Agent soul evolution: personality, initiative, collaboration)
+  ↓  Every agent is a strong, independent, humble, adaptive person
+M203a-e (Communication protocol: board memory, follow-ups, cross-references)
+  ↓  Agents read each other's work, create tasks, share knowledge
+M204a-d (Personal planning: breakdown, estimation, risk assessment)
+  ↓  Every agent plans before building
+M208a-d (Heartbeat reliability: verify delivery, track results, auto-restart)
 ```
 
-### Dependency Map
+**Estimated: 5 major milestones, ~20 sub-milestones**
+
+### Tier 3: SCALE — Fleet Self-Organizes Across Projects
+
+The fleet can handle multiple projects, multiple sprints, cross-project dependencies,
+and operates continuously with event-driven triggers.
 
 ```
-M200 (approval redesign) ──────────────┐
-M201 (quality gates) ──────────────────┤
-M206 (sync fix) ───────────────────────┤── CRITICAL: fleet produces safe output
-M207 (dependency flow) ────────────────┘
-
-M202 (Claude Code features) ───────────┐
-M205 (agent souls) ────────────────────┤── FOUNDATION: agents are capable
-M203 (communication) ─────────────────┤
-M204 (personal planning) ─────────────┘
-                                        │
-M109-M117 (command center) ────────────┤── SCALE: fleet self-organizes
-M148-M152 (framework routing) ─────────┤
-M163-M169 (lifecycle health) ──────────┤
-M170-M177 (project management) ────────┤
-M178-M183 (autonomous drivers) ────────┤
-M153-M156 (event chains) ─────────────┘
+M209a-h (Continuous engine: webhooks, gateway cron, nudge, event-driven)
+  ↓  Fleet reacts immediately to changes, not on 30s polling
+M210c-f (Full OCMC exploitation: all platform features)
+  ↓  Every OCMC capability properly leveraged
+M109-M117 (Agent command center: PRE/PROGRESS/POST lifecycle)
+  ↓  Smart context resolution, directive injection, output validation
+M148-M152 (Framework routing: capability matching, workload balancing)
+  ↓  Right agent for the right task, automatically
+M163-M169 (Lifecycle health: stuck detection, self-healing, cleanup)
+  ↓  Fleet recovers from failures without human intervention
+M170-M177 (Project management: velocity, metrics, sprint retrospectives)
+  ↓  PM drives sprints with data, not guesses
+M178-M183 (Autonomous drivers: PM drives DSPD, AG drives NNRT)
+  ↓  Driver agents create their own work when human isn't directing
+M153-M156 (Event chains: multi-surface publishing, operation mapping)
+  ↓  Every operation cascades across all surfaces automatically
 ```
+
+**Estimated: 8 major milestones, ~45 sub-milestones**
+
+### Full Dependency Map
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ TIER 1: CRITICAL (do first)                                  │
+│                                                              │
+│  M210a-b ──→ M200a-j ──→ M201a-d ──→ M206a-c               │
+│  (OCMC       (review      (quality     (sync                │
+│   config)     chain)       gates)       fix)                 │
+│                               ↓                              │
+│                            M207a-c                            │
+│                            (deps/flow)                       │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+┌──────────────────────────────┼──────────────────────────────┐
+│ TIER 2: FOUNDATION           │                               │
+│                              ↓                               │
+│  M202 ──→ M205 ──→ M203 ──→ M204                            │
+│  (Claude   (souls)  (comms)  (planning)                      │
+│   Code)                                                      │
+│              ↓                                               │
+│           M208 (heartbeat reliability)                       │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+┌──────────────────────────────┼──────────────────────────────┐
+│ TIER 3: SCALE                │                               │
+│                              ↓                               │
+│  M209 (continuous engine) ──→ M210c-f (full OCMC)            │
+│       ↓                                                      │
+│  M109-M117 (command center)                                  │
+│       ↓                                                      │
+│  M148-M152 (routing) ──→ M163-M169 (lifecycle)               │
+│       ↓                       ↓                              │
+│  M170-M177 (PM/velocity) ──→ M178-M183 (drivers)            │
+│       ↓                                                      │
+│  M153-M156 (event chains)                                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Total: ~18 major milestones, ~80 sub-milestones across all 3 tiers.**
 
 ---
 
