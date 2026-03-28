@@ -93,6 +93,7 @@ channels['irc'] = {
         'fleet': {
             'host': 'localhost',
             'port': $IRC_PORT,
+            'tls': False,
             'nick': '$IRC_NICK',
             'channels': ['$IRC_CHANNEL'],
             'dmPolicy': 'open',
