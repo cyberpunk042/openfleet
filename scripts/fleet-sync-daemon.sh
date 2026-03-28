@@ -11,10 +11,10 @@ set -euo pipefail
 # Stop: kill $(cat .sync.pid) or make sync-stop
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-INTERVAL="${1:-60}"
+INTERVAL=60
 PID_FILE="$FLEET_DIR/.sync.pid"
 
-[[ "$1" == "--interval" ]] && INTERVAL="${2:-60}"
+[[ "${1:-}" == "--interval" ]] && INTERVAL="${2:-60}"
 
 # Check not already running
 if [[ -f "$PID_FILE" ]]; then
