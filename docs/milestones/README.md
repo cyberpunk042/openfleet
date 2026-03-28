@@ -31,37 +31,48 @@ This ties the standards from Phase 1 to the task system.
 Fleet-specific skills, channel setup, unified dashboard, trace tool.
 These build on everything above.
 
+## Current Phase: Operations + Governance (Phases A-F)
+
+| Phase | Doc | Milestones | Status |
+|-------|-----|------------|--------|
+| A | [Code Delivery](phase-a-code-delivery.md) | M61-M64: push, PR, custom fields, notifications | Mostly done |
+| B+C | [Operations Protocol](fleet-operations-protocol.md) | M65-M72: board config, sync, merge detection | Mostly done |
+| — | [Operational Gaps](operational-gaps.md) | 6 fundamental gaps identified | Documented |
+| F1 | [Foundation Skills](phase-f1-foundation-skills.md) | M81-M86: URL builder, markdown templates, PR/comment/memory/IRC skills | **Planning** |
+| F2 | [Agent Communication](phase-f2-agent-communication.md) | M87-M91: decision matrix, follow-ups, alerts, pause, gap detection | **Planning** |
+| F3 | [IRC + The Lounge](phase-f3-irc-the-lounge.md) | M92-M96: web client, channels, message format, IRC ops | **Planning** |
+| F4 | [Governance Agent](phase-f4-governance-agent.md) | M97-M102: monitoring, digest, quality enforcement, gap detection | **Planning** |
+| F5 | [Integration + Polish](phase-f5-integration-polish.md) | M103-M105: E2E quality test, agent awareness, playbook | **Planning** |
+| — | [Governance Requirements](fleet-governance-and-quality.md) | User requirements with verbatim quotes | Reference |
+
 ## Completed Milestones
 
 | # | Milestone | Status |
 |---|-----------|--------|
-| M38 | Provisioning + E2E test | Done |
-| M39 | Autonomous task execution | Done |
-| M40 | Observation & interaction tools | Done |
-| — | Infrastructure hardening | Done |
-| — | Project workspace strategy (worktrees) | Done |
+| M38-M40 | Provisioning, autonomous execution, observation tools | Done |
+| M44-M47 | Standards, conventional commits, changelog, STANDARDS.md | Done |
+| M48-M51 | Skills inventory, packs, marketplace install, fleet skills | Done |
+| M53-M54 | Control UI, WS event monitor | Done |
+| M57, M59 | Commit↔task linking, trace tool | Done |
+| M61 | Agent push + PR workflow | Done |
+| M65-M66 | Board custom fields + tags | Done |
+| M70, M72 | Fleet sync (merge detection + worktree cleanup) | Done |
+| M73-M74 | IRC setup + notifications | Done |
+| — | Infrastructure: worktrees, auth, patches, systemd | Done |
 
-## Dependencies
+## Phase Dependencies
 
 ```
-M44 (conventional commits) ← everything after this
-M45 (changelog) ← M44
-M46 (standards) ← M44
-M47 (frequent commits) ← M44
-
-M48 (skill inventory) ← nothing
-M49 (register packs) ← M48
-M50 (install skills) ← M49
-M51 (fleet skills) ← M46, M50
-M52 (skill-agent mapping) ← M50
-
-M53 (control UI) ← nothing
-M54 (WS monitor) ← M53
-M55 (external channel) ← M54
-M56 (unified dashboard) ← M53, M55
-
-M57 (commit↔task) ← M44
-M58 (smart links) ← M57
-M59 (trace tool) ← M57
-M60 (cross-repo refs) ← M57, M58
+F1 (Foundation Skills — URL builder, markdown, PR/comment skills)
+    ↓
+F2 (Agent Communication — decision matrix, follow-ups, alerts)
+    ↓
+F3 (IRC + The Lounge — web client, channels, message format)
+    ↓
+F4 (Governance Agent — monitoring, digest, quality, gaps)
+    ↓
+F5 (Integration + Polish — E2E test, awareness, playbook)
 ```
+
+Each phase builds on the previous. Quality gates between phases.
+Do NOT start the next phase until the current one meets the standard.
