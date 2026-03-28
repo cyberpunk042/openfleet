@@ -795,6 +795,337 @@ heartbeat. Most agents have template-only HEARTBEAT.md files.
 | M208c | Orchestrator auto-restart for failed agents |
 | M208d | Heartbeat dashboard in fleet status |
 
+### M211: Human Notification System — ntfy + Windows Notifications
+
+> "The orchestrator will warn me. on like on windows you can send notifications
+> to windows from wsl linux, if its not installed we just install it, its a small tool"
+>
+> "There is also ntfy that we would set as: 192.168.40.11:10222"
+>
+> "this would basically also be a tool. that we integrate like the other ones.
+> in the command center. (AI directed to use when needed like the other and
+> in the chains like the others with their own channel system)"
+>
+> "It would allow me to keep an history of the alert and have them classified
+> properly so multiple events handled by the orchestrator will lead to inform me
+> like this even if sometimes its only in ntfy not to spam me of a windows
+> notification everytime, like for more informational progress like abmonition
+> type kind of things. obviously not everything is a notification but on the
+> proper channel the proper sharing is key."
+
+**Problem:** The human has no way to receive fleet notifications outside of
+actively watching IRC or the MC dashboard. When the orchestrator escalates,
+when a sprint completes, when an agent is stuck — the human doesn't know
+unless they're looking.
+
+**Discovery:**
+- **ntfy** is running at `http://192.168.40.11:10222` (HTTP, behind HTTPS wall)
+- ntfy supports topics, priorities (1-5), tags, click URLs, actions
+- ntfy keeps message history — classified, searchable, persistent
+- **WSL Windows notifications** — `wsl-notify-send` or `powershell.exe` BurntToast
+  (not installed yet, need to install)
+- Both should be integrated as notification channels alongside IRC
+
+**Notification Channel Design:**
+
+| Channel | When | Priority | History |
+|---------|------|----------|---------|
+| **ntfy (informational)** | Sprint progress, task completion, daily digest | Low (3) | Yes — keeps history in ntfy |
+| **ntfy (important)** | Agent escalation, blocker created, review needed | High (4) | Yes |
+| **ntfy (urgent)** | Security alert, infrastructure down, sprint blocked | Urgent (5) | Yes |
+| **Windows toast** | Agent escalation needing immediate human attention | Only urgent | No (transient) |
+| **IRC #fleet** | All fleet activity (existing) | All | Yes (The Lounge) |
+| **IRC #alerts** | Critical alerts only (existing) | High | Yes |
+
+**ntfy Topic Structure:**
+- `fleet-progress` — informational (task done, PR merged, sprint update)
+- `fleet-review` — needs human attention (escalations, decisions needed)
+- `fleet-alert` — urgent (security, infrastructure, blockers)
+
+**Integration as MCP Tool:**
+
+```
+fleet_notify_human(
+    title: str,          # Notification title
+    message: str,        # Body text
+    priority: str,       # "info", "important", "urgent"
+    topic: str,          # ntfy topic (auto-routed if not specified)
+    url: str,            # Click URL (task URL, PR URL)
+    tags: list[str],     # ntfy tags (emoji support)
+    windows_toast: bool, # Also show Windows notification (auto for urgent)
+)
+```
+
+**Integration in Orchestrator:**
+- Orchestrator uses `fleet_notify_human` for:
+  - Sprint milestone reached (info → ntfy progress)
+  - Agent escalation (important → ntfy review + maybe Windows)
+  - Security alert from Cyberpunk-Zero (urgent → ntfy alert + Windows)
+  - All review tasks approved for a sprint (info → ntfy progress)
+  - Agent offline for extended time (important → ntfy review)
+
+**Milestones:**
+| # | Scope |
+|---|-------|
+| M211a | `fleet/infra/ntfy_client.py` — ntfy REST API client (publish, topics, priorities) |
+| M211b | `fleet/infra/windows_notify.py` — WSL Windows notification (install wsl-notify-send or BurntToast) |
+| M211c | `fleet_notify_human` MCP tool — agents can notify human with priority routing |
+| M211d | Orchestrator integration — auto-notify on escalations, sprint milestones, alerts |
+| M211e | Notification channel config in `config/fleet.yaml` (ntfy URL, topics, priority thresholds) |
+| M211f | ntfy topic history as persistent notification log |
+| M211g | Test: agent escalates → ntfy notification arrives → human sees it on phone/desktop |
+
+### M212: Notification Routing and Admonition System
+
+> "even if sometimes its only in ntfy not to spam me of a windows notification
+> everytime, like for more informational progress like abmonition type kind
+> of things"
+
+**Problem:** Not everything deserves a Windows popup. Some things are just "FYI"
+that should appear in ntfy history but not interrupt the human. Others need
+immediate attention. The routing must be intelligent.
+
+**Notification Routing Rules:**
+
+```
+URGENT (Windows toast + ntfy alert):
+  - Agent calls fleet_escalate with "needs human attention"
+  - Security alert (critical/high severity)
+  - Infrastructure down (MC, gateway, IRC)
+  - Sprint blocked with no automated resolution
+  - Agent offline for > 4 hours with pending work
+
+IMPORTANT (ntfy review only):
+  - fleet-ops creates escalation during review
+  - Task rejected and needs human decision
+  - Multiple agents blocked on same dependency
+  - Sprint velocity significantly below target
+  - New work item needs human prioritization
+
+INFORMATIONAL (ntfy progress only — admonition style):
+  - Task completed and approved
+  - PR merged
+  - Sprint milestone reached (50%, 75%, 100%)
+  - Daily digest generated
+  - Agent heartbeat summary
+  - New tasks created by PM
+```
+
+**Admonition Types (ntfy tags for visual classification):**
+- `✅` — Success (task done, PR merged)
+- `📋` — Progress (sprint update, task created)
+- `⚠️` — Warning (agent stuck, velocity low)
+- `🚫` — Blocker (needs attention)
+- `🔴` — Critical (security, infrastructure)
+- `💡` — Suggestion (improvement idea from agent)
+
+**Milestones:**
+| # | Scope |
+|---|-------|
+| M212a | Routing rules engine in orchestrator (urgent/important/info classification) |
+| M212b | ntfy message formatting with admonition tags, click URLs, priority levels |
+| M212c | Windows toast only for urgent (configure threshold) |
+| M212d | Deduplication — don't send same notification twice within cooldown |
+| M212e | Notification preferences in config (what level to receive, quiet hours) |
+
+### M213: Agent Sleep/Wake Lifecycle — Smart Status Management
+
+> "then there should probably be a management of letting agent sleep after a
+> while of non to be awaken upon new ref to / tag or task assigned to and whatnot
+> or anything similar and then return to staying awake for a while till there is
+> no more work for a while. and it can go back to sleep and when its in sleep
+> for a long time it just goes offline even though its longer to bring it back"
+>
+> "Otherwise we will probably cycle them all really frequently even when all the
+> work is going to be done or blocked and impossible to work on the blocked tasks
+> and whatnot. we need to be logical too. this is a smart system a smart fleet.
+> with smart status"
+
+**Problem:** The fleet currently cycles all agents every 10-30 minutes via heartbeat
+tasks — even when there's no work. This wastes resources, creates noise (heartbeat
+tasks accumulate), and doesn't reflect the actual state of the fleet. Agents should
+be smart about when they're active vs sleeping vs offline.
+
+**Smart Agent Status Model:**
+
+```
+ACTIVE (awake, working)
+  ↓ no work for 15 minutes
+IDLE (awake, watching for work)
+  ↓ no work for 1 hour
+SLEEPING (dormant, wakes on: task assigned, tag reference, direct message)
+  ↓ no work for 8 hours
+OFFLINE (deep sleep, takes longer to bring back, session may compact)
+  ↓ task assigned or explicit wake
+ACTIVE (back to work)
+```
+
+**Wake Triggers (from sleeping/offline):**
+- Task assigned to this agent (`assigned_agent_id` changes)
+- Agent mentioned in board memory (`@agent-name`)
+- Tag reference matching agent capability (e.g., `security` tag → wake Cyberpunk-Zero)
+- New task in inbox matching agent role
+- Explicit wake from orchestrator or human
+- Scheduled heartbeat (less frequent for sleeping agents)
+
+**Heartbeat Frequency by Status:**
+
+| Status | Heartbeat Interval | What Happens |
+|--------|-------------------|-------------|
+| ACTIVE | None (agent is working) | Agent drives its own progress |
+| IDLE | Every 5 minutes | Check for new work, report status |
+| SLEEPING | Every 30 minutes | Quick check: any work for me? If no → stay sleeping |
+| OFFLINE | Every 2 hours | Minimal check: any assigned tasks? If no → stay offline |
+
+**Orchestrator Behavior:**
+- Only creates heartbeat tasks for IDLE and SLEEPING agents
+- Never creates heartbeat tasks for ACTIVE agents (they're already working)
+- Reduces heartbeat frequency for SLEEPING agents
+- Skips OFFLINE agents unless they have assigned work
+- Tracks transition timestamps for status decisions
+
+**When All Work Is Done:**
+- No inbox tasks → agents transition to IDLE
+- No IDLE work after 1 hour → agents transition to SLEEPING
+- Orchestrator heartbeat interval extends automatically
+- Fleet enters "maintenance mode" — only fleet-ops stays IDLE for monitoring
+- PM stays IDLE to watch for new human directives
+
+**Milestones:**
+| # | Scope |
+|---|-------|
+| M213a | Design agent status state machine (active/idle/sleeping/offline) with transition rules |
+| M213b | Orchestrator tracks agent status and adjusts heartbeat frequency |
+| M213c | Wake triggers: task assignment, tag reference, @mention detection |
+| M213d | Sleep transition: automatic after idle timeout with configurable thresholds |
+| M213e | Fleet "maintenance mode" when all work complete (reduce resource usage) |
+| M213f | Status display in fleet status command (show active/idle/sleeping/offline per agent) |
+
+### M214: Smart Orchestrator — Decision Layer and Resource Optimization
+
+> "We have a good part of the chain but we need a better decision layer and
+> communication layer and continuous running engine with change detection
+> and proper trigger on demands or continuing when queued work"
+>
+> "we need to make sure we exploit both openclaw and ocmc as best as possible
+> as usable and we make sure that this fleet is really able to work autonomously
+> without constant bugs and block and random blocking that can be solved"
+
+**Problem:** The orchestrator is a simple polling loop. It doesn't make intelligent
+decisions about WHAT to dispatch, WHEN to wake agents, or HOW to optimize fleet
+resources. It should be a smart decision layer.
+
+**Smart Decision Capabilities:**
+
+1. **Priority-aware dispatch**: When multiple tasks are ready, dispatch the
+   highest-impact one first. Consider: sprint deadline proximity, dependency
+   chain length (dispatch critical path first), agent availability.
+
+2. **Resource optimization**: Don't dispatch 5 tasks to 5 agents simultaneously
+   if the system can only handle 2 concurrent sessions. Queue intelligently.
+   Respect `max_concurrent_per_agent` config.
+
+3. **Blocker resolution routing**: When a task is blocked:
+   - If blocked by tests → route to qa-engineer
+   - If blocked by infrastructure → route to devops
+   - If blocked by design → route to architect
+   - If blocked by human decision → escalate via ntfy
+   - Don't just alert — create the resolution task automatically
+
+4. **Sprint awareness**: Orchestrator knows the current sprint, its deadline,
+   velocity, and what's at risk. Adjusts priorities accordingly.
+
+5. **Change detection**: Instead of polling every 30s blindly, detect WHAT
+   changed and only react to changes. Use MC activity events or webhooks.
+
+6. **Collective intelligence**: The orchestrator reads board memory to understand
+   fleet-wide context — recent decisions, active concerns, patterns — and factors
+   this into dispatch and routing decisions.
+
+**Milestones:**
+| # | Scope |
+|---|-------|
+| M214a | Priority scoring for task dispatch (deadline, dependency depth, sprint impact) |
+| M214b | Resource-aware scheduling (max concurrent agents, queue management) |
+| M214c | Automatic blocker resolution routing (detect blocker type → create fix task) |
+| M214d | Sprint-aware orchestration (know deadline, velocity, critical path) |
+| M214e | Board memory reading for collective intelligence (recent decisions, patterns) |
+| M214f | Change detection via MC activity events (replace blind polling) |
+
+### M215: Memory Configuration Verification
+
+> "I also wonder if we configure the memory properly. not sure I understand
+> how we enable auto-dream, we just add something to the CLAUDE.md(s)?"
+
+**Current state:**
+- `autoMemoryEnabled: true` is set in each agent workspace's `.claude/settings.json`
+- Auto-dream activates automatically when auto-memory is enabled
+- It runs as a sandboxed background subagent between sessions
+- Agents don't need anything in CLAUDE.md — it's a settings-level feature
+
+**What needs verification:**
+1. Do agents actually accumulate memory across sessions? (check `~/.claude/projects/` for agent memory files)
+2. Does auto-dream run? (check for consolidated memory files)
+3. Is memory scoped correctly? (project-level vs user-level)
+4. Do agents READ their memory at session start?
+
+**What might need adjustment:**
+- Agent CLAUDE.md files should reference memory: "Read your MEMORY.md for context from previous sessions"
+- Memory scope should be `project` (shared in repo) not `local` (machine-only)
+- Agents should be instructed to write important learnings to memory
+
+**Milestones:**
+| # | Scope |
+|---|-------|
+| M215a | Verify auto-memory is working per agent (check memory directories) |
+| M215b | Verify auto-dream runs between sessions (check consolidated memories) |
+| M215c | Add memory instructions to agent CLAUDE.md files |
+| M215d | Test: agent works → session ends → new session → agent remembers context |
+
+---
+
+## Part 5: User Requirements (Verbatim, Updated)
+
+### From 2026-03-28 session — continued
+
+> "The orchestrator will warn me. on like on windows you can send notifications
+> to windows from wsl linux, if its not installed we just install it, its a small
+> tool, I think I already have it on this computer."
+
+> "There is also ntfy that we would set as: 192.168.40.11:10222 (I use it behind
+> a https wall but you http)"
+
+> "this would basically also be a tool. that we integrate like the other ones.
+> in the command center. (AI directed to use when needed like the other and in
+> the chains like the others with their own channel system vs ...)"
+
+> "It would allow me to keep an history of the alert and have them classified
+> properly so multiple events handled by the orchestrator will lead to inform me
+> like this even if sometimes its only in ntfy not to spam me of a windows
+> notification everytime, like for more informational progress like abmonition
+> type kind of things. obviously not everything is a notification but on the
+> proper channel the proper sharing is key."
+
+> "Everything has to be very thorough and thoughtful and you have to be very
+> respectful of my needs"
+
+> "then there should probably be a management of letting agent sleep after a
+> while of non to be awaken upon new ref to / tag or task assigned to and whatnot
+> or anything similar and then return to staying awake for a while till there is
+> no more work for a while. and it can go back to sleep and when its in sleep
+> for a long time it just goes offline even though its longer to bring it back."
+
+> "Otherwise we will probably cycle them all really frequently even when all the
+> work is going to be done or blocked and impossible to work on the blocked tasks
+> and whatnot. we need to be logical too. this is a smart system a smart fleet.
+> with smart status"
+
+> "The orchestrator is an important smart and reliable layer. The program in
+> general aim for collective intelligence."
+
+> "I also wonder if we configure the memory properly. not sure I understand
+> how we enable auto-dream, we just add something to the CLAUDE.md(s)?"
+
 ---
 
 ## Part 4: Milestone Priority and Sequencing
@@ -902,7 +1233,21 @@ M153-M156 (Event chains: multi-surface publishing, operation mapping)
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total: ~18 major milestones, ~80 sub-milestones across all 3 tiers.**
+### Tier 4: INTELLIGENCE — Smart Fleet with Human Integration
+
+```
+M211a-g (Human notification: ntfy + Windows)
+  ↓  Human receives classified alerts without watching dashboards
+M212a-e (Notification routing: admonition types, priority, dedup)
+  ↓  Smart routing: urgent → Windows toast, info → ntfy only
+M213a-f (Agent sleep/wake: smart status, resource optimization)
+  ↓  Agents sleep when idle, wake on demand, fleet enters maintenance mode
+M214a-f (Smart orchestrator: priority scoring, blocker routing, sprint awareness)
+  ↓  Collective intelligence, change detection, resource optimization
+M215a-d (Memory verification: auto-dream working, agents remember)
+```
+
+**Total: ~23 major milestones, ~110 sub-milestones across all 4 tiers.**
 
 ---
 
