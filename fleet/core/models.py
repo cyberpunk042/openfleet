@@ -50,6 +50,18 @@ class AgentRole(str, Enum):
     DRIVER = "driver"
 
 
+class TaskType(str, Enum):
+    """Hierarchical task types."""
+
+    EPIC = "epic"
+    STORY = "story"
+    TASK = "task"
+    SUBTASK = "subtask"
+    BLOCKER = "blocker"
+    REQUEST = "request"
+    CONCERN = "concern"
+
+
 class CommitType(str, Enum):
     """Conventional commit types."""
 
@@ -95,6 +107,13 @@ class TaskCustomFields:
     sprint: Optional[str] = None
     complexity: Optional[str] = None
     model: Optional[str] = None
+    parent_task: Optional[str] = None
+    task_type: Optional[str] = None
+    plan_id: Optional[str] = None
+    # Plane integration fields — set when a task is synced from a Plane issue
+    plane_issue_id: Optional[str] = None
+    plane_project_id: Optional[str] = None
+    plane_workspace: Optional[str] = None
 
 
 @dataclass
@@ -111,6 +130,10 @@ class Task:
     custom_fields: TaskCustomFields = field(default_factory=TaskCustomFields)
     tags: list[str] = field(default_factory=list)
     depends_on: list[str] = field(default_factory=list)
+    is_blocked: bool = False
+    blocked_by_task_ids: list[str] = field(default_factory=list)
+    auto_created: bool = False
+    due_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

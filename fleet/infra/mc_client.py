@@ -6,6 +6,7 @@ Uses httpx for async HTTP. Supports caching via core.cache.Cache.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional
 
 import httpx
@@ -26,6 +27,17 @@ from fleet.core.models import (
     TaskCustomFields,
     TaskStatus,
 )
+
+
+def _parse_datetime(value) -> Optional[datetime]:
+    """Parse an ISO datetime string from MC API."""
+    if not value:
+        return None
+    from datetime import datetime
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
 
 
 class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
@@ -147,6 +159,9 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
         custom_fields: Optional[dict] = None,
         tag_ids: Optional[list[str]] = None,
         depends_on: Optional[list[str]] = None,
+        auto_created: bool = False,
+        auto_reason: str = "",
+        due_at: Optional[str] = None,
     ) -> Task:
         """Create a new task."""
         payload: dict = {
@@ -164,6 +179,12 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
             payload["tag_ids"] = tag_ids
         if depends_on:
             payload["depends_on_task_ids"] = depends_on
+        if auto_created:
+            payload["auto_created"] = True
+            if auto_reason:
+                payload["auto_reason"] = auto_reason
+        if due_at:
+            payload["due_at"] = due_at
 
         resp = await self._client.post(
             f"/api/v1/boards/{board_id}/tasks", json=payload
@@ -300,6 +321,36 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
             for item in items
         ]
 
+    async def approve_approval(
+        self,
+        board_id: str,
+        approval_id: str,
+        *,
+        status: str = "approved",
+        comment: str = "",
+    ) -> Approval:
+        """Approve or reject a pending approval."""
+        payload: dict = {"status": status}
+        if comment:
+            payload["comment"] = comment
+
+        resp = await self._client.patch(
+            f"/api/v1/boards/{board_id}/approvals/{approval_id}",
+            json=payload,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return Approval(
+            id=str(data.get("id", "")),
+            board_id=board_id,
+            task_id=str(data.get("task_id", "") or ""),
+            action_type=data.get("action_type", ""),
+            confidence=data.get("confidence", 0),
+            rubric_scores=data.get("rubric_scores") or {},
+            reason=str((data.get("payload") or {}).get("reason", "")),
+            status=data.get("status", ""),
+        )
+
     async def task_has_approved_approval(
         self, board_id: str, task_id: str
     ) -> bool:
@@ -308,9 +359,6 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
         for a in approvals:
             if a.task_id == task_id:
                 return True
-            # Check multi-task links
-            task_ids = a.rubric_scores  # Hack: check if task appears in linked tasks
-        # Fallback: try to move to done — if it fails with 409, no approval
         return False
 
     # ─── AgentClient ────────────────────────────────────────────────────
@@ -372,7 +420,23 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
                 pr_url=custom.get("pr_url"),
                 worktree=custom.get("worktree"),
                 agent_name=custom.get("agent_name"),
+                story_points=custom.get("story_points"),
+                sprint=custom.get("sprint"),
+                complexity=custom.get("complexity"),
+                model=custom.get("model"),
+                parent_task=custom.get("parent_task"),
+                task_type=custom.get("task_type"),
+                plan_id=custom.get("plan_id"),
+                plane_issue_id=custom.get("plane_issue_id"),
+                plane_project_id=custom.get("plane_project_id"),
+                plane_workspace=custom.get("plane_workspace"),
             ),
             tags=[str(t.get("name", t)) if isinstance(t, dict) else str(t) for t in (data.get("tags") or [])],
             depends_on=[str(d) for d in (data.get("depends_on_task_ids") or [])],
+            is_blocked=bool(data.get("is_blocked", False)),
+            blocked_by_task_ids=[str(b) for b in (data.get("blocked_by_task_ids") or [])],
+            auto_created=bool(data.get("auto_created", False)),
+            due_at=_parse_datetime(data.get("due_at")),
+            created_at=_parse_datetime(data.get("created_at")),
+            updated_at=_parse_datetime(data.get("updated_at")),
         )
