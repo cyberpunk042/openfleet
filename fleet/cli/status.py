@@ -106,6 +106,26 @@ async def _run_status() -> int:
     except Exception as e:
         print(f"  {RED}Error: {e}{NC}")
 
+    # Approvals
+    print(f"\n{BOLD}Approvals{NC}")
+    try:
+        if board_id:
+            approvals = await client.list_approvals(board_id)
+            pending = [a for a in approvals if a.status == "pending"]
+            approved = [a for a in approvals if a.status == "approved"]
+            rejected = [a for a in approvals if a.status == "rejected"]
+            if pending:
+                for a in pending:
+                    print(f"  {YELLOW}⏳ pending{NC}  {a.action_type:20s} confidence={a.confidence:.0f}%  task={a.task_id[:8]}")
+            if approved:
+                print(f"  {GREEN}{len(approved)} approved{NC}")
+            if rejected:
+                print(f"  {RED}{len(rejected)} rejected{NC}")
+            if not approvals:
+                print(f"  {DIM}(none){NC}")
+    except Exception:
+        pass
+
     # Recent activity
     print(f"\n{BOLD}Recent Activity{NC}")
     try:
