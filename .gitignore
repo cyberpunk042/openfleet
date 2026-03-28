@@ -20,3 +20,4 @@ projects/
 logs/
 .irc.pid
 .sync.pid
+.monitor.pid

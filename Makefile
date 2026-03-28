@@ -169,6 +169,21 @@ sync-start:
 sync-stop:
 	@if [ -f .sync.pid ]; then kill $$(cat .sync.pid) 2>/dev/null && echo "Sync daemon stopped" || echo "Not running"; rm -f .sync.pid; else echo "Not running"; fi
 
+# Board state monitor (background, 5min interval)
+monitor-start:
+	@bash scripts/fleet-monitor-daemon.sh &
+	@echo "Monitor daemon started"
+
+monitor-stop:
+	@if [ -f .monitor.pid ]; then kill $$(cat .monitor.pid) 2>/dev/null && echo "Monitor stopped" || echo "Not running"; rm -f .monitor.pid; else echo "Not running"; fi
+
+# Daily digest
+digest:
+	@bash scripts/fleet-digest.sh
+
+digest-preview:
+	@bash scripts/fleet-digest.sh --dry-run
+
 # Configure board custom fields and tags
 board-setup:
 	@bash scripts/configure-board.sh

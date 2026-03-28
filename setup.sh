@@ -178,9 +178,11 @@ echo ""
 bash scripts/setup-lounge.sh
 echo ""
 
-# Step 11: Start sync daemon (task↔PR sync, worktree cleanup, IRC notifications)
-echo "=== Starting Sync Daemon ==="
+# Step 11: Start daemons (sync + board monitor)
+echo "=== Starting Fleet Daemons ==="
 bash scripts/fleet-sync-daemon.sh &
+bash scripts/fleet-monitor-daemon.sh &
+echo "Sync + monitor daemons started"
 echo ""
 
 echo "╔══════════════════════════════════════╗"
