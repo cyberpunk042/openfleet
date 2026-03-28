@@ -193,10 +193,16 @@ def register_tools(server: FastMCP) -> None:
     async def fleet_task_accept(plan: str, task_id: str = "") -> dict:
         """Accept and start working on your assigned task.
 
+        Share your plan — what you'll do, how you'll verify, what could go wrong.
+        For complex tasks (L/XL), consider using plan mode to explore the codebase
+        before committing to an approach.
+
         Args:
-            plan: Brief description of your approach (1-2 sentences).
+            plan: Your approach — concrete steps, verification, risks.
             task_id: Task ID (if not already set via fleet_read_context).
         """
+        from fleet.core.plan_quality import assess_plan, format_plan_feedback
+
         ctx = _get_ctx()
         if task_id:
             ctx.task_id = task_id
@@ -205,7 +211,19 @@ def register_tools(server: FastMCP) -> None:
 
         board_id = await ctx.resolve_board_id()
 
+        # Assess plan quality
+        task_type = ""
+        try:
+            task_data = await ctx.mc.get_task(board_id, ctx.task_id)
+            task_type = task_data.custom_fields.task_type or ""
+        except Exception:
+            pass
+
+        plan_assessment = assess_plan(plan, task_type)
+
         comment = comment_tmpl.format_accept(plan, ctx.agent_name or "agent")
+        if plan_assessment.issues:
+            comment += f"\n\n*Plan quality: {plan_assessment.score:.0f}/100*"
 
         try:
             task = await ctx.mc.update_task(
@@ -228,7 +246,18 @@ def register_tools(server: FastMCP) -> None:
         except Exception:
             pass
 
-        return {"ok": True, "status": "in_progress", "task_url": task_url}
+        result: dict = {
+            "ok": True,
+            "status": "in_progress",
+            "task_url": task_url,
+            "plan_score": plan_assessment.score,
+        }
+
+        # Include feedback if plan could be improved
+        if plan_assessment.suggestions or plan_assessment.issues:
+            result["plan_feedback"] = format_plan_feedback(plan_assessment)
+
+        return result
 
     @server.tool()
     async def fleet_task_progress(done: str, next_step: str, blockers: str = "none") -> dict:
