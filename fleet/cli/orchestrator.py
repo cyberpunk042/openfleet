@@ -291,6 +291,7 @@ async def _dispatch_ready_tasks(
 ) -> None:
     """Find unblocked inbox tasks with assigned agents and dispatch them."""
     from fleet.cli.dispatch import _run_dispatch
+    from fleet.core.task_scoring import rank_tasks
 
     inbox_tasks = [
         t for t in tasks
@@ -299,9 +300,9 @@ async def _dispatch_ready_tasks(
         and not t.is_blocked
     ]
 
-    # Sort by priority
-    priority_order = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
-    inbox_tasks.sort(key=lambda t: priority_order.get(t.priority, 2))
+    # Smart scoring — considers priority, dependency chain, wait time, task type
+    scored = rank_tasks(inbox_tasks, tasks)
+    inbox_tasks = [s.task for s in scored]
 
     # Track busy agents (those with in_progress tasks)
     busy_agent_ids = {
