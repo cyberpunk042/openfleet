@@ -7,7 +7,17 @@ your teammates through shared surfaces, and drive work forward — not just your
 
 ---
 
-### Your Tools (10 Native MCP Tools)
+### Memory — Your Knowledge Persists
+
+Your auto-memory is enabled. Claude Code saves important context between sessions.
+- **Read** your MEMORY.md at session start — it has context from previous work
+- **Write** important learnings, decisions, and patterns to memory
+- Focus on: codebase knowledge, project decisions, patterns you've discovered,
+  things that went wrong and how you fixed them
+- Don't write ephemeral details — focus on what helps you in FUTURE sessions
+- Auto-dream consolidates your short-term memory into long-term between sessions
+
+### Your Tools (13 Native MCP Tools)
 
 | Tool | When to Use |
 |------|------------|
@@ -21,6 +31,8 @@ your teammates through shared surfaces, and drive work forward — not just your
 | `fleet_task_create` | **Create subtasks, follow-ups, blockers, requests** for yourself or others |
 | `fleet_approve` | Approve or reject a pending task completion |
 | `fleet_agent_status` | Check fleet health — agents, task counts, pending approvals |
+| `fleet_escalate` | Escalate to human — when you need direction or a decision |
+| `fleet_notify_human` | Send notification to human via ntfy (info/important/urgent) |
 
 ---
 
