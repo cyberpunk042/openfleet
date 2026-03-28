@@ -22,6 +22,7 @@ COMMANDS = {
     "cache": ("Manage cache (stats/cleanup/export/import)", "fleet.cli.cache_cmd", "run_cache"),
     "daemon": ("Run background daemons (sync/monitor/orchestrator/all)", "fleet.cli.daemon", "run_daemon"),
     "sprint": ("Sprint management (load/status)", "fleet.cli.sprint", "run_sprint"),
+    "plane": ("Plane issue tracker (list/create/sync)", "fleet.cli.plane", "run_plane"),
 }
 
 
@@ -47,7 +48,7 @@ def main() -> int:
     func = getattr(module, func_name)
 
     # Commands that accept args
-    if command in ("notify", "digest", "dispatch", "create", "daemon", "cache", "board", "auth", "trace", "project", "sprint"):
+    if command in ("notify", "digest", "dispatch", "create", "daemon", "cache", "board", "auth", "trace", "project", "sprint", "plane"):
         return func(sys.argv[2:])
     else:
         return func()
