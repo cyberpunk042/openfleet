@@ -86,8 +86,17 @@ async def _run_dispatch(
     except Exception:
         pass
 
+    # Select model and effort based on task complexity
+    from fleet.core.model_selection import select_model_for_task
+    model_config = select_model_for_task(task, agent_name)
+    print(f"Model:    {model_config.model} (effort={model_config.effort})")
+    print(f"          {model_config.reason}")
+
     # Update .mcp.json with task context
     _update_mcp_json(fleet_dir, agent, task_id, project_name, work_dir)
+
+    # Update agent workspace settings with model and effort for this task
+    _update_agent_settings(fleet_dir, agent, model_config)
 
     # Build dispatch message
     message = _build_message(task, task_id, board_id, project_name, work_dir, agent_name)
@@ -226,6 +235,33 @@ def _update_mcp_json(
             env["FLEET_WORKTREE"] = worktree
         with open(mcp_path, "w") as f:
             json.dump(cfg, f, indent=2)
+    except Exception:
+        pass
+
+
+def _update_agent_settings(fleet_dir: str, agent, model_config) -> None:
+    """Update agent workspace .claude/settings.json with task-specific model and effort."""
+    if not agent.id:
+        return
+    workspace = os.path.join(fleet_dir, f"workspace-mc-{agent.id}")
+    settings_path = os.path.join(workspace, ".claude", "settings.json")
+
+    try:
+        if os.path.isfile(settings_path):
+            with open(settings_path) as f:
+                settings = json.load(f)
+        else:
+            os.makedirs(os.path.dirname(settings_path), exist_ok=True)
+            settings = {}
+
+        settings["effortLevel"] = model_config.effort
+        # Note: model is set via ANTHROPIC_MODEL env var in gateway, not settings.json
+        # But we record it for reference
+        settings["_taskModel"] = model_config.model
+        settings["_taskModelReason"] = model_config.reason
+
+        with open(settings_path, "w") as f:
+            json.dump(settings, f, indent=2)
     except Exception:
         pass
 
