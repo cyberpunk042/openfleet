@@ -26,3 +26,6 @@ projects:
   aicp:
     owner: cyberpunk042
     repo: devops-expert-local-ai
+  dspd:
+    owner: cyberpunk042
+    repo: devops-solution-product-development

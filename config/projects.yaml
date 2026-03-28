@@ -18,3 +18,7 @@ projects:
   nnrt:
     description: Narrative-to-Neutral Report Transformer
     repo: https://github.com/cyberpunk042/Narrative-to-Neutral-Report-Transformer
+
+  dspd:
+    description: DevOps Solution Product Development — project management surface via Plane
+    repo: https://github.com/cyberpunk042/devops-solution-product-development
