@@ -67,6 +67,13 @@ else
     echo "  Claude Code: NOT FOUND — agents won't execute (install: npm install -g @anthropic-ai/claude-code)"
 fi
 
+# GitHub CLI (for PR creation)
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    echo "  GitHub CLI: OK (authenticated)"
+else
+    echo "  GitHub CLI: NOT AUTHED — agents can't create PRs (run: gh auth login)"
+fi
+
 # Git
 if command -v git >/dev/null 2>&1; then
     echo "  Git: OK"
