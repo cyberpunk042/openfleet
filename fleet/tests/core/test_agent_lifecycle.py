@@ -70,7 +70,7 @@ def test_sleeping_agent_needs_heartbeat_after_interval():
     state = AgentState(name="test")
     now = datetime.now()
     state.status = AgentStatus.SLEEPING
-    state.last_heartbeat_at = now - timedelta(minutes=31)  # Over 30-min interval
+    state.last_heartbeat_at = now - timedelta(hours=3)  # Over 2-hour sleeping interval
     assert state.needs_heartbeat(now) is True
 
 

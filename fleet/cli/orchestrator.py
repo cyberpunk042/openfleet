@@ -375,7 +375,10 @@ async def _wake_lead_for_reviews(
         _last_review_wake = now
         return
 
+    # Gateway wake — NOT an MC task
     try:
+        from fleet.cli.dispatch import _send_chat
+
         pending = await mc.list_approvals(board_id, status="pending")
         if not pending:
             return
@@ -385,26 +388,18 @@ async def _wake_lead_for_reviews(
             for a in pending[:5]
         )
 
-        await mc.create_task(
-            board_id,
-            title=f"[review] Process {len(pending)} pending approvals",
-            description=(
-                f"You have {len(pending)} pending approvals and "
-                f"{review_count} tasks in review.\n\n"
-                f"Pending approvals:\n{approval_list}\n\n"
-                f"Use fleet_agent_status() for the full picture.\n"
-                f"For each: review the work, then fleet_approve() or reject.\n"
-                f"See your HEARTBEAT.md for the full review chain process."
-            ),
-            priority="high",
-            assigned_agent_id=fleet_ops.id,
-            custom_fields={
-                "agent_name": "fleet-ops",
-                "task_type": "subtask",
-            },
+        message = (
+            f"REVIEW NEEDED — {len(pending)} pending approvals\n\n"
+            f"Tasks in review: {review_count}\n"
+            f"Pending approvals:\n{approval_list}\n\n"
+            f"Use fleet_agent_status() for the full picture.\n"
+            f"For each: review the work, then fleet_approve() or reject.\n"
+            f"See your HEARTBEAT.md for the full review chain process."
         )
-        _last_review_wake = now
-        state.drivers_woken += 1
+        ok, _ = await _send_chat(fleet_ops.session_key, message)
+        if ok:
+            _last_review_wake = now
+            state.drivers_woken += 1
     except Exception as e:
         state.errors.append(f"wake fleet-ops for reviews: {e}")
 
@@ -558,78 +553,66 @@ async def _lifecycle_heartbeats(
     state: OrchestratorState,
     dry_run: bool,
 ) -> None:
-    """Send heartbeats based on agent lifecycle status.
+    """Send heartbeats via gateway wake — NOT MC tasks.
 
-    Active agents → no heartbeat (they're working)
-    Idle agents → heartbeat every 5 minutes
-    Sleeping agents → heartbeat every 30 minutes
-    Offline agents → heartbeat every 2 hours
+    Heartbeats are for PARTICIPATION: check chat, respond to discussions,
+    review decisions, contribute to domain events, help with backlog.
+    NOT for "check if you have work" — assigned tasks are dispatched directly.
 
-    This replaces the fixed-interval driver wake with smart status management.
+    Only idle DRIVER agents with no assigned work get heartbeats.
+    Workers with no assigned work do NOT get heartbeats.
+    Agents with assigned tasks are already working — no heartbeat needed.
     """
     now = datetime.now()
     drivers = set(config.get("driver_agents", DRIVER_AGENTS))
 
     agents_needing_heartbeat = _fleet_lifecycle.agents_needing_heartbeat(now)
 
+    from fleet.cli.dispatch import _send_chat
+
     for agent_state in agents_needing_heartbeat:
         agent = agent_name_map.get(agent_state.name)
         if not agent or not agent.session_key:
             continue
 
-        # Check if agent already has a pending heartbeat/review task
-        has_pending = any(
+        # NEVER heartbeat an agent that has assigned work — they're working on it
+        has_assigned_work = any(
             t.custom_fields.agent_name == agent_state.name
             and t.status in (TaskStatus.INBOX, TaskStatus.IN_PROGRESS)
-            and ("[heartbeat]" in t.title or "[review]" in t.title)
             for t in tasks
         )
-        if has_pending:
+        if has_assigned_work:
             agent_state.mark_heartbeat_sent(now)
             continue
 
-        # Only create heartbeat tasks for drivers and agents with specific work
-        # Worker agents in sleeping/offline don't need heartbeats unless they have work
-        if agent_state.name not in drivers and agent_state.status in (AgentStatus.SLEEPING, AgentStatus.OFFLINE):
-            # Check if this agent has any assigned inbox tasks
-            has_work = any(
-                t.custom_fields.agent_name == agent_state.name
-                and t.status == TaskStatus.INBOX
-                and not t.is_blocked
-                for t in tasks
-            )
-            if not has_work:
-                agent_state.mark_heartbeat_sent(now)
-                continue
+        # Only driver agents get periodic heartbeats when idle
+        # Workers without assigned work stay quiet
+        if agent_state.name not in drivers:
+            agent_state.mark_heartbeat_sent(now)
+            continue
 
         if dry_run:
-            print(f"  [dry_run] WOULD heartbeat {agent_state.name} "
-                  f"(status={agent_state.status.value})")
+            print(f"  [dry_run] WOULD wake {agent_state.name} "
+                  f"(heartbeat, status={agent_state.status.value})")
             agent_state.mark_heartbeat_sent(now)
             state.drivers_woken += 1
             continue
 
+        # Gateway wake — NOT an MC task
         try:
-            status_label = agent_state.status.value
-            task = await mc.create_task(
-                board_id,
-                title=f"[heartbeat] {agent_state.name} periodic check",
-                description=(
-                    f"Heartbeat task for {agent_state.name} "
-                    f"(status: {status_label}). "
-                    "Check your HEARTBEAT.md for instructions. "
-                    "Use fleet_agent_status to assess fleet health. "
-                    "If everything is fine, complete with 'HEARTBEAT_OK'."
-                ),
-                priority="low",
-                assigned_agent_id=agent.id,
-                custom_fields={
-                    "agent_name": agent_state.name,
-                    "task_type": "subtask",
-                },
+            message = (
+                f"HEARTBEAT — {agent_state.name}\n\n"
+                f"Check your HEARTBEAT.md for instructions.\n"
+                f"Call fleet_read_context() to see chat, events, team activity.\n"
+                f"Call fleet_chat() to communicate with teammates.\n"
+                f"Call fleet_agent_status() to check fleet health.\n\n"
+                f"Focus: chat responses, domain events, backlog, discussions.\n"
+                f"If nothing needs attention: HEARTBEAT_OK."
             )
-            agent_state.mark_heartbeat_sent(now)
-            state.drivers_woken += 1
+            ok, _ = await _send_chat(agent.session_key, message)
+            if ok:
+                agent_state.mark_heartbeat_sent(now)
+                state.drivers_woken += 1
         except Exception as e:
             state.errors.append(f"heartbeat {agent_state.name}: {e}")
 

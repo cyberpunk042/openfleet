@@ -28,15 +28,16 @@ class AgentStatus(str, Enum):
 
 
 # Transition thresholds (seconds)
-IDLE_AFTER = 15 * 60          # 15 minutes without work → idle
-SLEEPING_AFTER = 60 * 60      # 1 hour idle → sleeping
-OFFLINE_AFTER = 8 * 60 * 60   # 8 hours sleeping → offline
+IDLE_AFTER = 10 * 60          # 10 minutes without work → idle
+SLEEPING_AFTER = 30 * 60      # 30 minutes idle → sleeping
+OFFLINE_AFTER = 4 * 60 * 60   # 4 hours sleeping → offline
 
 # Heartbeat intervals by status (seconds)
+# IMPORTANT: keep these long enough to avoid flooding the board
 HEARTBEAT_INTERVALS = {
     AgentStatus.ACTIVE: 0,          # No heartbeat — agent is driving its own work
-    AgentStatus.IDLE: 5 * 60,       # 5 minutes — check for new work
-    AgentStatus.SLEEPING: 30 * 60,  # 30 minutes — quick check
+    AgentStatus.IDLE: 30 * 60,      # 30 minutes — not too frequent
+    AgentStatus.SLEEPING: 2 * 60 * 60,  # 2 hours — rare check
     AgentStatus.OFFLINE: 2 * 60 * 60,  # 2 hours — minimal check
 }
 
