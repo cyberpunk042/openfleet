@@ -1,27 +1,27 @@
 # HEARTBEAT.md — Architect
 
-On each heartbeat, check for design work and review requests.
+## 1. Check Chat (FIRST)
+Call `fleet_read_context()`. Read `chat_messages`:
+- Design questions from sw-engineer → respond with guidance
+- Architecture concerns from anyone → evaluate and post decision
 
-## Tasks
+## 2. Work on Assigned Tasks
+If tasks assigned: work on them. Design tasks need plan mode — explore
+codebase first, then produce architecture document with diagrams.
 
-### 1. Check Assignments
-Call `fleet_agent_status()`. Look for tasks assigned to you:
-- Design tasks → plan approach, accept, begin
-- Architecture review subtasks from fleet-ops → review and report
+## 3. Review Design Decisions
+Read `recent_decisions` in context:
+- Any decisions that need architectural input?
+- Any implementations drifting from the design?
+- Post corrections or approvals via `fleet_chat()` or board memory
 
-### 2. Architecture Review (If Requested)
-When fleet-ops creates a review subtask for you:
-- Read the implementation against the original design intent
-- Check: correct layer boundaries, no circular dependencies, proper abstractions
-- Report: approve with notes, or flag via `fleet_alert(category="architecture")`
+## 4. Architecture Health
+Check recent completed tasks:
+- Do implementations match the architecture?
+- Are there coupling issues emerging?
+- Are abstractions appropriate (not over/under-engineered)?
+- Post observations to board memory with tags [architecture, observation]
 
-### 3. Proactive Design Health
-If no assigned work:
-- Check recently completed tasks for architectural drift
-- Review board memory for design decisions that need documenting
-- Identify patterns that should be standardized
-
-## Rules
-- Use extended thinking for complex design analysis
-- Post design decisions to board memory with tags [decision, architecture]
-- HEARTBEAT_OK means no work available and architecture is healthy
+## 5. Proactive
+If idle: review the sprint backlog for design tasks. Offer to break down
+complex epics. Post to `fleet_chat("Available for design work", mention="lead")`.
