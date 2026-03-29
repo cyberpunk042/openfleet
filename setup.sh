@@ -221,8 +221,16 @@ bash scripts/setup-lounge.sh
 echo ""
 
 # Step 11: Clean gateway config (remove duplicates, set safe heartbeat intervals)
+# MUST run after MC setup (which adds duplicate entries during provisioning)
 echo "=== Cleaning Gateway Config ==="
 bash scripts/clean-gateway-config.sh
+echo ""
+
+# Step 11b: Restart gateway with clean config
+# The gateway loaded dirty config at Step 8. Now that we've cleaned it,
+# restart so it uses the deduplicated, staggered config.
+echo "=== Restarting Gateway (clean config) ==="
+bash scripts/start-fleet.sh
 echo ""
 
 # Step 12: Configure agent Claude Code settings (effort, memory, permissions)
