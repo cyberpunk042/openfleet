@@ -99,6 +99,42 @@ for a in cleaned:
 
 cfg["agents"]["list"] = cleaned
 
+# Sync agent IDs with MC database (IDs change after Docker reset)
+import os
+env_path = os.path.join(os.path.dirname(os.path.dirname(config_path.replace("/.openclaw/openclaw.json", ""))), "openclaw-fleet", ".env")
+# Try to read LOCAL_AUTH_TOKEN and sync with MC
+try:
+    token = ""
+    fleet_env = os.path.expanduser("~/openclaw-fleet/.env")
+    if os.path.exists(fleet_env):
+        for line in open(fleet_env):
+            if line.startswith("LOCAL_AUTH_TOKEN="):
+                token = line.split("=", 1)[1].strip()
+    if token:
+        import urllib.request
+        req = urllib.request.Request(
+            "http://localhost:8000/api/v1/agents",
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            mc_data = json.loads(resp.read())
+        mc_agents = {a["name"]: a for a in mc_data.get("items", []) if "Gateway" not in a.get("name", "")}
+
+        synced = 0
+        for a in cleaned:
+            name = a.get("name", "")
+            if name in mc_agents:
+                mc_id = f'mc-{mc_agents[name]["id"]}'
+                if a.get("id") != mc_id:
+                    old_id = a.get("id", "?")
+                    a["id"] = mc_id
+                    a["workspace"] = os.path.expanduser(f"~/openclaw-fleet/workspace-mc-{mc_agents[name]['id']}")
+                    synced += 1
+        if synced:
+            print(f"\nSynced {synced} agent IDs with MC database")
+except Exception as e:
+    print(f"\nNote: Could not sync with MC ({e}) — agent IDs may be stale")
+
 with open(config_path, "w") as f:
     json.dump(cfg, f, indent=2)
 
