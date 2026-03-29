@@ -26,6 +26,7 @@ class EventSurface(str, Enum):
     PUBLIC = "public"       # GitHub: branches, PRs
     CHANNEL = "channel"     # IRC: real-time messages
     NOTIFY = "notify"       # ntfy: human notifications
+    PLANE = "plane"         # Plane: issue updates, comments (optional)
     META = "meta"           # System: metrics, quality checks
 
 
@@ -154,6 +155,18 @@ def build_task_complete_chain(
         "title": f"Task completed: {summary[:40]}",
         "priority": "info",
         "event_type": "task_done",
+    }, required=False)
+
+    # Plane (optional — fires only if Plane configured and issue mapped)
+    chain.add(EventSurface.PLANE, "update_issue_state", {
+        "issue_id": "",  # Filled by caller if Plane issue exists
+        "project_id": "",
+        "state": "In Review",
+    }, required=False)
+    chain.add(EventSurface.PLANE, "post_comment", {
+        "issue_id": "",
+        "project_id": "",
+        "comment": f"OCMC task completed by {agent_name}: {summary[:80]}",
     }, required=False)
 
     # Meta
