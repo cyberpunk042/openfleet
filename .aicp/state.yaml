@@ -25,7 +25,5 @@ last_session:
 setup:
   mission_control_url: http://localhost:8000
   user: Jean Fortin
-  organization: OpenClaw Fleet
+  organization: Personal
   board: Fleet Operations
-  board_id: 828d80ab-6bda-4d23-9da3-a670f14ea710
-  gateway_id: 824be42f-ef24-48fa-9e03-3ba330dee620

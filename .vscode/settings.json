@@ -12,17 +12,22 @@
     ".all.pid": true,
     ".sync.pid": true,
     ".monitor.pid": true,
-    "projects/*/worktrees": true,
+    "projects": true,
     "__pycache__": true,
     "*.pyc": true,
-    ".venv": true
+    ".venv": true,
+    "vendor": true,
+    ".aicp": true
   },
   "search.exclude": {
     "workspace-mc-*": true,
     "workspace-gateway-*": true,
-    "projects/*/worktrees": true,
+    "projects": true,
     ".venv": true,
     "vendor": true,
     "__pycache__": true
-  }
+  },
+  "git.scanRepositories": false,
+  "git.autoRepositoryDetection": false,
+  "git.repositoryScanMaxDepth": 0
 }
