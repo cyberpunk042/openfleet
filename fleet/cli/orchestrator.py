@@ -34,7 +34,7 @@ _fleet_lifecycle = FleetLifecycle()
 _notification_router = NotificationRouter(cooldown_seconds=300)
 _change_detector = ChangeDetector()
 
-from fleet.core.budget_monitor import BudgetMonitor, read_quota_from_env
+from fleet.core.budget_monitor import BudgetMonitor
 _budget_monitor = BudgetMonitor()
 
 
@@ -425,30 +425,27 @@ async def _dispatch_ready_tasks(
     from fleet.cli.dispatch import _run_dispatch
     from fleet.core.task_scoring import rank_tasks
 
-    # BUDGET CHECK — don't dispatch if budget is critical
-    quota = read_quota_from_env()
-    if quota:
-        _budget_monitor.update(quota)
-        safe, reason = _budget_monitor.should_dispatch()
-        if not safe:
-            state.errors.append(f"BUDGET PAUSE: {reason}")
-            await _notify(irc, "#alerts", f"[orchestrator] ⚠️ BUDGET: {reason}")
+    # BUDGET CHECK — read real quota from Claude OAuth API (rate-limited, cached 5 min)
+    safe, reason = _budget_monitor.check_quota()
+    if not safe:
+        state.errors.append(f"BUDGET PAUSE: {reason}")
+        await _notify(irc, "#alerts", f"[orchestrator] BUDGET: {reason}")
+        await _notify_human(
+            title="Fleet budget critical",
+            message=reason,
+            event_type="escalation",
+        )
+        return  # Do NOT dispatch
+
+    # Check for threshold alerts (50%, 70%, 80%, 90%)
+    for alert in _budget_monitor.get_alerts():
+        await _notify(irc, "#alerts", f"[budget] {alert.severity}: {alert.title}")
+        if alert.severity == "critical":
             await _notify_human(
-                title="Fleet budget critical",
-                message=reason,
+                title=alert.title,
+                message=alert.message,
                 event_type="escalation",
             )
-            return  # Do NOT dispatch
-
-        # Check for alerts
-        for alert in _budget_monitor.check_alerts():
-            await _notify(irc, "#alerts", f"[budget] {alert.severity}: {alert.title}")
-            if alert.severity == "critical":
-                await _notify_human(
-                    title=alert.title,
-                    message=alert.message,
-                    event_type="escalation",
-                )
 
     inbox_tasks = [
         t for t in tasks
