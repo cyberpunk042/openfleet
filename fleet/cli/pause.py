@@ -48,23 +48,18 @@ async def _pause(reason: str = "") -> int:
     except Exception:
         print("   MCP servers: could not kill")
 
-    # 3. Kill stale gateway processes (but NOT the main one if needed)
-    print("3. Checking for stale processes...")
-    try:
-        result = subprocess.run(
-            ["pgrep", "-a", "-f", "openclaw"], capture_output=True, text=True, timeout=5
-        )
-        if result.stdout.strip():
-            lines = result.stdout.strip().split("\n")
-            print(f"   Found {len(lines)} openclaw process(es):")
-            for line in lines:
-                print(f"     {line[:80]}")
-            print("   WARNING: Gateway processes still running.")
-            print("   To fully stop: pkill -f openclaw-gateway")
-        else:
-            print("   No openclaw processes found")
-    except Exception:
-        pass
+    # 3. Kill ALL gateway and openclaw processes
+    print("3. Killing gateway and openclaw processes...")
+    for pattern in ["openclaw-gateway", "openclaw$", "python3 -m gateway start", "miniircd"]:
+        try:
+            result = subprocess.run(
+                ["pkill", "-f", pattern], capture_output=True, timeout=5
+            )
+            if result.returncode == 0:
+                print(f"   Killed: {pattern}")
+                actions += 1
+        except Exception:
+            pass
 
     # 4. Write pause marker
     fleet_dir = str(Path(__file__).resolve().parent.parent.parent)

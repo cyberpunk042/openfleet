@@ -2,20 +2,27 @@
 set -euo pipefail
 
 # Start the OpenClaw gateway.
+# Kills any existing gateway first (clean restart).
 # Must run before Mission Control connects.
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "=== Starting OpenClaw Gateway ==="
 
-# Check if already running
+# Kill existing gateway processes (avoid duplicates)
 if pgrep -f "openclaw-gateway" >/dev/null 2>&1; then
-    echo "  Gateway already running"
-    exit 0
+    echo "  Killing existing gateway..."
+    pkill -f "openclaw-gateway" 2>/dev/null || true
+    sleep 2
+fi
+
+# Also kill stale openclaw parent process
+if pgrep -f "openclaw$" >/dev/null 2>&1; then
+    pkill -f "openclaw$" 2>/dev/null || true
+    sleep 1
 fi
 
 # Start gateway in background (detached from shell)
-FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 nohup openclaw gateway run --port 18789 > "$FLEET_DIR/.gateway.log" 2>&1 &
 disown
 GATEWAY_PID=$!

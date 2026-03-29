@@ -25,7 +25,16 @@ echo "║     OpenClaw Fleet Setup             ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
-# Step 0: Pre-flight checks
+# Step 0: Kill existing fleet processes (clean slate for idempotent setup)
+echo "=== Cleaning Existing Processes ==="
+pkill -f "fleet daemon" 2>/dev/null && echo "  Killed fleet daemons" || true
+pkill -f "fleet.mcp.server" 2>/dev/null && echo "  Killed MCP servers" || true
+pkill -f "miniircd" 2>/dev/null && echo "  Killed IRC daemon" || true
+pkill -f "python3 -m gateway start" 2>/dev/null && echo "  Killed stale AICP gateway" || true
+echo "  Clean"
+echo ""
+
+# Step 0b: Pre-flight checks
 echo "=== Pre-flight Checks ==="
 PREFLIGHT_OK=true
 
