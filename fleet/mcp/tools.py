@@ -1232,6 +1232,20 @@ def register_tools(server: FastMCP) -> None:
         except Exception:
             pass
 
+        # Emit event for approval decision
+        _emit_event(
+            f"fleet.task.{'approved' if decision == 'approved' else 'rejected'}",
+            subject=approval_id,
+            recipient=result.get("task_agent", "all"),
+            priority="important",
+            mentions=[result.get("task_agent", "")] if result.get("task_agent") else [],
+            tags=["review", decision],
+            surfaces=["internal", "channel", "plane"],
+            decision=decision,
+            comment=comment,
+            task_id=result.get("task_id", ""),
+        )
+
         return result
 
     @server.tool()
@@ -1572,6 +1586,21 @@ def register_tools(server: FastMCP) -> None:
             except Exception:
                 pass
 
+            # Emit event for cross-platform tracking
+            _emit_event(
+                "fleet.plane.issue_created",
+                source="fleet/mcp/tools/fleet_plane_create_issue",
+                subject=issue.id,
+                recipient="all",
+                priority="info",
+                tags=[f"project:{project}", "plane"],
+                surfaces=["internal", "channel", "plane"],
+                title=title,
+                issue_id=issue.id,
+                project=project,
+                module=module or "",
+            )
+
         except Exception as e:
             result["error"] = str(e)
 
@@ -1635,6 +1664,21 @@ def register_tools(server: FastMCP) -> None:
                     )
                 except Exception:
                     pass
+
+            # Emit event — mentions route to agent feeds
+            _emit_event(
+                "fleet.plane.issue_commented",
+                source="fleet/mcp/tools/fleet_plane_comment",
+                subject=issue_id,
+                recipient=mention if mention else "all",
+                priority="important" if mention else "info",
+                mentions=[mention] if mention else [],
+                tags=["plane", "comment", f"project:{project}"],
+                surfaces=["internal", "channel", "plane"],
+                comment=comment[:200],
+                issue_id=issue_id,
+                project=project,
+            )
 
         except Exception as e:
             result["error"] = str(e)
