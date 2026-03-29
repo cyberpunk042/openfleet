@@ -15,6 +15,16 @@ if [[ ! -f .env ]]; then
     TOKEN=$(python3 -c "import secrets; print(secrets.token_urlsafe(64))")
     sed -i "s/LOCAL_AUTH_TOKEN=.*/LOCAL_AUTH_TOKEN=${TOKEN}/" .env
     echo "Generated LOCAL_AUTH_TOKEN"
+    # Ensure Postgres port doesn't conflict with Plane (5432)
+    if ! grep -q "POSTGRES_PORT" .env; then
+        echo "POSTGRES_PORT=5433" >> .env
+    fi
+fi
+
+# Ensure Postgres port is 5433 (Plane uses 5432)
+if grep -q "POSTGRES_PORT=5432" .env 2>/dev/null; then
+    sed -i 's/POSTGRES_PORT=5432/POSTGRES_PORT=5433/' .env
+    echo "Fixed POSTGRES_PORT: 5432 → 5433 (avoid Plane conflict)"
 fi
 
 # Clone vendor if needed
