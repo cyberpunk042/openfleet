@@ -131,6 +131,32 @@
 
 ---
 
+## EVENT BUS STATUS (The Nervous System)
+
+| Component | File | Status | Tests |
+|-----------|------|--------|-------|
+| Event Store | fleet/core/events.py | ✅ BUILT | 15 tests |
+| Event Router | fleet/core/event_router.py | ✅ BUILT | 16 tests |
+| Chain Runner | fleet/core/chain_runner.py | ✅ BUILT | 9 tests |
+| PLANE Surface | fleet/core/event_chain.py | ✅ ADDED | — |
+| MCP Event Emission | fleet/mcp/tools.py | ✅ 10 tools emit events | — |
+| Agent Event Feed | fleet/mcp/tools.py | ✅ fleet_read_context | — |
+| Plane Watcher | fleet/core/plane_watcher.py | ✅ BUILT | — |
+| Sync Events | fleet/cli/sync.py | ✅ WIRED | — |
+| Error Reporting | fleet/mcp/tools.py | ✅ WIRED | — |
+| Plane MCP Tools (7) | fleet/mcp/tools.py | ✅ BUILT | — |
+| Fleet-Plane Skill | .claude/skills/fleet-plane/ | ✅ BUILT | — |
+| Chain Wiring (M-EB15) | — | ❌ NOT DONE | fleet_task_complete still monolith |
+| Adaptive Display (M-EB16) | — | ❌ NOT DONE | Same event → diff format per channel |
+| IaC Sync (M-EB18) | — | ❌ NOT DONE | Config differential tracking |
+
+**Daemons:** 5 concurrent (sync 60s, auth 120s, monitor 300s, orchestrator 30s, plane-watcher 120s)
+**MCP Tools:** 20 total (13 fleet + 7 Plane)
+**Skills:** 7 Claude Code skills
+**Tests:** 381 passing
+
+---
+
 ## WHAT'S ACTUALLY NEXT
 
 1. ✅ ~~Start MC + gateway~~ — done
