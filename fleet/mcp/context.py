@@ -28,6 +28,20 @@ class FleetMCPContext:
     agent_name: str = ""
     board_id: str = ""
     worktree: str = ""
+    _fleet_id: str = ""
+    _fleet_prefix: str = ""
+
+    @property
+    def namespaced_agent(self) -> str:
+        """Agent name with fleet prefix for cross-fleet ops (Plane, etc.)."""
+        if self._fleet_prefix and self.agent_name:
+            return f"{self._fleet_prefix}-{self.agent_name}"
+        return self.agent_name or ""
+
+    @property
+    def fleet_id(self) -> str:
+        """Unique fleet instance ID."""
+        return self._fleet_id
 
     # Clients (lazy-initialized)
     _mc: Optional[MCClient] = field(default=None, repr=False)
@@ -45,12 +59,28 @@ class FleetMCPContext:
         Credentials from TOOLS.md or .env.
         """
         fleet_dir = os.environ.get("FLEET_DIR", ".")
+        agent_name = os.environ.get("FLEET_AGENT", "")
+
+        # Load fleet identity for namespaced operations (Plane, cross-fleet)
+        fleet_id = ""
+        fleet_prefix = ""
+        try:
+            from fleet.core.federation import load_fleet_identity
+            identity = load_fleet_identity(fleet_dir)
+            if identity:
+                fleet_id = identity.fleet_id
+                fleet_prefix = identity.agent_prefix
+        except Exception:
+            pass
+
         ctx = cls(
             fleet_dir=fleet_dir,
             task_id=os.environ.get("FLEET_TASK_ID", ""),
             project_name=os.environ.get("FLEET_PROJECT", ""),
-            agent_name=os.environ.get("FLEET_AGENT", ""),
+            agent_name=agent_name,
         )
+        ctx._fleet_id = fleet_id
+        ctx._fleet_prefix = fleet_prefix
         return ctx
 
     @property

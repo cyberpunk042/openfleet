@@ -425,6 +425,22 @@ async def _dispatch_ready_tasks(
     from fleet.cli.dispatch import _run_dispatch
     from fleet.core.task_scoring import rank_tasks
 
+    # ERROR CHECK — detect agent errors (rate limits, API outages)
+    from fleet.core.error_reporter import detect_rate_limit, detect_api_outage
+    if detect_rate_limit():
+        state.errors.append("RATE LIMIT detected — backing off dispatch")
+        await _notify(irc, "#alerts", "[orchestrator] Rate limit detected — reducing dispatch")
+        return  # Skip this cycle
+    if detect_api_outage():
+        state.errors.append("API OUTAGE detected — multiple agents reporting errors")
+        await _notify(irc, "#alerts", "[orchestrator] API outage — pausing dispatch")
+        await _notify_human(
+            title="Fleet: API outage detected",
+            message="Multiple agents reporting errors. Fleet pausing dispatch.",
+            event_type="escalation",
+        )
+        return
+
     # BUDGET CHECK — read real quota from Claude OAuth API (rate-limited, cached 5 min)
     safe, reason = _budget_monitor.check_quota()
     if not safe:
