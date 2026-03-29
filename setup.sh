@@ -208,11 +208,26 @@ echo ""
 bash scripts/setup-irc.sh
 echo ""
 
-# Step 8: Start the fleet (gateway must be up before MC connects)
+# Step 8: Clear fleet agents from gateway config (MC re-provisions them fresh)
+echo "=== Preparing Gateway for Provisioning ==="
+python3 -c "
+import json, os
+p = os.path.expanduser('~/.openclaw/openclaw.json')
+with open(p) as f: cfg = json.load(f)
+agents = cfg.get('agents', {}).get('list', [])
+kept = [a for a in agents if 'Gateway' in a.get('name', '')]
+print(f'  Cleared {len(agents) - len(kept)} agent entries for MC to re-provision')
+cfg['agents']['list'] = kept
+with open(p, 'w') as f: json.dump(cfg, f, indent=2)
+" 2>/dev/null || echo "  SKIP"
+echo ""
+
+# Step 8b: Start the fleet (gateway must be up before MC connects)
 bash scripts/start-fleet.sh
 echo ""
 
 # Step 9: Start Mission Control + connect gateway + sync templates + push SOUL.md
+# MC provisions agents on the gateway (agents.create succeeds because they don't exist)
 bash scripts/setup-mc.sh
 echo ""
 
