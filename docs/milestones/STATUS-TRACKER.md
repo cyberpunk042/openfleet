@@ -1,168 +1,150 @@
 # Fleet Status Tracker — Where We Actually Are
 
-## Last Updated: 2026-03-28 end of session
+## Last Updated: 2026-03-29
 
 ---
 
-## CRITICAL BUGS (catastrophic-usage-drain-investigation.md)
+## FLEET STATUS
 
-| # | Bug | Status | Notes |
-|---|-----|--------|-------|
-| C0 | Revert _send_chat from orchestrator | ✅ CODE DONE | Needs verification when fleet restarts |
-| C1 | Clean gateway duplicates (22→11) | ✅ DONE | openclaw.json cleaned |
-| C2 | Stale process detection | ✅ TOOL BUILT | scripts/check-fleet-processes.sh |
-| C3 | Fleet pause/resume | ✅ CODE DONE | fleet pause / fleet resume commands |
-| C4 | Budget monitor in dispatch | ✅ CODE DONE | Reads CLAUDE_QUOTA_* env vars |
-| C5 | Real budget monitor | ✅ CODE DONE | fleet/core/budget_monitor.py |
-| C6 | Max 2 dispatch per cycle | ✅ CODE DONE | In orchestrator |
-| C7 | Cascade depth limit | ✅ CODE DONE | Max 3 levels in fleet_task_create |
-| C8 | Effort profiles | ✅ CODE DONE | fleet/core/effort_profiles.py, conservative default |
-| C9 | Heartbeat rewrites (all 10) | ✅ CODE DONE | Fast-exit pattern, active participation |
-| C10 | Board cleanup | ✅ TOOL BUILT | fleet/core/board_cleanup.py — needs MC to execute |
-| C11 | Gateway heartbeat stagger | ✅ DONE | Different intervals per agent (30-90m) |
-| C12 | Outage detection | ✅ CODE DONE | fleet/core/outage_detector.py |
-| C13 | Effort profiles | ✅ CODE DONE | Same as C8 |
-| C14 | fleet-ops budget guardian | ✅ IN HEARTBEAT | fleet-ops HEARTBEAT.md has budget section |
-
-**STATUS: All C items have CODE. NONE verified running. Fleet is stopped.**
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Gateway | ✅ RUNNING | PID stable, NODE_OPTIONS=4GB heap, OOM fix applied |
+| MC Backend | ✅ RUNNING | Docker, 10/10 agents online |
+| MC Frontend | ✅ RUNNING | http://localhost:3000 |
+| Orchestrator | ✅ RUNNING | 30s cycles, conservative effort, NameError bugs fixed |
+| Sync daemon | ✅ RUNNING | 60s interval |
+| Monitor daemon | ✅ RUNNING | 300s interval |
+| Auth daemon | ✅ RUNNING | 120s interval |
+| IRC | ✅ RUNNING | miniircd on port 6667, 10 channels configured |
+| The Lounge | ✅ RUNNING | http://localhost:9000 (fleet/fleet) |
+| ntfy | ✅ RUNNING | 3 topics configured |
+| Agents | ✅ 10/10 ONLINE | Template sync working, last_seen_at fix applied |
+| Board | ✅ CLEAN | Fresh board, 0 tasks (ready for PM to populate) |
+| Communication | ✅ VERIFIED | 8-point check passed (PR8) |
 
 ---
 
-## ORIGINAL BUGS (critical-bugs-and-missing-work.md)
+## SETUP IaC STATUS
 
-| # | Bug | Status | Notes |
-|---|-----|--------|-------|
-| 1 | Heartbeat model wrong | ✅ REDESIGNED | Gateway handles heartbeats, orchestrator doesn't create sessions |
-| 2 | MCP server doesn't reload | ✅ TOOL BUILT | scripts/reprovision-agents.sh |
-| 3 | Chat not working e2e | ❌ NOT VERIFIED | fleet_chat tool built, never tested with real agents |
-| 4 | Sprint work blocked | ✅ CODE DONE | Task scoring, max dispatch, effort profiles |
-| 5 | Plane IaC | ✅ AGENT BUILT IT | devops built plane-configure.sh in Sprint 3 |
-| 6 | Framework not pushed/provisioned | ✅ TOOL BUILT | scripts/push-agent-framework.sh + reprovision |
-| 7 | Board memory pollution | ✅ CODE DONE | Removed post_memory from sync daemon |
-| 8 | Review task flooding | ✅ CODE DONE | _wake_lead_for_reviews uses IRC only |
-| 9 | No reprovision after code changes | ✅ TOOL BUILT | scripts/reprovision-agents.sh |
-| 10 | No verification culture | ❌ ONGOING | We keep claiming done without testing |
-
----
-
-## MISSING MILESTONES (critical-bugs-and-missing-work.md MM1-MM8)
-
-| # | Milestone | Status | Notes |
-|---|-----------|--------|-------|
-| MM1 | Event-driven agent wake | ❌ NOT BUILT | Design exists, gateway handles heartbeats, but no event→wake mapping |
-| MM2 | MCP hot-reload | ✅ WORKAROUND | reprovision-agents.sh kills and restarts MCP processes |
-| MM3 | Communication verification e2e | ❌ NOT DONE | Needs fleet running to test |
-| MM4 | Board memory hygiene | ✅ CODE DONE | Sync daemon cleaned, board_cleanup tool built |
-| MM5 | Sprint task priority | ✅ CODE DONE | task_scoring.py in orchestrator dispatch |
-| MM6 | Plane IaC script | ✅ AGENT BUILT | plane-configure.sh exists |
-| MM7 | Reprovision pipeline | ✅ TOOL BUILT | scripts/reprovision-agents.sh |
-| MM8 | Agent event filtering | ❌ NOT BUILT | events_for_me in context not implemented |
+| Script | Status | Notes |
+|--------|--------|-------|
+| setup.sh | ✅ WORKS END-TO-END | Ran 3 times, bugs fixed each time |
+| install-openclaw.sh | ✅ OK | |
+| configure-auth.sh | ✅ OK | |
+| configure-openclaw.sh | ✅ OK | |
+| register-agents.sh | ✅ OK | |
+| setup-irc.sh | ✅ OK | #fleetS typo fixed |
+| start-fleet.sh | ✅ OK | 4GB heap, fail-hard on timeout |
+| setup-mc.sh | ✅ OK | Retry sync with timeout, no duplicate sync |
+| setup-lounge.sh | ✅ OK | |
+| clean-gateway-config.sh | ✅ OK | Session ID derivation from openclaw_session_id |
+| configure-agent-settings.sh | ✅ OK | |
+| push-agent-framework.sh | ✅ OK | |
+| configure-board.sh | ✅ OK | 14 custom fields, 20 tags |
 
 ---
 
-## PRE-RELAUNCH (pre-relaunch-milestones.md PR1-PR8)
+## BUGS FIXED THIS SESSION
 
-| # | Milestone | Status | Notes |
-|---|-----------|--------|-------|
-| PR1 | Event-driven wake | ❌ NOT BUILT | Same as MM1 |
-| PR2 | Agent event filtering | ❌ NOT BUILT | Same as MM8 |
-| PR3 | Sprint task priority | ✅ CODE DONE | task_scoring.py |
-| PR4 | PM as Scrum Master | ✅ HEARTBEAT DONE | PM HEARTBEAT.md rewritten with scrum duties |
-| PR5 | Software engineer active | ✅ HEARTBEAT DONE | sw-eng HEARTBEAT.md rewritten |
-| PR6 | All agents active participation | ✅ HEARTBEAT DONE | All 10 rewritten |
-| PR7 | Clean board before relaunch | ✅ TOOL BUILT | board_cleanup.py — needs MC to execute |
-| PR8 | E2E communication test | ❌ NOT DONE | 8-point check needs fleet running |
-
----
-
-## FLEET MILESTONES (pre-relaunch-milestones.md F1-F4)
-
-| # | Milestone | Status | Notes |
-|---|-----------|--------|-------|
-| F1 | PM drives Sprint 3 properly | ❌ NOT STARTED | Needs fleet relaunch |
-| F2 | Agents communicate during work | ❌ NOT STARTED | Needs fleet relaunch |
-| F3 | Review chain with quality | ❌ NOT STARTED | Needs fleet relaunch |
-| F4 | Sprint 3 completes with quality | ❌ NOT STARTED | Needs fleet relaunch |
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| TOOLS.md parser | MC template generates markdown format, parser expects plain | Strip `- ` and backticks in _parse_tools_md |
+| Agents stuck at "provisioning" | mark_provision_complete didn't set last_seen_at | Always set last_seen_at when status=online |
+| Agents show "offline" after setup | last_seen_at only set on first provision (is None check) | Removed is None — always refresh |
+| Board lead ID mismatch | clean-gateway-config used mc-{id} for board lead | Derive from openclaw_session_id |
+| Gateway config anomaly | Step 8 shrinks config, gateway rejects size drop | Reset config-health.json |
+| Gateway OOM crash | Template sync rapid config.patch → SIGUSR1 storm → heap exhaustion | NODE_OPTIONS=4GB + no force_bootstrap on final sync |
+| Orchestrator crash (DRIVER_AGENTS) | Undefined constant referenced | Inline default list |
+| Orchestrator crash (config) | _dispatch_ready_tasks missing config parameter | Added config parameter |
+| IRC channel typo | #fleetS instead of #fleet | Fixed to #fleet |
+| Hardcoded username | "Jean Fortin" in gateway/setup.py | FLEET_USER_NAME env var |
+| Template sync hangs | No timeout on curl in setup-mc.sh | Added 180s timeout + retry logic |
+| setup.sh hangs | Gateway not starting (config anomaly) | Reset health checkpoint + fail-hard |
 
 ---
 
-## COMMUNICATION (communication-infrastructure-milestones.md M230-M236)
+## VENDOR PATCHES (survive fresh git clone)
 
-| # | Milestone | Status | Notes |
-|---|-----------|--------|-------|
-| M230 | Internal chat (fleet_chat) | ✅ CODE DONE | Tool built, @mention routing, not verified |
-| M231 | IRC 10 channels | ✅ CODE DONE | Routing matrix in irc.py, setup-irc.sh updated |
-| M232 | ntfy operational | ✅ CODE DONE | Triggers expanded, topics configured |
-| M233 | Agent context enrichment | ✅ CODE DONE | sprint, role, health, chat in fleet_read_context |
-| M234 | Pre-Plane verification | ✅ SCRIPT DONE | 8-point check passed once, needs re-verify |
-| M235 | Plane integration comms | ❌ NOT STARTED | Needs Plane configured first |
-| M236 | Documentation and skills | ✅ DONE | 6 Claude Code skills built |
+| Patch | File | Purpose |
+|-------|------|---------|
+| 0001 | skills_marketplace.py | Category/risk upsert fix |
+| 0002 | provisioning_db.py | TOOLS.md parser handles markdown format |
+| 0003 | db_agent_state.py | last_seen_at set on provision complete |
 
 ---
 
-## EVOLUTION (fleet-evolution-milestones.md M220-M227)
+## DSPD STATUS
 
-| # | Milestone | Status | Notes |
-|---|-----------|--------|-------|
-| M220 | Agent secondary roles | ✅ CODE DONE | fleet/core/agent_roles.py with PR authority |
-| M221 | Behavioral security | ✅ CODE DONE | fleet/core/behavioral_security.py |
-| M222 | Multi-machine federation | ✅ CODE DONE | fleet/core/federation.py |
-| M223 | Remote change detection | ✅ CODE DONE | fleet/core/remote_watcher.py + sync integration |
-| M224 | Planning enforcement | ✅ CODE DONE | fleet/core/plan_quality.py in fleet_task_accept |
-| M225 | Dynamic model selection | ✅ CODE DONE | fleet/core/model_selection.py in dispatch |
-| M226 | Skill enforcement | ✅ CODE DONE | fleet/core/skill_enforcement.py |
-| M227 | Strong cohesive memory | ✅ STRUCTURE DONE | memory_structure.py, 50 files initialized |
-
----
-
-## STRATEGIC (strategic-vision-localai-independence.md)
-
-| # | Stage | Status | Notes |
-|---|-------|--------|-------|
-| 1 | Make LocalAI functional | ❌ NOT STARTED | Assess AICP + LocalAI current state first |
-| 2 | Route simple ops to LocalAI | ❌ NOT STARTED | Needs Stage 1 |
-| 3 | Progressive offload | ❌ NOT STARTED | Needs Stage 2 |
-| 4 | Reliability and failover | ❌ NOT STARTED | Needs Stage 3 |
-| 5 | Near-independent operation | ❌ NOT STARTED | Needs Stage 4 |
-
----
-
-## SPRINT STATUS
-
-| Sprint | Status |
-|--------|--------|
-| DSPD Sprint 1 | ✅ COMPLETE (8/8 tasks) |
-| DSPD Sprint 2 | ✅ COMPLETE (8/8 tasks) |
-| DSPD Sprint 3 | ⏸️ PAUSED — 1/10 done, fleet stopped after drain |
+| Item | Status | Notes |
+|------|--------|-------|
+| Docker compose | ✅ BUILT | docker-compose.plane.yaml, 12 services |
+| plane.env.example | ✅ BUILT | All creds marked ⚠️ CHANGE |
+| setup.sh | ✅ BUILT | install/start/stop/status/validate/upgrade/uninstall |
+| plane-configure.sh | ✅ BUILT | Superuser + workspace + API token + god-mode + password |
+| plane-seed-mission.sh | ✅ BUILT | Reads config/mission.yaml + per-project board configs |
+| config/mission.yaml | ✅ BUILT | 4 projects, per-project states, modules, labels, estimates |
+| config/aicp-board.yaml | ✅ BUILT | LocalAI 5 stages as epics, pages, acceptance criteria |
+| config/fleet-board.yaml | ✅ BUILT | Fleet modules, operational status page |
+| config/dspd-board.yaml | ✅ BUILT | DSPD phases, architecture page |
+| config/nnrt-board.yaml | ✅ BUILT | Pipeline modules, assessment page |
+| dspd/config.py | ✅ BUILT | All settings from env, no hardcoded values |
+| dspd/webhooks.py | ✅ BUILT | HMAC-SHA256, event handlers, ASGI receiver |
+| fleet/infra/plane_client.py | ✅ BUILT | Typed async API client |
+| fleet/cli/plane.py | ✅ BUILT | create/list/sync/status CLI |
+| fleet/core/plane_sync.py | ✅ BUILT | Bidirectional Plane ↔ OCMC sync |
+| Unit tests | ✅ 18 PASSING | config, webhooks, plane_client, plane_sync |
+| Integration tests | ✅ BUILT | Live Plane API CRUD (needs Plane running) |
+| Plane deployed | ❌ NOT YET | setup.sh install not run (needs Docker pull) |
+| Mission seeded | ❌ NOT YET | Needs Plane running first |
+| Fleet connected | ❌ NOT YET | Needs Plane running + credentials exported |
 
 ---
 
-## WHAT'S ACTUALLY NEXT (in order)
+## AICP/LocalAI STATUS
 
-1. **Start MC containers** (Docker) — needed for board cleanup and verification
-2. **Execute board cleanup** — use board_cleanup tool via fleet-ops or CLI
-3. **Push framework to agents** — reprovision with latest heartbeats/tools
-4. **Start gateway with cleaned config** — 11 agents, staggered heartbeats
-5. **Verify communication e2e** — PR8 8-point check
-6. **Start orchestrator in conservative mode** — effort_profile=conservative
-7. **Observe** — does the fleet behave? Is budget under control?
-8. **Sprint 3 resumes** — PM drives, agents communicate, review chain works
-9. **Sprint 3 completes** — Plane configured, IaC scripts verified
-10. **DSPD Sprint 4** — Plane ↔ OCMC sync, PM uses Plane
-11. **LocalAI epic** — first Plane epic, long-run
+| Item | Status | Notes |
+|------|--------|-------|
+| LocalAI container | ✅ RUNNING | Healthy, 9 models loaded |
+| hermes (7B) | ✅ WORKING | 80s cold, 1s warm, GPU |
+| hermes-3b (3B) | ✅ WORKING | 10s cold, 1.2s warm, GPU — target for heartbeats |
+| codellama (7B) | ✅ LOADED | Not benchmarked yet |
+| phi-2 (2.7B) | ✅ LOADED | CPU-only, fallback |
+| OpenAI-compatible API | ✅ VERIFIED | Chat completions working |
+| AICP package | ✅ EXISTS | aicp/ with core, backends, guardrails, cli, config, mcp |
+| Stage 1 assessment | 🔶 IN PROGRESS | Models working, benchmarks started |
+| Stage 2 inference router | ❌ NOT STARTED | Needs Stage 1 complete |
+| Stages 3-5 | ❌ NOT STARTED | Long-term |
+
+---
+
+## WHAT'S ACTUALLY NEXT
+
+1. ✅ ~~Start MC + gateway~~ — done
+2. ✅ ~~Verify communication e2e~~ — 8/8 passed
+3. ✅ ~~Fix orchestrator bugs~~ — NameError + config fixed
+4. ✅ ~~Fix gateway OOM~~ — 4GB heap + no force_bootstrap
+5. ✅ ~~DSPD IaC built~~ — configs, scripts, Python, tests
+6. ✅ ~~LocalAI assessment started~~ — models working, benchmarks
+7. ✅ ~~Docs cleaned~~ — organized into active/design/archive
+8. **Deploy Plane** — `cd devops-solution-product-development && ./setup.sh install`
+9. **Verify mission seeded** — 4 projects, modules, labels, pages in Plane UI
+10. **Connect fleet to Plane** — credentials in fleet .env
+11. **PM agent first heartbeat with Plane** — reads sprint, creates tasks
+12. **AICP Stage 1 complete** — full benchmark, cluster verification
+13. **Fleet operational observation** — 24h stable run
+14. **Resume autonomous flow** — PM drives, agents execute, review chain works
 
 ---
 
 ## THINGS BUILT BUT NEVER VERIFIED RUNNING
 
-- fleet_chat tool (#14) — agents have it in MCP but never used it
-- fleet_notify_human tool — ntfy publishes work (tested once) but agents never called it
-- fleet_escalate tool — never called by an agent
-- Budget monitor — CLAUDE_QUOTA_* env vars never tested in agent session
-- Board cleanup tool — plan_cleanup tested in unit tests, never executed on real board
-- Effort profiles — code in orchestrator, never ran with conservative profile
+- fleet_chat tool — agents have it but never used it live
+- fleet_notify_human — ntfy works but agents never called it
+- fleet_escalate — never called by an agent
+- Budget monitor (OAuth API) — code in orchestrator, never triggered
+- Effort profiles — conservative active, never tested with dispatches
 - Outage detector — code in orchestrator, never triggered
-- All 10 agent HEARTBEAT.md rewrites — pushed to workspaces but agents haven't read them yet
-- 10 IRC channels — routing matrix built but channels not created yet (IRC config updated, not restarted)
-- Review gates — fleet_task_complete populates them but fleet-ops never reviewed with them
-- Agent roles — PR authority coded but never enforced in a real approval flow
+- All 10 heartbeat rewrites — pushed but agents haven't read them
+- Review gates — fleet_task_complete populates but fleet-ops never reviewed
+- Agent roles / PR authority — coded but never enforced in real flow
+- Plane ↔ OCMC sync — code exists, never tested end-to-end
