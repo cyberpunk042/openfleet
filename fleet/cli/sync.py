@@ -174,6 +174,17 @@ async def _run_sync() -> int:
     # PR hygiene check — detect conflicts, stale PRs, orphaned PRs
     await _check_pr_hygiene(mc, gh, irc, board_id, tasks, actions)
 
+    # Budget status log (from real OAuth API)
+    try:
+        from fleet.core.budget_monitor import BudgetMonitor
+        bm = BudgetMonitor()
+        bm.check_quota()
+        status = bm.format_status()
+        if "PAUSE" in status:
+            print(f"  {status}")
+    except Exception:
+        pass
+
     if actions == 0:
         print("  Nothing to sync")
     else:
