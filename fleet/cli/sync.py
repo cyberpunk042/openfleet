@@ -282,6 +282,21 @@ async def _check_pr_comments(mc, gh, irc, board_id, tasks) -> None:
                     except Exception:
                         pass
 
+                    # Emit event for agent's feed
+                    _sync_emit_event(
+                        "fleet.github.pr_commented",
+                        subject=task.id,
+                        recipient=task.custom_fields.agent_name or "all",
+                        priority="important",
+                        mentions=[task.custom_fields.agent_name] if task.custom_fields.agent_name else [],
+                        tags=["github", "pr_comment", f"project:{task.custom_fields.project or 'unknown'}"],
+                        surfaces=["internal", "channel"],
+                        pr_url=pr_url,
+                        author=author,
+                        comment_preview=body[:100],
+                        action_needed=change.action_needed,
+                    )
+
             _pr_comment_counts[pr_url] = current_count
         except Exception:
             continue
