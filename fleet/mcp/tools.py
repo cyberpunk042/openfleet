@@ -702,31 +702,59 @@ def register_tools(server: FastMCP) -> None:
         except Exception:
             pass  # Approval creation is best-effort
 
-        # IRC notifications using templates
+        # Multi-surface publish via chain runner (IRC, ntfy, Plane, board memory)
         try:
-            await ctx.irc.notify(
-                "#fleet", irc_tmpl.format_pr_ready(agent_name, task_title, pr.url)
-            )
-            await ctx.irc.notify(
-                "#reviews", irc_tmpl.format_pr_review(agent_name, task_title, pr.url)
-            )
-        except Exception:
-            pass
+            from fleet.core.event_chain import build_task_complete_chain
+            from fleet.core.chain_runner import ChainRunner
 
-        # Board memory using templates
-        try:
-            await ctx.mc.post_memory(
-                board_id,
-                content=memory_tmpl.format_pr_notice(
-                    task_title=task_title, pr_url=pr.url,
-                    agent_name=agent_name, branch=branch,
-                    compare_url=urls.compare or "",
-                ),
-                tags=memory_tmpl.pr_tags(ctx.project_name),
-                source=agent_name,
+            chain = build_task_complete_chain(
+                task_id=ctx.task_id,
+                agent_name=agent_name,
+                summary=summary,
+                pr_url=pr.url,
+                branch=branch,
+                test_results=test_summary,
+                project=ctx.project_name or "",
             )
+
+            runner = ChainRunner(
+                mc=ctx.mc,
+                irc=ctx.irc,
+                gh=ctx.gh,
+                plane=ctx.plane,
+                board_id=board_id,
+                plane_workspace=ctx.plane_workspace if ctx.plane else "",
+            )
+            chain_result = await runner.run(chain)
+
+            if chain_result.errors:
+                for err in chain_result.errors[:3]:
+                    pass  # Chain errors are non-critical — tool already succeeded
         except Exception:
-            pass
+            # Chain execution is best-effort — core MC operations already done
+            # Fall back to direct IRC/memory if chain fails
+            try:
+                await ctx.irc.notify(
+                    "#fleet", irc_tmpl.format_pr_ready(agent_name, task_title, pr.url)
+                )
+                await ctx.irc.notify(
+                    "#reviews", irc_tmpl.format_pr_review(agent_name, task_title, pr.url)
+                )
+            except Exception:
+                pass
+            try:
+                await ctx.mc.post_memory(
+                    board_id,
+                    content=memory_tmpl.format_pr_notice(
+                        task_title=task_title, pr_url=pr.url,
+                        agent_name=agent_name, branch=branch,
+                        compare_url=urls.compare or "",
+                    ),
+                    tags=memory_tmpl.pr_tags(ctx.project_name),
+                    source=agent_name,
+                )
+            except Exception:
+                pass
 
         # Emit event for the event bus
         _emit_event(
