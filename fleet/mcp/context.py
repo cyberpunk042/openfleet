@@ -16,6 +16,7 @@ from fleet.infra.config_loader import ConfigLoader
 from fleet.infra.gh_client import GHClient
 from fleet.infra.irc_client import IRCClient
 from fleet.infra.mc_client import MCClient
+from fleet.infra.plane_client import PlaneClient
 
 
 @dataclass
@@ -47,6 +48,7 @@ class FleetMCPContext:
     _mc: Optional[MCClient] = field(default=None, repr=False)
     _irc: Optional[IRCClient] = field(default=None, repr=False)
     _gh: Optional[GHClient] = field(default=None, repr=False)
+    _plane: Optional[PlaneClient] = field(default=None, repr=False)
     _urls: Optional[UrlResolver] = field(default=None, repr=False)
     _config: Optional[ConfigLoader] = field(default=None, repr=False)
 
@@ -129,6 +131,23 @@ class FleetMCPContext:
         if self._gh is None:
             self._gh = GHClient()
         return self._gh
+
+    @property
+    def plane(self) -> Optional[PlaneClient]:
+        """Plane client — returns None if Plane not configured (optional surface)."""
+        if self._plane is None:
+            env = self.config.load_env()
+            plane_url = env.get("PLANE_URL", "")
+            plane_key = env.get("PLANE_API_KEY", "")
+            if plane_url and plane_key:
+                self._plane = PlaneClient(base_url=plane_url, api_key=plane_key)
+        return self._plane
+
+    @property
+    def plane_workspace(self) -> str:
+        """Plane workspace slug — from env or default 'fleet'."""
+        env = self.config.load_env()
+        return env.get("PLANE_WORKSPACE", "fleet")
 
     @property
     def urls(self) -> UrlResolver:

@@ -1233,3 +1233,169 @@ def register_tools(server: FastMCP) -> None:
             result["pending_approvals"] = []
 
         return result
+    # ─── Plane Tools (optional — only work when Plane is configured) ────
+
+    @server.tool()
+    async def fleet_plane_status(project: str = "") -> dict:
+        """Get Plane project status: sprint progress, modules, recent activity.
+
+        Plane is optional. Returns {"plane_available": false} if not configured.
+        Use this in heartbeats to understand project state without extra tool calls.
+
+        Args:
+            project: Project identifier (AICP, OF, DSPD, NNRT). Empty = all projects.
+        """
+        ctx = _get_ctx()
+        plane = ctx.plane
+        if not plane:
+            return {"plane_available": False, "message": "Plane not configured (PLANE_URL/PLANE_API_KEY missing)"}
+
+        ws = ctx.plane_workspace
+        result: dict = {"plane_available": True, "workspace": ws}
+
+        try:
+            projects = await plane.list_projects(ws)
+            if project:
+                projects = [p for p in projects if p.identifier == project.upper()]
+
+            proj_data = []
+            for p in projects:
+                proj_info: dict = {
+                    "identifier": p.identifier,
+                    "name": p.name,
+                }
+
+                # Cycles (sprints)
+                try:
+                    cycles = await plane.list_cycles(ws, p.id)
+                    current = [c for c in cycles if c.status == "current"]
+                    proj_info["active_sprint"] = current[0].name if current else None
+                    proj_info["total_cycles"] = len(cycles)
+                except Exception:
+                    proj_info["active_sprint"] = None
+
+                # Modules (epics)
+                try:
+                    modules = await plane.list_cycles(ws, p.id)
+                except Exception:
+                    pass
+
+                # Issues count
+                try:
+                    issues = await plane.list_issues(ws, p.id, limit=1)
+                except Exception:
+                    pass
+
+                proj_data.append(proj_info)
+
+            result["projects"] = proj_data
+
+        except Exception as e:
+            result["error"] = str(e)
+
+        return result
+
+    @server.tool()
+    async def fleet_plane_sprint(project: str = "AICP") -> dict:
+        """Get current sprint details: issues, progress, velocity.
+
+        Args:
+            project: Project identifier (default: AICP).
+        """
+        ctx = _get_ctx()
+        plane = ctx.plane
+        if not plane:
+            return {"plane_available": False}
+
+        ws = ctx.plane_workspace
+        result: dict = {"plane_available": True, "project": project}
+
+        try:
+            projects = await plane.list_projects(ws)
+            proj = next((p for p in projects if p.identifier == project.upper()), None)
+            if not proj:
+                return {"error": f"Project {project} not found in Plane"}
+
+            # Get cycles
+            cycles = await plane.list_cycles(ws, proj.id)
+            current = next((c for c in cycles if c.status == "current"), None)
+            if not current:
+                # Fall back to most recent
+                current = cycles[0] if cycles else None
+
+            if current:
+                result["sprint"] = {
+                    "name": current.name,
+                    "status": current.status,
+                    "start_date": current.start_date,
+                    "end_date": current.end_date,
+                }
+
+            # Get issues
+            issues = await plane.list_issues(ws, proj.id)
+            result["total_issues"] = len(issues)
+
+            by_priority: dict[str, int] = {}
+            for i in issues:
+                by_priority[i.priority] = by_priority.get(i.priority, 0) + 1
+            result["by_priority"] = by_priority
+
+            # Get modules
+            modules_resp = await plane.list_cycles(ws, proj.id)
+
+        except Exception as e:
+            result["error"] = str(e)
+
+        return result
+
+    @server.tool()
+    async def fleet_plane_sync(direction: str = "both") -> dict:
+        """Trigger Plane ↔ OCMC sync.
+
+        Args:
+            direction: "in" (Plane→OCMC), "out" (OCMC→Plane), or "both".
+        """
+        ctx = _get_ctx()
+        plane = ctx.plane
+        if not plane:
+            return {"plane_available": False}
+
+        from fleet.core.plane_sync import PlaneSyncer
+
+        ws = ctx.plane_workspace
+        board_id = await ctx.resolve_board_id()
+
+        try:
+            projects = await plane.list_projects(ws)
+            project_ids = [p.id for p in projects]
+
+            syncer = PlaneSyncer(
+                mc=ctx.mc,
+                plane=plane,
+                board_id=board_id,
+                workspace_slug=ws,
+                project_ids=project_ids,
+            )
+
+            result: dict = {"direction": direction}
+
+            if direction in ("in", "both"):
+                ingest = await syncer.ingest_from_plane()
+                result["ingest"] = {
+                    "created": len(ingest.created),
+                    "skipped": ingest.skipped_count,
+                    "errors": ingest.errors,
+                }
+
+            if direction in ("out", "both"):
+                push = await syncer.push_completions_to_plane()
+                result["push"] = {
+                    "updated": len(push.updated),
+                    "skipped": len(push.skipped),
+                    "errors": push.errors,
+                }
+
+            return result
+
+        except Exception as e:
+            return {"error": str(e)}
