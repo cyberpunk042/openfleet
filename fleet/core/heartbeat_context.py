@@ -163,6 +163,7 @@ def build_heartbeat_context(
     fleet_id: str = "",
     sprint_id: str = "",
     plane_data: dict = None,
+    event_feed: list = None,
 ) -> HeartbeatBundle:
     """Build heartbeat context for an agent using direct data (no AI).
 
@@ -240,5 +241,20 @@ def build_heartbeat_context(
         bundle.plane_sprint = plane_data.get("sprint_summary", "")
         bundle.plane_new_items = plane_data.get("new_items", [])
         bundle.plane_blocked = plane_data.get("blocked_count", 0)
+
+    # Event feed (from persistent event store — no API calls)
+    if event_feed:
+        for event in event_feed:
+            priority = event.get("priority", "info")
+            event_type = event.get("type", "")
+            title = event.get("data", {}).get("title", event.get("data", {}).get("summary", event_type))
+
+            if priority in ("urgent", "important"):
+                bundle.domain_events.append({
+                    "content": f"[{priority.upper()}] {title[:100]}",
+                    "tags": event.get("data", {}).get("tags", []),
+                })
+            elif agent_name in event.get("data", {}).get("mentions", []):
+                bundle.mentioned_by.append(event.get("data", {}).get("agent", "system"))
 
     return bundle
