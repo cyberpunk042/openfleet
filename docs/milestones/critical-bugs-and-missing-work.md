@@ -1,5 +1,73 @@
 # Critical Bugs and Missing Work — 2026-03-28 Late Session
 
+## Bug 0: CRITICAL — Fleet Drains Entire Usage Plan in Minutes
+
+**Severity:** CRITICAL — costs real money, makes fleet unusable.
+
+**Symptom:** With no work to do, the fleet burned through the user's entire
+Claude Code usage plan in a few minutes. Agents cycling through heartbeats,
+each heartbeat triggering a full Claude Code session that consumes tokens.
+
+**Root cause (multiple layers):**
+
+1. **Every gateway wake = full Claude Code session.** When the orchestrator
+   calls `_send_chat(session_key, message)`, the gateway starts a Claude Code
+   execution. Even if the agent has nothing to do, it still reads CLAUDE.md,
+   HEARTBEAT.md, processes the message, calls tools, and responds. That's
+   thousands of tokens per heartbeat per agent.
+
+2. **10 agents × heartbeat every 30 min = 20 sessions/hour minimum.**
+   Each session is ~5,000-20,000 tokens (read context, call tools, respond).
+   That's 100,000-400,000 tokens/hour doing NOTHING.
+
+3. **The gateway's own heartbeat system also cycles agents.** Independent of
+   the orchestrator, the gateway triggers agent heartbeats based on
+   `heartbeat_config.every: "10m"`. So agents get woken TWICE — by orchestrator
+   AND by gateway. Double drain.
+
+4. **No token budget awareness.** The orchestrator has no concept of cost.
+   It wakes agents regardless of whether there's work, regardless of how
+   many tokens have been consumed, regardless of the user's plan limits.
+
+5. **Board was 90% noise.** 75 heartbeat tasks + 5 review tasks + 10 conflict
+   tasks = 90 noise tasks out of 100. Every agent session processed this
+   noise list, consuming tokens just to read garbage.
+
+**What must happen:**
+
+1. **Token budget system.** The orchestrator must track estimated token usage
+   and stop waking agents when budget is exhausted. Hard daily limit.
+
+2. **Gateway heartbeat interval must be LONG.** Default "10m" is insane for
+   10 agents. Should be "60m" minimum, "120m" for workers.
+   Change in openclaw.json AND per-agent heartbeat_config.
+
+3. **Don't wake agents with no work.** The orchestrator already checks for
+   assigned work before waking — but the GATEWAY heartbeat system doesn't.
+   The gateway wakes agents on its own schedule regardless.
+
+4. **Batch operations.** Instead of waking each agent individually, the
+   orchestrator should batch: check all agents' state, determine who
+   ACTUALLY needs waking (has work, has chat, has events), only wake those.
+
+5. **Short heartbeat responses.** Agent HEARTBEAT.md should say: "If nothing
+   needs attention, respond with just HEARTBEAT_OK — do NOT call tools,
+   do NOT read context, just respond immediately." Minimize token usage
+   for empty heartbeats.
+
+6. **Usage monitoring.** Track tokens consumed per agent per session.
+   Alert if usage exceeds threshold. Auto-stop if daily budget exceeded.
+
+7. **Fleet OFF by default.** Daemons should NOT run continuously.
+   Run orchestrator on-demand or on a very long interval (5+ min).
+   Only wake agents when there's ACTUAL work.
+
+**Immediate actions taken:**
+- Fleet processes KILLED. No daemons running.
+- Do NOT restart until all fixes verified.
+
+---
+
 ## What The User Said (Verbatim)
 
 > "the agents seems constantly blocked into a heartbeat sequence.... all at the

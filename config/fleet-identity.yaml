@@ -1,0 +1,7 @@
+fleet:
+  id: fleet-99c1272b
+  name: Fleet WORKSTATION-JFM
+  machine: WORKSTATION-JFM
+  uuid: 99c1272b-9d15-46ad-ae0c-363267aeb7ce
+  agent_prefix: 99c1
+  created_at: '2026-03-29T00:16:23.159698'

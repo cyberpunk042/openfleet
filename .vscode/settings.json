@@ -1,0 +1,28 @@
+{
+  "files.exclude": {
+    "workspace-mc-*": true,
+    "workspace-gateway-*": true,
+    ".fleet-cache.db": true,
+    ".fleet-cache.db-shm": true,
+    ".fleet-cache.db-wal": true,
+    ".fleet-mcp-debug.log": true,
+    ".fleet-daemons.log": true,
+    ".fleet-errors.json": true,
+    ".gateway.log": true,
+    ".all.pid": true,
+    ".sync.pid": true,
+    ".monitor.pid": true,
+    "projects/*/worktrees": true,
+    "__pycache__": true,
+    "*.pyc": true,
+    ".venv": true
+  },
+  "search.exclude": {
+    "workspace-mc-*": true,
+    "workspace-gateway-*": true,
+    "projects/*/worktrees": true,
+    ".venv": true,
+    "vendor": true,
+    "__pycache__": true
+  }
+}
