@@ -92,11 +92,25 @@
 | fleet/infra/plane_client.py | ✅ BUILT | Typed async API client |
 | fleet/cli/plane.py | ✅ BUILT | create/list/sync/status CLI |
 | fleet/core/plane_sync.py | ✅ BUILT | Bidirectional Plane ↔ OCMC sync |
-| Unit tests | ✅ 18 PASSING | config, webhooks, plane_client, plane_sync |
-| Integration tests | ✅ BUILT | Live Plane API CRUD (needs Plane running) |
-| Plane deployed | ❌ NOT YET | setup.sh install not run (needs Docker pull) |
-| Mission seeded | ❌ NOT YET | Needs Plane running first |
-| Fleet connected | ❌ NOT YET | Needs Plane running + credentials exported |
+| Unit tests | ✅ 78 PASSING | config, webhooks, plane_client, plane_sync |
+| Integration tests | ✅ BUILT | Live Plane API CRUD |
+| Plane deployed | ✅ RUNNING | 12 containers, all healthy |
+| Mission seeded | ✅ DONE | 4 projects via REST API, 22 modules, 76 labels, 9 pages |
+| Fleet connected | ✅ DONE | Credentials in fleet .env, fleet plan list-projects works |
+| Agent accounts | ✅ DONE | 12 users (admin + 10 agents + service), visible in picker |
+| Issue types | ✅ DONE | Epic, Story, Task, Bug, Spike, Chore with hierarchy |
+| Saved views | ✅ DONE | 24 views (6 per project) |
+| Module links | ✅ DONE | 26 GitHub + docs cross-references |
+| Module leads | ✅ DONE | 22 lead assignments from fleet-roles.yaml |
+| Starter issues | ✅ DONE | 13 issues (4 epics + 9 tasks), typed, assigned, in cycles |
+| Issue relations | ✅ DONE | 9 cross-project + intra-project dependencies |
+| Workspace links | ✅ DONE | 7 home page quick links (GitHub, MC, IRC, LocalAI) |
+| Rich HTML pages | ✅ DONE | Tables, blockquotes, code blocks, links — no more pre blocks |
+| Milestone docs | ✅ DONE | 47 milestones across 6 documents |
+| config/fleet-roles.yaml | ✅ DONE | All 10 agents with roles, skills, capabilities |
+| config/fleet-members.yaml | ✅ DONE | Agent accounts, issue types, views — IaC |
+| plane-setup-members.sh | ✅ DONE | Creates agents, types, views from config |
+| plane-setup-content.sh | ✅ DONE | Creates links, leads, welcome issues, starter issues |
 
 ---
 
@@ -126,13 +140,19 @@
 5. ✅ ~~DSPD IaC built~~ — configs, scripts, Python, tests
 6. ✅ ~~LocalAI assessment started~~ — models working, benchmarks
 7. ✅ ~~Docs cleaned~~ — organized into active/design/archive
-8. **Deploy Plane** — `cd devops-solution-product-development && ./setup.sh install`
-9. **Verify mission seeded** — 4 projects, modules, labels, pages in Plane UI
-10. **Connect fleet to Plane** — credentials in fleet .env
-11. **PM agent first heartbeat with Plane** — reads sprint, creates tasks
-12. **AICP Stage 1 complete** — full benchmark, cluster verification
-13. **Fleet operational observation** — 24h stable run
-14. **Resume autonomous flow** — PM drives, agents execute, review chain works
+8. ✅ ~~Deploy Plane~~ — 12 containers running, seeded via REST API
+9. ✅ ~~Mission seeded~~ — 4 projects, 22 modules, 76 labels, 9 pages, 13 issues
+10. ✅ ~~Connect fleet to Plane~~ — credentials in fleet .env, CLI works
+11. ✅ ~~Plane platform config~~ — agents, types, views, links, leads, relations
+12. ✅ ~~Milestone docs~~ — 47 milestones across 6 Plane documents
+13. **Build Plane MCP tools (M-SC04)** — PM needs Plane access from sessions
+14. **Build chain runner (M-SC02)** — MCP tools need to emit event chains
+15. **Execute one real task end-to-end** — dispatch, work, PR, review, done
+16. **PM first heartbeat with Plane** — reads sprint, creates OCMC tasks
+17. **AICP Stage 1 complete** — cluster verification, full benchmarks
+18. **Build sync worker (M-SW01-08)** — real-time cross-platform bridge
+19. **Fleet 24h observation** — stable daemons, no OOM, agents responsive
+20. **Resume autonomous flow** — PM drives sprints from Plane, agents execute
 
 ---
 
