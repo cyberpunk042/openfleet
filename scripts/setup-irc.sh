@@ -55,7 +55,7 @@ else
         fi
     fi
 
-    $MINIIRCD_CMD --ports "$IRC_PORT" --motd "OpenClaw Fleet IRC — connect to $IRC_CHANNEL" &
+    $MINIIRCD_CMD --ports "$IRC_PORT" --motd "OpenClaw Fleet IRC — connect to #fleet" &
     IRC_PID=$!
     echo "$IRC_PID" > "$IRC_PID_FILE"
     sleep 2
@@ -78,14 +78,19 @@ with open('$OPENCLAW_CONFIG') as f:
 
 channels = cfg.setdefault('channels', {})
 irc = channels.get('irc', {})
-accounts = irc.get('accounts', [])
+if not isinstance(irc, dict):
+    irc = {}
+accounts = irc.get('accounts', {})
+
+# accounts can be a dict (keyed by ID) or a list (legacy)
+# Normalize to dict
+if isinstance(accounts, list):
+    accounts = {a.get('id', f'acc_{i}'): a for i, a in enumerate(accounts) if isinstance(a, dict)}
+elif not isinstance(accounts, dict):
+    accounts = {}
 
 # Check if fleet account already exists
-fleet_account = None
-for acc in accounts:
-    if acc.get('id') == 'fleet':
-        fleet_account = acc
-        break
+has_fleet = 'fleet' in accounts
 
 # OpenClaw expects accounts as a record keyed by account ID, not an array
 channels['irc'] = {
@@ -95,7 +100,7 @@ channels['irc'] = {
             'port': $IRC_PORT,
             'tls': False,
             'nick': '$IRC_NICK',
-            'channels': [c.strip() for c in '$IRC_CHANNELS'.split(',')],
+            'channels': [c.strip() for c in '#fleetS'.split(',')],
             'dmPolicy': 'open',
             'allowFrom': ['*'],
         }
@@ -138,12 +143,12 @@ echo ""
 echo "=== IRC Setup Complete ==="
 echo ""
 echo "IRC Server: localhost:$IRC_PORT"
-echo "Channel:    $IRC_CHANNEL"
+echo "Channel:    #fleet"
 echo "Bot nick:   $IRC_NICK"
 echo ""
 echo "Connect with any IRC client:"
-echo "  weechat:  /server add fleet localhost/$IRC_PORT && /connect fleet && /join $IRC_CHANNEL"
-echo "  irssi:    /connect localhost $IRC_PORT && /join $IRC_CHANNEL"
+echo "  weechat:  /server add fleet localhost/$IRC_PORT && /connect fleet && /join #fleet"
+echo "  irssi:    /connect localhost $IRC_PORT && /join #fleet"
 echo "  Or:       make irc-connect"
 echo ""
 echo "After connecting, restart the gateway to activate the channel:"

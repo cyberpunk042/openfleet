@@ -137,12 +137,23 @@ class FleetSetup:
 
     def register_gateway(self, name: str, url: str, workspace_root: str = "/app") -> Optional[Dict]:
         """Register a gateway in Mission Control."""
+        # Read gateway auth token from openclaw.json for MC verification
+        import json as _json
+        gw_token = ""
+        oc_config = os.path.expanduser("~/.openclaw/openclaw.json")
+        if os.path.exists(oc_config):
+            with open(oc_config) as f:
+                oc_cfg = _json.load(f)
+            gw_token = oc_cfg.get("gateway", {}).get("auth", {}).get("token", "")
+
         data = {
             "name": name,
             "url": url,
             "workspace_root": workspace_root,
             "disable_device_pairing": True,
         }
+        if gw_token:
+            data["token"] = gw_token
         try:
             r = httpx.post(
                 f"{self.mc_url}/api/v1/gateways",
@@ -325,12 +336,32 @@ def run_setup() -> int:
         # Gateway runs on host, MC backend in Docker reaches it via host IP
         import socket
         host_ip = socket.gethostbyname(socket.gethostname())
-        gw = setup.register_gateway("OCF Gateway", f"ws://{host_ip}:9400")
+        # Gateway URL: Docker containers reach the host via host.docker.internal
+        gw_port = os.environ.get("OCF_GATEWAY_PORT", "18789")
+        gw_host = os.environ.get("OCF_GATEWAY_HOST", "host.docker.internal")
+        fleet_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        gw = setup.register_gateway("OCF Gateway", f"ws://{gw_host}:{gw_port}", workspace_root=fleet_dir)
         if gw:
             print(f"   OK: Registered (id: {gw.get('id', '?')})")
         else:
             print("   WARN: Could not register gateway")
     else:
+        # Update workspace_root if it's wrong (e.g., /app from old registration)
+        fleet_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if gw.get("workspace_root") != fleet_dir:
+            try:
+                r = httpx.patch(
+                    f"{setup.mc_url}/api/v1/gateways/{gw['id']}",
+                    headers=setup.headers,
+                    json={"workspace_root": fleet_dir},
+                    timeout=10.0,
+                )
+                if r.status_code == 200:
+                    print(f"   OK: Updated workspace_root → {fleet_dir}")
+                else:
+                    print(f"   WARN: Could not update workspace_root: {r.status_code}")
+            except Exception as e:
+                print(f"   WARN: Could not update workspace_root: {e}")
         print(f"   OK: Already registered (id: {gw.get('id', '?')})")
 
     # Step 5: Board
