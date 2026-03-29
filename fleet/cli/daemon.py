@@ -185,6 +185,42 @@ async def _run_auth_daemon(interval: int = 120) -> None:
         await asyncio.sleep(interval)
 
 
+async def _run_plane_watcher_daemon(interval: int = 120) -> None:
+    """Poll Plane for changes and emit events."""
+    from fleet.infra.config_loader import ConfigLoader
+    from fleet.infra.plane_client import PlaneClient
+
+    loader = ConfigLoader()
+    env = loader.load_env()
+    plane_url = env.get("PLANE_URL", "")
+    plane_key = env.get("PLANE_API_KEY", "")
+    plane_ws = env.get("PLANE_WORKSPACE", "fleet")
+
+    if not plane_url or not plane_key:
+        print("[plane-watcher] Plane not configured — skipping")
+        return
+
+    print(f"[plane-watcher] Daemon started (interval={interval}s)")
+
+    from fleet.core.plane_watcher import PlaneWatcher
+    plane = PlaneClient(base_url=plane_url, api_key=plane_key)
+    watcher = PlaneWatcher(plane, workspace_slug=plane_ws)
+
+    while True:
+        try:
+            events = await watcher.poll()
+            if events:
+                ts = datetime.now().strftime("%H:%M:%S")
+                print(f"[{ts}] [plane-watcher] {len(events)} changes detected")
+                for e in events[:3]:
+                    print(f"  {e.get('type', '?')}: {e.get('title', e.get('name', '?'))[:50]}")
+        except Exception as e:
+            ts = datetime.now().strftime("%H:%M:%S")
+            print(f"[{ts}] [plane-watcher] Error: {e}")
+
+        await asyncio.sleep(interval)
+
+
 async def _run_all(
     sync_interval: int = 60,
     monitor_interval: int = 300,
@@ -193,13 +229,14 @@ async def _run_all(
     """Run all daemons concurrently."""
     print(
         f"Fleet daemons starting (sync={sync_interval}s, monitor={monitor_interval}s, "
-        f"auth=120s, orchestrator={orchestrator_interval}s)"
+        f"auth=120s, orchestrator={orchestrator_interval}s, plane-watcher=120s)"
     )
     await asyncio.gather(
         _run_sync_daemon(sync_interval),
         _run_auth_daemon(120),
         _run_monitor_daemon(monitor_interval),
         run_orchestrator_daemon(orchestrator_interval),
+        _run_plane_watcher_daemon(120),
     )
 
 
