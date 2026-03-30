@@ -1,7 +1,7 @@
 # Milestone Plan — Immune System, Teaching System, Methodology System
 
 **Date:** 2026-03-30
-**Status:** In progress — 23/44 milestones implemented (2026-03-30)
+**Status:** In progress — 32/44 milestones implemented (2026-03-30)
 **Scope:** 44 milestones across three systems plus Plane integration
 and cross-cutting platform evolutions
 
@@ -12,16 +12,18 @@ and cross-cutting platform evolutions
 | Category | Done | Total | Key Modules Built |
 |----------|------|-------|-------------------|
 | A. Foundation | 7 | 8 | plane_methodology.py, custom fields on both platforms |
-| B. Methodology | 3 | 9 | methodology.py (stages/checks), standards.py (7 artifact types) |
+| B. Methodology | 9 | 9 | **COMPLETE** — methodology.py, standards.py, stage_context.py, tracker |
 | C. Teaching | 6 | 6 | **COMPLETE** — teaching.py (8 templates, adaptation, tracking) |
 | D. Immune | 10 | 10 | **COMPLETE** — doctor.py (detection, response, health profiles) |
-| E. Platform | 4 | 6 | gateway_client.py, orchestrator wired, events, MCP stage enforcement |
+| E. Platform | 5 | 6 | gateway_client.py, orchestrator wired, events, MCP, heartbeat |
 | G. OCMC UI | 0 | 5 | Not started (depends on backend data) |
-| **Total** | **30** | **44** | |
+| **Total** | **37** | **44** | |
 
-**Tests:** 534 passing (153 new this session)
-**Commits:** 17 this session
-**New modules:** 7 (methodology, standards, teaching, doctor, plane_methodology, gateway_client, MCP stage enforcement)
+**Remaining:** A08 (conflict resolution), E05 (sync worker refinement), G01-G05 (OCMC UI)
+
+**Tests:** 552 passing (171 new this session)
+**Commits:** 20 this session
+**New modules:** 8 (methodology, standards, teaching, doctor, plane_methodology, gateway_client, stage_context, MCP stage enforcement)
 
 ---
 
