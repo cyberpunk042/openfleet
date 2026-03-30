@@ -327,4 +327,200 @@ Design unified mention system:
 7. **Agent feeds are personal.** Filtered by capability, tags, mentions, work association.
 8. **Seen/unseen tracking.** Agents process at their own pace. Nothing gets lost.
 9. **Chain operations.** One event → multi-surface publish. Deterministic, not fire-and-forget.
+
+---
+
+## M-EB02: CloudEvents Integration
+
+The fleet uses CloudEvents as the canonical event schema. Implementation
+in `fleet/core/events.py`:
+
+### Schema
+
+Every FleetEvent follows CloudEvents 1.0:
+- `id`: UUID — unique per event
+- `source`: where the event originated (e.g., "fleet/mcp/tools/completed")
+- `type`: event type (e.g., "fleet.task.completed")
+- `subject`: what the event is about (usually task ID)
+- `time`: ISO 8601 timestamp
+- `data`: event payload (dict)
+
+Fleet extensions on `data`:
+- `agent`: which agent produced or is affected by the event
+- `fleet_id`: fleet identifier for multi-fleet setups
+- `recipient`: "all" or specific agent name
+- `priority`: "info", "important", "urgent"
+- `mentions`: list of agent names mentioned
+- `tags`: categorization tags
+- `surfaces`: which surfaces to publish to
+
+### SDK Decision
+
+No external CloudEvents SDK used. The schema is simple enough that
+`fleet/core/events.py` implements it directly as a dataclass:
+
+```python
+@dataclass
+class FleetEvent:
+    id: str
+    source: str
+    type: str
+    subject: str
+    time: str
+    data: dict
+    specversion: str = "1.0"
+    # Fleet extensions
+    agent: str = ""
+    fleet_id: str = ""
+    recipient: str = "all"
+    priority: str = "info"
+    mentions: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    surfaces: list[str] = field(default_factory=list)
+```
+
+This avoids a dependency on the cloudevents Python SDK while maintaining
+schema compatibility. Events can be serialized to JSON and consumed by
+any CloudEvents-compatible system.
+
+### Event Types (47 total)
+
+| Category | Count | Examples |
+|----------|-------|---------|
+| Task lifecycle | 9 | created, accepted, completed, approved, dispatched |
+| Plane lifecycle | 6 | issue_created, issue_updated, cycle_started |
+| GitHub lifecycle | 6 | pr_created, pr_merged, ci_passed |
+| Agent lifecycle | 4 | online, offline, heartbeat, stuck |
+| Communication | 4 | message, mention, posted, escalation |
+| System | 4 | sync, health, config_changed, mode_changed |
+| Immune system | 5 | disease_detected, agent_pruned, context_compacted |
+| Teaching system | 5 | lesson_started, comprehension_verified/failed |
+| Methodology | 5 | stage_changed, readiness_changed, protocol_violation |
+
+---
+
+## M-EB03: Agent Feed Design
+
+Each agent has a personal feed — filtered events relevant to their
+role, subscriptions, and current work.
+
+### Feed Construction
+
+`fleet/core/event_router.py` builds feeds using 5 routing levels:
+
+1. **Direct** — events addressed to a specific agent (recipient field)
+2. **Priority** — forced routing for urgent/escalation events
+3. **Mention** — events that @mention the agent
+4. **Tag subscription** — events matching the agent's tag subscriptions
+   (defined in `AGENT_TAG_SUBSCRIPTIONS`)
+5. **Broadcast** — events sent to "all"
+
+### Agent Tag Subscriptions
+
+Each agent subscribes to tags matching their domain:
+- architect: architecture, design, complexity, coupling
+- devsecops-expert: security, vulnerability, cve, audit
+- qa-engineer: testing, coverage, quality, regression
+- fleet-ops: review, approval, health, budget
+- project-manager: planning, sprint, velocity, scope
+
+### Feed in Heartbeat Context
+
+`fleet_read_context()` includes the agent's unseen events in the
+response. Events are marked as seen after delivery. This ensures
+agents don't miss events even across session boundaries.
+
+### Storage
+
+Events persist in `.fleet-events.jsonl` — append-only JSONL file.
+Each line is a serialized FleetEvent. The EventStore supports:
+- Append new events
+- Query by type, agent, time range
+- Seen/unseen tracking per agent (in-memory, reset on restart)
+- Count unseen events for an agent
+
+---
+
+## M-EB04: Cross-Platform Sync Map
+
+Events flow across 6 surfaces. This is the complete map of what
+syncs where.
+
+### Surface Definitions
+
+| Surface | Transport | Format | Purpose |
+|---------|-----------|--------|---------|
+| INTERNAL | EventStore (JSONL) | FleetEvent JSON | Persistent record, agent feeds |
+| PUBLIC | Board memory (MC API) | Tagged text | Cross-agent visibility, PO view |
+| CHANNEL | IRC (miniircd) | One-line text | Real-time team awareness |
+| NOTIFY | ntfy (push) | Title + body | PO mobile alerts |
+| PLANE | Plane comments (API) | HTML | Issue-level audit trail |
+| META | Cross-refs | Links/tags | Traceability between surfaces |
+
+### What Gets Published Where
+
+| Event Type | INTERNAL | PUBLIC | CHANNEL | NOTIFY | PLANE |
+|-----------|----------|--------|---------|--------|-------|
+| task.completed | Yes | Yes | Yes | No | Yes |
+| task.approved | Yes | Yes | Yes | No | Yes |
+| task.rejected | Yes | Yes | Yes | Yes | Yes |
+| immune.disease_detected | Yes | Yes | Yes | No | No |
+| immune.agent_pruned | Yes | Yes | Yes | Yes | No |
+| teaching.comprehension_verified | Yes | Yes | Yes | No | No |
+| methodology.stage_changed | Yes | Yes | Yes | No | No |
+| system.mode_changed | Yes | Yes | Yes | No | No |
+
+### Sync Worker Integration
+
+The sync daemon (60s interval) handles:
+- GitHub PR state → OCMC task status
+- Plane methodology fields ↔ OCMC custom fields
+- Plane state metadata → OCMC
+- PR comment detection → OCMC task comments
+
+The chain runner handles real-time event publishing to all surfaces.
+The sync worker handles periodic state reconciliation.
+
+---
+
+## M-EB05: Mention and Tagging Design
+
+Unified @mention and tagging across all surfaces.
+
+### Mention Format
+
+Board memory tags: `mention:{agent-name}` or `mention:all`
+IRC: @agent-name in message text
+Events: `mentions` list in FleetEvent data
+
+### Mention Routing
+
+When an event has `mentions: ["architect"]`:
+1. Event router delivers to architect's feed (level 3: mention routing)
+2. Board memory entry tagged with `mention:architect`
+3. IRC message includes @architect
+4. If urgent, ntfy pushes to PO
+
+### Tag Taxonomy
+
+Events and board memory entries use a controlled tag vocabulary:
+
+**System tags** (auto-added by event_display.py):
+- `immune-system` — all immune events
+- `teaching-system` — all teaching events
+- `methodology` — all methodology events
+- `disease:{name}` — specific disease type
+
+**Content tags** (set by event emitter):
+- `project:{name}` — project association
+- `agent:{name}` — agent association
+- `sprint:{id}` — sprint association
+- `directive` — PO directive
+- `alert` — attention needed
+- `decision` — decision recorded
+
+**Filtering:**
+Board memory is filterable by tags in the OCMC UI. Agents filter
+their feeds by tag subscriptions. The PO can filter the event stream
+by system (immune, teaching, methodology) using the system tags.
 10. **IaC differential.** Runtime changes tracked. Config updated. Rebuild recovers.
