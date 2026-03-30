@@ -36,6 +36,7 @@ _change_detector = ChangeDetector()
 
 from fleet.core.budget_monitor import BudgetMonitor
 from fleet.core.doctor import DoctorReport, AgentHealth, ResponseAction, run_doctor_cycle
+from fleet.core.fleet_mode import FleetControlState, read_fleet_control, should_dispatch as fleet_should_dispatch, get_active_agents_for_phase
 from fleet.core.teaching import adapt_lesson, format_lesson_for_injection, DiseaseCategory
 _budget_monitor = BudgetMonitor()
 
@@ -100,6 +101,18 @@ async def run_orchestrator_cycle(
     agent_name_map = {a.name: a for a in agents if "Gateway" not in a.name}
     now = datetime.now()
 
+    # Read fleet control state (Work Mode, Cycle Phase, Backend Mode)
+    try:
+        board_data = await mc.get_board(board_id)
+        fleet_state = read_fleet_control(board_data if isinstance(board_data, dict) else {})
+    except Exception:
+        fleet_state = FleetControlState()  # defaults if board read fails
+
+    # Fleet mode gate — check if dispatch is allowed
+    if not fleet_should_dispatch(fleet_state):
+        state.notes.append(f"Fleet mode: {fleet_state.work_mode} — dispatch paused")
+        return state
+
     # Detect changes since last cycle
     changes = _change_detector.detect(tasks, now)
 
@@ -127,8 +140,9 @@ async def run_orchestrator_cycle(
 
     # Step 5: Dispatch unblocked inbox tasks to assigned agents
     # (respects doctor report — skips agents flagged by immune system)
+    # (respects fleet control state — filters by cycle phase active agents)
     await _dispatch_ready_tasks(mc, irc, board_id, tasks, agent_map, state, dry_run, config,
-                                doctor_report=doctor_report)
+                                doctor_report=doctor_report, fleet_state=fleet_state)
 
     # Step 6: Evaluate parent task completion (all children done → parent to review)
     await _evaluate_parents(mc, irc, board_id, tasks, state, dry_run)
@@ -558,6 +572,7 @@ async def _dispatch_ready_tasks(
     dry_run: bool,
     config: dict | None = None,
     doctor_report: DoctorReport | None = None,
+    fleet_state: FleetControlState | None = None,
 ) -> None:
     """Find unblocked inbox tasks with assigned agents and dispatch them."""
     from fleet.cli.dispatch import _run_dispatch
@@ -645,6 +660,23 @@ async def _dispatch_ready_tasks(
                 if agent.name == skip_name:
                     doctor_skip_agents.add(aid)
         busy_agent_ids |= doctor_skip_agents
+
+    # Fleet control — cycle phase agent filter
+    if fleet_state:
+        phase_agents = get_active_agents_for_phase(fleet_state)
+        if phase_agents is not None:
+            # Only allow agents in the phase's active list
+            phase_skip = set()
+            for aid, agent in agent_map.items():
+                if agent.name not in phase_agents:
+                    phase_skip.add(aid)
+            busy_agent_ids |= phase_skip
+            if phase_skip:
+                skipped_names = [agent_map[aid].name for aid in phase_skip if aid in agent_map]
+                state.notes.append(
+                    f"Fleet phase '{fleet_state.cycle_phase}': "
+                    f"{len(skipped_names)} agents inactive"
+                )
 
     # SAFETY: Max 2 dispatches per cycle to prevent session storms
     max_dispatch = (config or {}).get("max_dispatch_per_cycle", 2)

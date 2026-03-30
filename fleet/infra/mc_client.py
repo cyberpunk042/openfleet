@@ -398,6 +398,12 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
 
         return agents
 
+    async def get_board(self, board_id: str) -> dict:
+        """Get board data including fleet_config."""
+        resp = await self._client.get(f"/api/v1/boards/{board_id}")
+        resp.raise_for_status()
+        return resp.json()
+
     async def get_board_id(self) -> Optional[str]:
         """Get the fleet board ID from agent list."""
         agents = await self.list_agents()
