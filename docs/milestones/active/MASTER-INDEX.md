@@ -126,10 +126,10 @@ everything works end-to-end.
 | Control Surface (M-CS) | 7 | **7 done — COMPLETE** |
 | Event Bus (M-EB) | 20 | **20 done — COMPLETE** |
 | Fleet Autonomy | ~15 (5 phases) | **All 5 phases COMPLETE** |
-| Transpose Layer | 7 | **5 done** (T01-T05), 2 remaining (refinements) |
-| Context System | 36 | **31 done**, 5 remaining (refinements) |
+| Transpose Layer | 7 | **7 done — COMPLETE** |
+| Context System | 36 | **34 done**, 2 nice-to-haves remaining |
 | Operational Readiness | 5 | Pending (needs fleet running) |
-| **Total** | **~134** | **~122 implemented** |
+| **Total** | **~134** | **~128 implemented** |
 
 ---
 
