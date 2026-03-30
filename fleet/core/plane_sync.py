@@ -63,6 +63,22 @@ CF_PLANE_ISSUE_ID = "plane_issue_id"
 CF_PLANE_PROJECT_ID = "plane_project_id"
 CF_PLANE_WORKSPACE = "plane_workspace"
 
+# ─── Conflict Resolution Policy (A08) ──────────────────────────────────
+#
+# When both Plane and OCMC have been updated between sync cycles:
+#
+# requirement_verbatim: Plane wins (PO writes there)
+# task_readiness:       Non-zero wins. If both non-zero and different,
+#                       higher value wins (readiness only increases toward 100)
+# task_stage:           Plane wins if set (PO/PM manage stages in Plane)
+# task status:          Plane state wins during planning phases,
+#                       OCMC status wins during execution
+# priority:             Plane wins (PO sets priority)
+# story_points:         Plane wins (PO/PM estimate in Plane)
+#
+# Conflicts are logged. Critical conflicts (verbatim changed on both)
+# emit events for PO attention.
+
 # ─── Plane state → OCMC status mapping ─────────────────────────────────
 # Plane states are per-project with custom names. We map by name pattern.
 
@@ -345,16 +361,31 @@ class PlaneSyncer:
                 if plane_state.requirement_verbatim and plane_state.requirement_verbatim != ocmc_verbatim:
                     ocmc_updates["requirement_verbatim"] = plane_state.requirement_verbatim
 
-                # ── Bidirectional: readiness (Plane wins if different and non-zero) ──
+                # ── Bidirectional: readiness (higher value wins — readiness only goes up) ──
                 if plane_state.task_readiness != ocmc_readiness:
-                    if plane_state.task_readiness > 0:
+                    if plane_state.task_readiness > 0 and ocmc_readiness > 0:
+                        # Both have values — higher wins (readiness increases toward 100)
+                        winner = max(plane_state.task_readiness, ocmc_readiness)
+                        if winner != ocmc_readiness:
+                            ocmc_updates["task_readiness"] = winner
+                        if plane_state.task_readiness != ocmc_readiness:
+                            logger.info(
+                                "methodology_sync: readiness conflict on %s — "
+                                "Plane=%d, OCMC=%d, winner=%d",
+                                task.id[:8], plane_state.task_readiness,
+                                ocmc_readiness, winner,
+                            )
+                    elif plane_state.task_readiness > 0:
                         ocmc_updates["task_readiness"] = plane_state.task_readiness
-                    elif ocmc_readiness > 0:
-                        # OCMC has readiness, Plane doesn't — push to Plane
-                        pass  # handled below in Plane updates
 
                 # ── Bidirectional: stage (Plane wins if set) ──
                 if plane_state.task_stage and plane_state.task_stage != ocmc_stage:
+                    if ocmc_stage and plane_state.task_stage != ocmc_stage:
+                        logger.info(
+                            "methodology_sync: stage conflict on %s — "
+                            "Plane=%s, OCMC=%s, Plane wins",
+                            task.id[:8], plane_state.task_stage, ocmc_stage,
+                        )
                     ocmc_updates["task_stage"] = plane_state.task_stage
 
                 # Apply OCMC updates

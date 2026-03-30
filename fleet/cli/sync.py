@@ -208,6 +208,30 @@ async def _run_sync() -> int:
     # PR hygiene check — detect conflicts, stale PRs, orphaned PRs
     await _check_pr_hygiene(mc, gh, irc, board_id, tasks, actions)
 
+    # Plane methodology sync — readiness, stage, verbatim between platforms
+    try:
+        plane_url = env.get("PLANE_URL", "")
+        plane_key = env.get("PLANE_API_KEY", "")
+        plane_workspace = env.get("PLANE_WORKSPACE", "")
+        if plane_url and plane_key and plane_workspace:
+            from fleet.infra.plane_client import PlaneClient
+            from fleet.core.plane_sync import PlaneSyncer
+            plane = PlaneClient(base_url=plane_url, api_key=plane_key)
+            syncer = PlaneSyncer(
+                mc=mc, plane=plane, board_id=board_id,
+                workspace_slug=plane_workspace,
+            )
+            meth_result = await syncer.sync_methodology_fields()
+            state_result = await syncer.sync_plane_state_metadata()
+            meth_updates = meth_result.get("ocmc_updated", 0) + meth_result.get("plane_updated", 0)
+            state_updates = state_result.get("updated", 0)
+            if meth_updates or state_updates:
+                print(f"  Plane sync: {meth_updates} methodology + {state_updates} state updates")
+                actions += meth_updates + state_updates
+            await plane.close()
+    except Exception as e:
+        print(f"  Plane sync error: {e}")
+
     # Budget status log (from real OAuth API)
     try:
         from fleet.core.budget_monitor import BudgetMonitor
