@@ -1923,6 +1923,102 @@ def register_tools(server: FastMCP) -> None:
 
         return result
 
+    # ─── Aggregate Context Tools ───────────────────────────────────────
+
+    @server.tool()
+    async def fleet_task_context(task_id: str = "") -> dict:
+        """Get EVERYTHING about your current task in one call.
+
+        Aggregates: task data, custom fields, methodology state,
+        artifact object + completeness, comments, activity, related
+        tasks, Plane state. All in one response.
+
+        Call this instead of making multiple separate calls.
+
+        Args:
+            task_id: Task ID. Uses current task if empty.
+        """
+        ctx = _get_ctx()
+        tid = task_id or ctx.task_id
+        if not tid:
+            return {"ok": False, "error": "No task_id"}
+
+        try:
+            from fleet.core.context_assembly import assemble_task_context
+
+            board_id = await ctx.resolve_board_id()
+            task = await ctx.mc.get_task(board_id, tid)
+
+            # Store methodology fields on context for stage enforcement
+            ctx._task_stage = task.custom_fields.task_stage
+            ctx._task_readiness = task.custom_fields.task_readiness
+            ctx.task_id = tid
+            if task.custom_fields.project and not ctx.project_name:
+                ctx.project_name = task.custom_fields.project
+
+            plane = ctx.plane if hasattr(ctx, 'plane') else None
+
+            global _event_store
+            bundle = await assemble_task_context(
+                task=task,
+                mc=ctx.mc,
+                board_id=board_id,
+                plane=plane,
+                event_store=_event_store,
+            )
+            bundle["ok"] = True
+            return bundle
+
+        except Exception as e:
+            _report_error("fleet_task_context", str(e))
+            return {"ok": False, "error": str(e)}
+
+    @server.tool()
+    async def fleet_heartbeat_context() -> dict:
+        """Get role-specific heartbeat data in one call.
+
+        Returns: events since last heartbeat, messages, directives,
+        role-specific data (approvals for fleet-ops, sprint for PM, etc.),
+        fleet state, assigned tasks summary.
+
+        Call this at heartbeat instead of multiple separate calls.
+        """
+        ctx = _get_ctx()
+
+        try:
+            from fleet.core.context_assembly import assemble_heartbeat_context
+            from fleet.core.role_providers import ROLE_PROVIDERS
+
+            board_id = await ctx.resolve_board_id()
+            tasks = await ctx.mc.list_tasks(board_id)
+            agents = await ctx.mc.list_agents()
+
+            # Determine agent role
+            agent_name = ctx.agent_name or ""
+            role = ""
+            if agent_name:
+                from fleet.core.agent_roles import AGENT_ROLES
+                role_info = AGENT_ROLES.get(agent_name, {})
+                role = role_info.get("primary_role", agent_name)
+
+            global _event_store
+            bundle = await assemble_heartbeat_context(
+                agent_name=agent_name,
+                role=role,
+                tasks=tasks,
+                agents=agents,
+                mc=ctx.mc,
+                board_id=board_id,
+                event_store=_event_store,
+                role_providers=ROLE_PROVIDERS,
+            )
+            bundle["ok"] = True
+            return bundle
+
+        except Exception as e:
+            _report_error("fleet_heartbeat_context", str(e))
+            return {"ok": False, "error": str(e)}
+
     # ─── Artifact Tools (Transpose Layer) ───────────────────────────────
 
     @server.tool()
