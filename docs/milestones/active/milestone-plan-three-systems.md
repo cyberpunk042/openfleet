@@ -1,7 +1,7 @@
 # Milestone Plan — Immune System, Teaching System, Methodology System
 
 **Date:** 2026-03-30
-**Status:** In progress — 32/44 milestones implemented (2026-03-30)
+**Status:** In progress — 39/44 milestones implemented (2026-03-30)
 **Scope:** 44 milestones across three systems plus Plane integration
 and cross-cutting platform evolutions
 
@@ -16,14 +16,23 @@ and cross-cutting platform evolutions
 | C. Teaching | 6 | 6 | **COMPLETE** — teaching.py (8 templates, adaptation, tracking) |
 | D. Immune | 10 | 10 | **COMPLETE** — doctor.py (detection, response, health profiles) |
 | E. Platform | 5 | 6 | gateway_client.py, orchestrator wired, events, MCP, heartbeat |
-| G. OCMC UI | 0 | 5 | Not started (depends on backend data) |
+| G. OCMC UI | 0 | 5 | Not started (event rendering done for existing surfaces) |
 | **Total** | **37** | **44** | |
 
-**Remaining:** A08 (conflict resolution), E05 (sync worker refinement), G01-G05 (OCMC UI)
+**Also implemented (control surface, separate milestone set):**
+- M-CS01: fleet_config on Board model (patch 0004) + fleet_mode.py reader
+- M-CS02: FleetControlBar React component in header (patch 0005)
+- M-CS06+07: Mode-aware orchestrator — work mode gate + cycle phase agent filter
 
-**Tests:** 552 passing (171 new this session)
-**Commits:** 20 this session
-**New modules:** 8 (methodology, standards, teaching, doctor, plane_methodology, gateway_client, stage_context, MCP stage enforcement)
+**Remaining across all sets:**
+- A08 (conflict resolution), E05 (sync worker refinement)
+- G01-G05 (OCMC vendor UI — dedicated panels for immune/teaching/methodology)
+- M-CS remaining (M-CS08-10: directives, mode-aware heartbeats, mode change events)
+
+**Tests:** 567 passing (186 new this session)
+**Commits:** 27 this session
+**New modules:** 10 (methodology, standards, teaching, doctor, plane_methodology,
+gateway_client, stage_context, fleet_mode, MCP stage enforcement, event rendering)
 
 ---
 

@@ -123,11 +123,11 @@ everything works end-to-end.
 | Set | Count | Status |
 |-----|-------|--------|
 | Three Systems (A-G) | 44 | **37 done**, 7 remaining (A08, E05, G01-G05) |
-| Control Surface (M-CS) | 7 | Designed, not implemented |
+| Control Surface (M-CS) | 7 | **4 done** (CS01, CS02, CS06, CS07), 3 remaining |
 | Event Bus (M-EB) | 20 | 17 done, 3 remaining |
 | Fleet Autonomy | ~15 (5 phases) | Designed, not implemented |
 | Operational Readiness | 5 | Pending |
-| **Total** | **~91** | **~54 implemented** |
+| **Total** | **~91** | **~58 implemented** |
 
 ---
 
