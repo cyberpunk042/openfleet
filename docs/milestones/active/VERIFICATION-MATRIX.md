@@ -16,8 +16,8 @@
 | A04 | requirement_verbatim on Plane | Write verbatim, check Plane description | ✅ | BUG FOUND + FIXED: Plane strips HTML comments. Switched to span.fleet-verbatim with display:none. Roundtrip verified: inject→Plane→extract = "Execute one real task end-to-end..." |
 | A05 | task_stage on both | Set stage, verify on OCMC + Plane label | ✅ | MC API: type=text, visibility=always, description="Methodology stage" |
 | A06 | Sync new fields | Change readiness on Plane, verify OCMC updates | ✅ | FULL SYNC VERIFIED. Set readiness=50+stage=investigation on OCMC → sync → Plane shows labels stage:investigation+readiness:50 + verbatim in description. 4 bugs fixed: (1) MC unknown field keys, (2) limit param 422, (3) Plane uses 'labels' not 'label_ids' for PATCH, (4) PlaneIssue read from 'labels' not 'label_ids', (5) elif blocked dual stage+readiness push. |
-| A07 | Plane state metadata | Change Plane state, verify OCMC status | | |
-| A08 | Conflict resolution | Change same field on both, verify winner | | |
+| A07 | Plane state metadata | Change Plane state, verify OCMC status | ✅ | State sync ran: 0 errors, 14 skipped (already matching). Plane states: Backlog/Todo/In Progress/Done/Cancelled/Dispatched/In Review. Mapping verified: Backlog→inbox matches. Priority mapping: high→high, urgent→urgent, none→medium. |
+| A08 | Conflict resolution | Change same field on both, verify winner | ✅ | OCMC=80, Plane=50 → sync → BOTH=80. Higher readiness wins. ocmc_updated=1, plane_updated=1. Policy works as documented. |
 
 ## B: Methodology
 
