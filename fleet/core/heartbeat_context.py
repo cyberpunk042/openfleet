@@ -63,6 +63,9 @@ class HeartbeatBundle:
     fleet_cycle_phase: str = ""
     fleet_backend_mode: str = ""
 
+    # Pre-embedded compact context (from preembed module)
+    preembed_text: str = ""
+
     # Fleet health snapshot
     agents_online: int = 0
     agents_total: int = 0
@@ -289,5 +292,25 @@ def build_heartbeat_context(
                 })
             elif agent_name in event.get("data", {}).get("mentions", []):
                 bundle.mentioned_by.append(event.get("data", {}).get("agent", "system"))
+
+    # Build pre-embed compact text
+    try:
+        from fleet.core.preembed import build_heartbeat_preembed
+        my_tasks = [t for t in tasks
+                     if t.custom_fields.agent_name == agent_name
+                     and t.status in (TaskStatus.INBOX, TaskStatus.IN_PROGRESS)]
+        bundle.preembed_text = build_heartbeat_preembed(
+            agent_name=agent_name,
+            role=agent_name,  # role resolution happens in context_assembly
+            assigned_tasks=my_tasks,
+            messages_count=len(bundle.chat_messages),
+            events_count=len(bundle.domain_events),
+            fleet_mode=bundle.fleet_work_mode,
+            fleet_phase=bundle.fleet_cycle_phase,
+            agents_online=bundle.agents_online,
+            agents_total=bundle.agents_total,
+        )
+    except Exception:
+        pass
 
     return bundle

@@ -783,6 +783,16 @@ async def _dispatch_ready_tasks(
             if result == 0:
                 state.tasks_dispatched += 1
                 busy_agent_ids.add(task.assigned_agent_id)
+
+                # Inject task pre-embed into agent session
+                try:
+                    from fleet.core.preembed import build_task_preembed
+                    from fleet.infra.gateway_client import inject_content
+                    preembed = build_task_preembed(task)
+                    await inject_content(agent.session_key, preembed)
+                except Exception:
+                    pass  # Pre-embed injection must not break dispatch
+
                 await _notify(irc, "#fleet",
                     f"[orchestrator] \U0001f680 DISPATCHED: "
                     f"{task.title[:50]} \u2192 {agent.name}")
