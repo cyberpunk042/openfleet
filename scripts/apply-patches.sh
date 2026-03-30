@@ -47,4 +47,54 @@ for patch in "$PATCHES_DIR"/*.patch; do
 done
 
 echo ""
-echo "Applied: $applied, Skipped: $skipped, Failed: $failed"
+echo "Patches — Applied: $applied, Skipped: $skipped, Failed: $failed"
+
+# ── Copy new component files ────────────────────────────────────────────
+# Files named NNNN-ComponentName.tsx are copied to the vendor frontend.
+# Target: vendor/openclaw-mission-control/frontend/src/components/fleet-control/
+
+COMPONENTS_TARGET="$FLEET_DIR/vendor/openclaw-mission-control/frontend/src/components/fleet-control"
+copied=0
+
+for component in "$PATCHES_DIR"/*.tsx; do
+    [[ -f "$component" ]] || continue
+    name=$(basename "$component")
+    # Strip the NNNN- prefix to get the actual filename
+    dest_name="${name#*-}"
+
+    mkdir -p "$COMPONENTS_TARGET"
+
+    if [[ -f "$COMPONENTS_TARGET/$dest_name" ]]; then
+        # Check if content differs
+        if diff -q "$component" "$COMPONENTS_TARGET/$dest_name" >/dev/null 2>&1; then
+            echo "  SKIP: $name → $dest_name (unchanged)"
+            continue
+        fi
+    fi
+
+    cp "$component" "$COMPONENTS_TARGET/$dest_name"
+    echo "  COPY: $name → fleet-control/$dest_name"
+    copied=$((copied + 1))
+done
+
+# Also copy migration files
+for migration in "$PATCHES_DIR"/*-migration-*.py; do
+    [[ -f "$migration" ]] || continue
+    name=$(basename "$migration")
+    dest_name="${name#*-migration-}"
+    migrations_target="$FLEET_DIR/vendor/openclaw-mission-control/backend/migrations/versions"
+    mkdir -p "$migrations_target"
+
+    if [[ -f "$migrations_target/$dest_name" ]]; then
+        echo "  SKIP: $name (migration exists)"
+        continue
+    fi
+
+    cp "$migration" "$migrations_target/g1a2b3c4d5e6_add_$dest_name"
+    echo "  COPY: $name → migrations/"
+    copied=$((copied + 1))
+done
+
+if [[ $copied -gt 0 ]]; then
+    echo "Components copied: $copied"
+fi
