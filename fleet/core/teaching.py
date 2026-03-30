@@ -373,3 +373,113 @@ def evaluate_response(
     if sum(indicators) >= 2:
         return LessonOutcome.COMPREHENSION_VERIFIED
     return LessonOutcome.NO_CHANGE
+
+
+# ─── Lesson Tracking ────────────────────────────────────────────────────
+
+
+@dataclass
+class LessonRecord:
+    """Record of a lesson delivered to an agent."""
+    agent_name: str
+    task_id: str
+    disease: DiseaseCategory
+    attempt: int
+    outcome: LessonOutcome
+    timestamp: str = ""
+
+    def __post_init__(self):
+        if not self.timestamp:
+            from datetime import datetime
+            self.timestamp = datetime.now().isoformat()
+
+
+class LessonTracker:
+    """Tracks lesson history per agent for health profiling.
+
+    Persistent across orchestrator cycles. The doctor reads this to
+    understand agent disease patterns over time.
+    """
+
+    def __init__(self) -> None:
+        self._records: list[LessonRecord] = []
+
+    def record_lesson(
+        self,
+        agent_name: str,
+        task_id: str,
+        disease: DiseaseCategory,
+        attempt: int,
+        outcome: LessonOutcome,
+    ) -> LessonRecord:
+        """Record a lesson delivery and its outcome."""
+        record = LessonRecord(
+            agent_name=agent_name,
+            task_id=task_id,
+            disease=disease,
+            attempt=attempt,
+            outcome=outcome,
+        )
+        self._records.append(record)
+        logger.info(
+            "Lesson tracked: %s on %s — %s (attempt %d, outcome: %s)",
+            disease.value, agent_name, task_id[:8], attempt, outcome.value,
+        )
+        return record
+
+    def get_agent_history(self, agent_name: str) -> list[LessonRecord]:
+        """Get all lesson records for an agent."""
+        return [r for r in self._records if r.agent_name == agent_name]
+
+    def get_agent_disease_count(self, agent_name: str, disease: DiseaseCategory) -> int:
+        """Count how many times an agent has been taught for a specific disease."""
+        return sum(
+            1 for r in self._records
+            if r.agent_name == agent_name and r.disease == disease
+        )
+
+    def get_agent_prune_recommendations(self, agent_name: str, threshold: int = 3) -> list[DiseaseCategory]:
+        """Get diseases where the agent has failed teaching enough times to recommend pruning."""
+        from collections import Counter
+        failures = Counter(
+            r.disease for r in self._records
+            if r.agent_name == agent_name and r.outcome == LessonOutcome.NO_CHANGE
+        )
+        return [disease for disease, count in failures.items() if count >= threshold]
+
+    @property
+    def total_lessons(self) -> int:
+        return len(self._records)
+
+    @property
+    def total_comprehension_verified(self) -> int:
+        return sum(1 for r in self._records if r.outcome == LessonOutcome.COMPREHENSION_VERIFIED)
+
+    @property
+    def total_no_change(self) -> int:
+        return sum(1 for r in self._records if r.outcome == LessonOutcome.NO_CHANGE)
+
+    def emit_events(self, record: LessonRecord) -> None:
+        """Emit teaching events to the event store."""
+        try:
+            from fleet.core.events import create_event, EventStore
+            store = EventStore()
+
+            event_type = {
+                LessonOutcome.COMPREHENSION_VERIFIED: "fleet.teaching.comprehension_verified",
+                LessonOutcome.NO_CHANGE: "fleet.teaching.comprehension_failed",
+                LessonOutcome.IN_PROGRESS: "fleet.teaching.practice_attempted",
+            }.get(record.outcome, "fleet.teaching.lesson_started")
+
+            event = create_event(
+                event_type=event_type,
+                source="fleet/core/teaching",
+                subject=record.task_id,
+                agent=record.agent_name,
+                disease=record.disease.value,
+                attempt=record.attempt,
+                outcome=record.outcome.value,
+            )
+            store.append(event)
+        except Exception:
+            pass  # Event emission must never break teaching

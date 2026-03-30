@@ -5,6 +5,7 @@ from fleet.core.teaching import (
     DiseaseCategory,
     LessonOutcome,
     TEMPLATES,
+    LessonTracker,
     adapt_lesson,
     format_lesson_for_injection,
     evaluate_response,
@@ -195,3 +196,54 @@ class TestEvaluateResponse:
             "all sites are covered."
         )
         assert evaluate_response(lesson, response) == LessonOutcome.COMPREHENSION_VERIFIED
+
+
+class TestLessonTracker:
+    def test_record_lesson(self):
+        tracker = LessonTracker()
+        record = tracker.record_lesson(
+            "architect", "task-42", DiseaseCategory.DEVIATION,
+            attempt=1, outcome=LessonOutcome.COMPREHENSION_VERIFIED,
+        )
+        assert record.agent_name == "architect"
+        assert record.disease == DiseaseCategory.DEVIATION
+        assert tracker.total_lessons == 1
+
+    def test_agent_history(self):
+        tracker = LessonTracker()
+        tracker.record_lesson("agent-a", "t1", DiseaseCategory.DEVIATION, 1, LessonOutcome.NO_CHANGE)
+        tracker.record_lesson("agent-b", "t2", DiseaseCategory.LAZINESS, 1, LessonOutcome.COMPREHENSION_VERIFIED)
+        tracker.record_lesson("agent-a", "t3", DiseaseCategory.DEVIATION, 2, LessonOutcome.NO_CHANGE)
+
+        history = tracker.get_agent_history("agent-a")
+        assert len(history) == 2
+        assert all(r.agent_name == "agent-a" for r in history)
+
+    def test_disease_count(self):
+        tracker = LessonTracker()
+        tracker.record_lesson("agent", "t1", DiseaseCategory.DEVIATION, 1, LessonOutcome.NO_CHANGE)
+        tracker.record_lesson("agent", "t2", DiseaseCategory.DEVIATION, 2, LessonOutcome.NO_CHANGE)
+        tracker.record_lesson("agent", "t3", DiseaseCategory.LAZINESS, 1, LessonOutcome.NO_CHANGE)
+
+        assert tracker.get_agent_disease_count("agent", DiseaseCategory.DEVIATION) == 2
+        assert tracker.get_agent_disease_count("agent", DiseaseCategory.LAZINESS) == 1
+
+    def test_prune_recommendations(self):
+        tracker = LessonTracker()
+        for i in range(3):
+            tracker.record_lesson("agent", f"t{i}", DiseaseCategory.DEVIATION, i, LessonOutcome.NO_CHANGE)
+        tracker.record_lesson("agent", "t4", DiseaseCategory.LAZINESS, 1, LessonOutcome.NO_CHANGE)
+
+        recs = tracker.get_agent_prune_recommendations("agent")
+        assert DiseaseCategory.DEVIATION in recs
+        assert DiseaseCategory.LAZINESS not in recs  # only 1 failure
+
+    def test_totals(self):
+        tracker = LessonTracker()
+        tracker.record_lesson("a", "t1", DiseaseCategory.DEVIATION, 1, LessonOutcome.COMPREHENSION_VERIFIED)
+        tracker.record_lesson("a", "t2", DiseaseCategory.LAZINESS, 1, LessonOutcome.NO_CHANGE)
+        tracker.record_lesson("b", "t3", DiseaseCategory.DEVIATION, 1, LessonOutcome.COMPREHENSION_VERIFIED)
+
+        assert tracker.total_lessons == 3
+        assert tracker.total_comprehension_verified == 2
+        assert tracker.total_no_change == 1
