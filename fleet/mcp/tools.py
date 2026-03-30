@@ -1922,3 +1922,170 @@ def register_tools(server: FastMCP) -> None:
             result["error"] = str(e)
 
         return result
+
+    # ─── Artifact Tools (Transpose Layer) ───────────────────────────────
+
+    @server.tool()
+    async def fleet_artifact_read(task_id: str = "") -> dict:
+        """Read the current artifact object from a task.
+
+        Returns the structured object — no HTML, just data.
+
+        Args:
+            task_id: Task ID to read artifact from. Uses current task if empty.
+        """
+        ctx = _get_ctx()
+        tid = task_id or ctx.task_id
+        if not tid:
+            return {"ok": False, "error": "No task_id"}
+
+        try:
+            board_id = await ctx.resolve_board_id()
+            task = await ctx.mc.get_task(board_id, tid)
+
+            plane_issue_id = task.custom_fields.plane_issue_id
+            if plane_issue_id and hasattr(ctx, 'plane') and ctx.plane:
+                workspace = task.custom_fields.plane_workspace or ""
+                project_id = task.custom_fields.plane_project_id or ""
+                if workspace and project_id:
+                    issues = await ctx.plane.list_issues(workspace, project_id)
+                    issue = next((i for i in issues if i.id == plane_issue_id), None)
+                    if issue and issue.description_html:
+                        from fleet.core.transpose import from_html, get_artifact_type
+                        obj = from_html(issue.description_html)
+                        if obj:
+                            return {
+                                "ok": True,
+                                "artifact_type": get_artifact_type(issue.description_html),
+                                "data": obj,
+                                "source": "plane",
+                            }
+
+            return {"ok": True, "artifact_type": None, "data": None, "source": "none"}
+
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    @server.tool()
+    async def fleet_artifact_update(
+        artifact_type: str,
+        field: str,
+        value: str = "",
+        values: list[str] | None = None,
+        append: bool = False,
+        task_id: str = "",
+    ) -> dict:
+        """Update an artifact field on the current task.
+
+        Simple args in, structured data out. The tool handles HTML transpose.
+
+        Args:
+            artifact_type: Type (analysis_document, plan, bug, etc.)
+            field: Field name to update (title, scope, findings, steps, etc.)
+            value: String value for scalar fields.
+            values: List of strings for list fields.
+            append: If True, append to list instead of replacing.
+            task_id: Task ID. Uses current task if empty.
+        """
+        ctx = _get_ctx()
+        tid = task_id or ctx.task_id
+        if not tid:
+            return {"ok": False, "error": "No task_id"}
+
+        try:
+            from fleet.core.transpose import to_html, from_html
+
+            board_id = await ctx.resolve_board_id()
+            task = await ctx.mc.get_task(board_id, tid)
+
+            # Read current artifact from Plane
+            current_html = ""
+            plane_issue_id = task.custom_fields.plane_issue_id
+            workspace = task.custom_fields.plane_workspace or ""
+            project_id = task.custom_fields.plane_project_id or ""
+
+            if plane_issue_id and workspace and project_id:
+                if hasattr(ctx, 'plane') and ctx.plane:
+                    issues = await ctx.plane.list_issues(workspace, project_id)
+                    issue = next((i for i in issues if i.id == plane_issue_id), None)
+                    if issue:
+                        current_html = issue.description_html or ""
+
+            current_obj = from_html(current_html) or {}
+
+            # Apply update
+            if append and isinstance(current_obj.get(field), list):
+                if values:
+                    current_obj[field].extend(values)
+                elif value:
+                    current_obj[field].append(value)
+            else:
+                current_obj[field] = values if values is not None else value
+
+            # Transpose and write
+            new_html = to_html(artifact_type, current_obj)
+
+            if plane_issue_id and workspace and project_id:
+                if hasattr(ctx, 'plane') and ctx.plane:
+                    await ctx.plane.update_issue(
+                        workspace, project_id, plane_issue_id,
+                        description_html=new_html,
+                    )
+
+            await ctx.mc.post_comment(board_id, tid,
+                f"**Artifact updated** ({artifact_type}): {field}")
+
+            return {"ok": True, "artifact_type": artifact_type, "field": field, "object": current_obj}
+
+        except Exception as e:
+            _report_error("fleet_artifact_update", str(e))
+            return {"ok": False, "error": str(e)}
+
+    @server.tool()
+    async def fleet_artifact_create(
+        artifact_type: str,
+        title: str,
+        task_id: str = "",
+    ) -> dict:
+        """Create a new artifact on the current task.
+
+        Initializes the object and renders rich HTML to Plane.
+
+        Args:
+            artifact_type: Type (analysis_document, plan, bug, etc.)
+            title: Artifact title.
+            task_id: Task ID. Uses current task if empty.
+        """
+        ctx = _get_ctx()
+        tid = task_id or ctx.task_id
+        if not tid:
+            return {"ok": False, "error": "No task_id"}
+
+        try:
+            from fleet.core.transpose import to_html
+
+            obj = {"title": title}
+            new_html = to_html(artifact_type, obj)
+
+            board_id = await ctx.resolve_board_id()
+            task = await ctx.mc.get_task(board_id, tid)
+
+            plane_issue_id = task.custom_fields.plane_issue_id
+            workspace = task.custom_fields.plane_workspace or ""
+            project_id = task.custom_fields.plane_project_id or ""
+
+            if plane_issue_id and workspace and project_id:
+                if hasattr(ctx, 'plane') and ctx.plane:
+                    await ctx.plane.update_issue(
+                        workspace, project_id, plane_issue_id,
+                        description_html=new_html,
+                    )
+
+            await ctx.mc.post_comment(board_id, tid,
+                f"**Artifact created** ({artifact_type}): {title}")
+
+            return {"ok": True, "artifact_type": artifact_type, "object": obj}
+
+        except Exception as e:
+            _report_error("fleet_artifact_create", str(e))
+            return {"ok": False, "error": str(e)}
