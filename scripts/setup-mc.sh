@@ -36,6 +36,7 @@ fi
 
 # Apply fleet patches to vendor
 bash scripts/apply-patches.sh
+bash scripts/apply-fleet-ui.sh
 
 # Start Docker services
 echo "Starting Mission Control services..."
