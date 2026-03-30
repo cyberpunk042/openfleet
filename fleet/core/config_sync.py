@@ -101,20 +101,36 @@ class ConfigSync:
                     if line.strip()
                 ]
 
-                # Only commit actual config changes (not just timestamp in state file)
+                # Commit config files + state file when meaningful changes exist
                 config_files = [
                     f for f in files_changed
                     if f.startswith("config/")
                     or f.endswith(".yaml")
                     or f.endswith(".yml")
                 ]
-                # Include .plane-state.json only if config files also changed
-                state_files = [f for f in files_changed if f.startswith(".plane-state")]
-                if config_files:
+                state_files = [f for f in files_changed if ".plane-state" in f]
+
+                # Check if state file has meaningful changes (not just timestamp)
+                if state_files and not config_files:
+                    try:
+                        import subprocess as _sp
+                        diff = _sp.run(
+                            ["git", "diff", ".plane-state.json"],
+                            cwd=str(self._dspd_dir),
+                            capture_output=True, text=True, timeout=5,
+                        )
+                        diff_lines = [
+                            l for l in diff.stdout.split("\n")
+                            if l.startswith("+") and not l.startswith("+++")
+                            and "exported_at" not in l
+                        ]
+                        # If there are changes beyond just the timestamp
+                        if len(diff_lines) > 0:
+                            config_files = state_files
+                    except Exception:
+                        pass
+                else:
                     config_files.extend(state_files)
-                elif not config_files and state_files:
-                    # Only state file changed (timestamp) — skip commit
-                    config_files = []
 
                 if config_files:
                     subprocess.run(
