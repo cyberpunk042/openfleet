@@ -36,6 +36,7 @@ _change_detector = ChangeDetector()
 
 from fleet.core.budget_monitor import BudgetMonitor
 from fleet.core.doctor import DoctorReport, AgentHealth, ResponseAction, run_doctor_cycle
+from fleet.core.directives import parse_directives, format_directive_for_agent
 from fleet.core.fleet_mode import FleetControlState, read_fleet_control, should_dispatch as fleet_should_dispatch, get_active_agents_for_phase
 from fleet.core.teaching import adapt_lesson, format_lesson_for_injection, DiseaseCategory
 _budget_monitor = BudgetMonitor()
@@ -174,10 +175,13 @@ async def run_orchestrator_cycle(
     await _dispatch_ready_tasks(mc, irc, board_id, tasks, agent_map, state, dry_run, config,
                                 doctor_report=doctor_report, fleet_state=fleet_state)
 
-    # Step 6: Evaluate parent task completion (all children done → parent to review)
+    # Step 6: Process directives from board memory
+    await _process_directives(mc, irc, board_id, state, dry_run)
+
+    # Step 7: Evaluate parent task completion (all children done → parent to review)
     await _evaluate_parents(mc, irc, board_id, tasks, state, dry_run)
 
-    # Step 7: Health check — detect stuck tasks, offline agents, stale deps
+    # Step 8: Health check — detect stuck tasks, offline agents, stale deps
     await _health_check(mc, irc, board_id, tasks, agents, state, dry_run)
 
     # NOTE: Heartbeats are managed by the GATEWAY, not the orchestrator.
@@ -318,6 +322,46 @@ async def _execute_doctor_intervention(
         state.errors.append(
             f"Doctor intervention failed for {intervention.agent_name}: {exc}"
         )
+
+
+# ─── Step 6: Directives ─────────────────────────────────────────────────
+
+
+async def _process_directives(
+    mc: MCClient,
+    irc: IRCClient,
+    board_id: str,
+    state: OrchestratorState,
+    dry_run: bool,
+) -> None:
+    """Process PO directives from board memory."""
+    try:
+        memory = await mc.list_memory(board_id, limit=20)
+        directives = parse_directives(memory)
+
+        for directive in directives:
+            target = directive.target_agent or "all"
+            if dry_run:
+                state.notes.append(
+                    f"Directive [dry_run]: WOULD route to {target}: "
+                    f"{directive.content[:50]}"
+                )
+                continue
+
+            state.notes.append(
+                f"Directive: → {target}: {directive.content[:50]}"
+            )
+
+            # Notify via IRC
+            urgency = "🚨 " if directive.urgent else ""
+            await _notify(
+                irc, "#fleet",
+                f"[directive] {urgency}{directive.source} → {target}: "
+                f"{directive.content[:80]}",
+            )
+
+    except Exception as exc:
+        state.errors.append(f"Directive processing error: {exc}")
 
 
 # ─── Step 1: Security Scan ──────────────────────────────────────────────
