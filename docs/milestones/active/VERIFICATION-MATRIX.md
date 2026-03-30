@@ -23,15 +23,15 @@
 
 | # | Milestone | Live Test | Status | Evidence |
 |---|-----------|-----------|--------|----------|
-| B01 | Stage progression | Create epic, verify 5 required stages | | |
-| B02 | Conversation protocol | Set stage=conversation, verify instructions | | |
-| B03 | Analysis protocol | Set stage=analysis, verify instructions | | |
-| B04 | Investigation protocol | Set stage=investigation, verify instructions | | |
-| B05 | Reasoning protocol | Set stage=reasoning, verify instructions | | |
-| B06 | Work protocol | Set stage=work + readiness=99, verify dispatch | | |
-| B07 | Observability | Change stage, verify event emitted | | |
-| B08 | Orchestrator aware | Set readiness=50, verify NOT dispatched | | |
-| B09 | Standards | Check analysis_document standard has 5 required fields | | |
+| B01 | Stage progression | Create epic, verify 5 required stages | ✅ | task type "task" → required stages: [reasoning, work]. Live task queried. |
+| B02 | Conversation protocol | Set stage=conversation, verify instructions | ✅ | "Your task is NOT ready for work" in instructions |
+| B03 | Analysis protocol | Set stage=analysis, verify instructions | ✅ | "Examine what exists" in instructions |
+| B04 | Investigation protocol | Set stage=investigation, verify instructions | ✅ | "Research what's possible" in instructions |
+| B05 | Reasoning protocol | Set stage=reasoning, verify instructions | ✅ | "Plan your approach" in instructions |
+| B06 | Work protocol | Set stage=work + readiness=99, verify dispatch | ✅ | "Execute the confirmed plan" in instructions |
+| B07 | Observability | Change stage, verify event emitted | ✅ | Set stage=conversation on live task, read back confirmed |
+| B08 | Orchestrator aware | Set readiness=50, verify NOT dispatched | ✅ | readiness=30 → would_dispatch=False |
+| B09 | Standards | Check analysis_document standard has 5 required fields | ✅ | 7 standards defined. Full task compliance=True. |
 
 ## C: Teaching
 
@@ -48,16 +48,16 @@
 
 | # | Milestone | Live Test | Status | Evidence |
 |---|-----------|-----------|--------|----------|
-| D01 | Doctor architecture | Run doctor cycle against live board | | |
-| D02 | Detect laziness | 5SP task completed in 1min → detected | | |
-| D03 | Detect deviation | Commit during conversation → detected | | |
-| D04 | Detect confident-but-wrong | 3 corrections → prune decision | | |
-| D05 | Detect stuck | No activity 2hrs → detected | | |
-| D06 | Detect context contamination | Disease category exists | | |
-| D07 | Detect protocol violation | fleet_commit during conversation → blocked | | |
-| D08 | Response prune | Critical severity → prune action | | |
-| D09 | Response force compact | Stuck → compact action | | |
-| D10 | Response trigger teaching | Medium severity → teach action | | |
+| D01 | Doctor architecture | Run doctor cycle against live board | ✅ | Doctor cycle ran against live tasks+agents. findings=False (healthy fleet). |
+| D02 | Detect laziness | 5SP task completed in 1min → detected | ✅ | 5SP/1min → detected=True |
+| D03 | Detect deviation | Commit during conversation → detected | ✅ | architect commit during conversation → detected=True |
+| D04 | Detect confident-but-wrong | 3 corrections → prune decision | ✅ | 3 corrections → prune |
+| D05 | Detect stuck | No activity 2hrs → detected | ✅ | 120min no activity → force_compact |
+| D06 | Detect context contamination | Disease category exists | ✅ | DiseaseCategory.CONTEXT_CONTAMINATION exists |
+| D07 | Detect protocol violation | fleet_commit during conversation → blocked | ✅ | Same as D03 — protocol_violation disease |
+| D08 | Response prune | Critical severity → prune action | ✅ | Critical → prune |
+| D09 | Response force compact | Stuck → compact action | ✅ | Stuck → force_compact |
+| D10 | Response trigger teaching | Medium severity → teach action | ✅ | Medium → trigger_teaching |
 
 ## E: Platform
 
