@@ -2051,10 +2051,20 @@ def register_tools(server: FastMCP) -> None:
                         obj = from_html(issue.description_html)
                         if obj:
                             return {
+                                art_type = get_artifact_type(issue.description_html)
+                                from fleet.core.artifact_tracker import check_artifact_completeness
+                                comp = check_artifact_completeness(art_type or "", obj)
+                                return {
                                 "ok": True,
-                                "artifact_type": get_artifact_type(issue.description_html),
+                                "artifact_type": art_type,
                                 "data": obj,
                                 "source": "plane",
+                                "completeness": {
+                                    "required_pct": comp.required_pct,
+                                    "is_complete": comp.is_complete,
+                                    "missing_required": comp.missing_required,
+                                    "suggested_readiness": comp.suggested_readiness,
+                                },
                             }
 
             return {"ok": True, "artifact_type": None, "data": None, "source": "none"}
@@ -2128,10 +2138,27 @@ def register_tools(server: FastMCP) -> None:
                         description_html=new_html,
                     )
 
-            await ctx.mc.post_comment(board_id, tid,
-                f"**Artifact updated** ({artifact_type}): {field}")
+            # Check completeness against standard
+            from fleet.core.artifact_tracker import check_artifact_completeness, format_completeness_summary
+            completeness = check_artifact_completeness(artifact_type, current_obj)
+            summary = format_completeness_summary(completeness)
 
-            return {"ok": True, "artifact_type": artifact_type, "field": field, "object": current_obj}
+            await ctx.mc.post_comment(board_id, tid,
+                f"**Artifact updated** ({artifact_type}): {field} | {summary}")
+
+            return {
+                "ok": True,
+                "artifact_type": artifact_type,
+                "field": field,
+                "object": current_obj,
+                "completeness": {
+                    "required_pct": completeness.required_pct,
+                    "is_complete": completeness.is_complete,
+                    "missing_required": completeness.missing_required,
+                    "suggested_readiness": completeness.suggested_readiness,
+                    "summary": summary,
+                },
+            }
 
         except Exception as e:
             _report_error("fleet_artifact_update", str(e))
@@ -2180,7 +2207,20 @@ def register_tools(server: FastMCP) -> None:
             await ctx.mc.post_comment(board_id, tid,
                 f"**Artifact created** ({artifact_type}): {title}")
 
-            return {"ok": True, "artifact_type": artifact_type, "object": obj}
+            from fleet.core.artifact_tracker import check_artifact_completeness
+            completeness = check_artifact_completeness(artifact_type, obj)
+
+            return {
+                "ok": True,
+                "artifact_type": artifact_type,
+                "object": obj,
+                "completeness": {
+                    "required_pct": completeness.required_pct,
+                    "is_complete": completeness.is_complete,
+                    "missing_required": completeness.missing_required,
+                    "suggested_readiness": completeness.suggested_readiness,
+                },
+            }
 
         except Exception as e:
             _report_error("fleet_artifact_create", str(e))
