@@ -44,6 +44,11 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from fleet.core.models import Task
+from fleet.core.plane_methodology import (
+    extract_methodology_state,
+    build_label_updates,
+    inject_verbatim_into_html,
+)
 from fleet.infra.mc_client import MCClient
 from fleet.infra.plane_client import PlaneClient, PlaneIssue
 
@@ -248,6 +253,149 @@ class PlaneSyncer:
                 )
                 logger.error(msg)
                 result.errors.append(msg)
+
+        return result
+
+    async def sync_methodology_fields(self) -> dict:
+        """Bidirectional sync of methodology fields (readiness, stage, verbatim).
+
+        For each OCMC task that has a plane_issue_id mapping:
+        - Reads methodology state from both platforms
+        - Syncs whichever is more recent / authoritative
+
+        Direction rules:
+        - requirement_verbatim: Plane → OCMC (PO writes in Plane)
+        - task_readiness: last-write-wins (can change on either side)
+        - task_stage: last-write-wins (can change on either side)
+
+        Returns:
+            Dict with counts: ocmc_updated, plane_updated, errors.
+        """
+        result = {"ocmc_updated": 0, "plane_updated": 0, "errors": []}
+
+        try:
+            tasks = await self._mc.list_tasks(self._board_id, limit=500)
+        except Exception as exc:
+            result["errors"].append(f"Failed to list OCMC tasks: {exc}")
+            return result
+
+        # Build label caches per project (ID → name, name → ID)
+        label_caches: dict[str, dict[str, str]] = {}  # project_id → {id: name}
+
+        for task in tasks:
+            plane_issue_id = self._get_cf(task, CF_PLANE_ISSUE_ID)
+            plane_project_id = self._get_cf(task, CF_PLANE_PROJECT_ID)
+            if not plane_issue_id or not plane_project_id:
+                continue
+
+            try:
+                # Get Plane issue
+                issues = await self._plane.list_issues(
+                    self._workspace, plane_project_id
+                )
+                issue = next((i for i in issues if i.id == plane_issue_id), None)
+                if not issue:
+                    continue
+
+                # Build label cache for this project
+                if plane_project_id not in label_caches:
+                    label_caches[plane_project_id] = await self._plane.list_labels(
+                        self._workspace, plane_project_id
+                    )
+                label_id_to_name = label_caches[plane_project_id]
+                label_names = [label_id_to_name.get(lid, "") for lid in issue.labels]
+
+                # Extract Plane methodology state
+                plane_state = extract_methodology_state(
+                    label_names, issue.description_html
+                )
+
+                # OCMC methodology state
+                ocmc_readiness = task.custom_fields.task_readiness
+                ocmc_stage = task.custom_fields.task_stage
+                ocmc_verbatim = task.custom_fields.requirement_verbatim
+
+                # ── Plane → OCMC: verbatim requirement (Plane is source) ──
+                ocmc_updates = {}
+                if plane_state.requirement_verbatim and plane_state.requirement_verbatim != ocmc_verbatim:
+                    ocmc_updates["requirement_verbatim"] = plane_state.requirement_verbatim
+
+                # ── Bidirectional: readiness (Plane wins if different and non-zero) ──
+                if plane_state.task_readiness != ocmc_readiness:
+                    if plane_state.task_readiness > 0:
+                        ocmc_updates["task_readiness"] = plane_state.task_readiness
+                    elif ocmc_readiness > 0:
+                        # OCMC has readiness, Plane doesn't — push to Plane
+                        pass  # handled below in Plane updates
+
+                # ── Bidirectional: stage (Plane wins if set) ──
+                if plane_state.task_stage and plane_state.task_stage != ocmc_stage:
+                    ocmc_updates["task_stage"] = plane_state.task_stage
+
+                # Apply OCMC updates
+                if ocmc_updates:
+                    await self._mc.update_task(
+                        self._board_id, task.id,
+                        custom_fields=ocmc_updates,
+                    )
+                    result["ocmc_updated"] += 1
+                    logger.info(
+                        "methodology_sync: updated OCMC task %s: %s",
+                        task.id[:8], list(ocmc_updates.keys()),
+                    )
+
+                # ── OCMC → Plane: push readiness/stage/verbatim if OCMC has more ──
+                plane_needs_update = False
+                new_label_names = list(label_names)
+                new_description = issue.description_html
+
+                # Push stage to Plane if OCMC has it and Plane doesn't
+                if ocmc_stage and not plane_state.task_stage:
+                    new_label_names = build_label_updates(
+                        label_names, stage=ocmc_stage,
+                        readiness=ocmc_readiness if ocmc_readiness > 0 else None,
+                    )
+                    plane_needs_update = True
+                # Push readiness to Plane if OCMC has it and Plane doesn't
+                elif ocmc_readiness > 0 and plane_state.task_readiness == 0:
+                    new_label_names = build_label_updates(
+                        label_names, readiness=ocmc_readiness,
+                    )
+                    plane_needs_update = True
+
+                # Push verbatim to Plane if OCMC has it and Plane doesn't
+                if ocmc_verbatim and not plane_state.requirement_verbatim:
+                    new_description = inject_verbatim_into_html(
+                        issue.description_html, ocmc_verbatim
+                    )
+                    plane_needs_update = True
+
+                if plane_needs_update:
+                    # Resolve label names back to IDs
+                    new_label_ids = await self._plane.resolve_label_ids(
+                        self._workspace, plane_project_id, new_label_names,
+                    )
+                    update_kwargs = {}
+                    if new_label_ids != issue.labels:
+                        update_kwargs["label_ids"] = new_label_ids
+                    if new_description != issue.description_html:
+                        update_kwargs["description_html"] = new_description
+
+                    if update_kwargs:
+                        await self._plane.update_issue(
+                            self._workspace, plane_project_id, plane_issue_id,
+                            **update_kwargs,
+                        )
+                        result["plane_updated"] += 1
+                        logger.info(
+                            "methodology_sync: updated Plane issue %s: %s",
+                            plane_issue_id[:8], list(update_kwargs.keys()),
+                        )
+
+            except Exception as exc:
+                msg = f"methodology_sync: error syncing task {task.id[:8]}: {exc}"
+                logger.error(msg)
+                result["errors"].append(msg)
 
         return result
 

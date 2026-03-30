@@ -385,3 +385,45 @@ class PlaneClient:
             json={"issues": [issue_id]},
         )
         resp.raise_for_status()
+
+    # ─── Labels ────────────────────────────────────────────────────────
+
+    async def list_labels(
+        self,
+        workspace_slug: str,
+        project_id: str,
+    ) -> dict[str, str]:
+        """List labels for a project.
+
+        Returns:
+            Dict mapping label ID → label name.
+        """
+        resp = await self._client.get(
+            f"/api/v1/workspaces/{workspace_slug}/projects/{project_id}/labels/",
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        results = data.get("results", data) if isinstance(data, dict) else data
+        if isinstance(results, list):
+            return {str(lbl["id"]): lbl.get("name", "") for lbl in results}
+        return {}
+
+    async def resolve_label_ids(
+        self,
+        workspace_slug: str,
+        project_id: str,
+        label_names: list[str],
+    ) -> list[str]:
+        """Resolve label names to label IDs.
+
+        Args:
+            workspace_slug: Plane workspace slug.
+            project_id: Plane project UUID.
+            label_names: List of label names to resolve.
+
+        Returns:
+            List of label UUIDs. Names that don't match any label are skipped.
+        """
+        label_map = await self.list_labels(workspace_slug, project_id)
+        name_to_id = {name: lid for lid, name in label_map.items()}
+        return [name_to_id[n] for n in label_names if n in name_to_id]
