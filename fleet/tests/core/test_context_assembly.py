@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from fleet.core.models import Task, TaskCustomFields, TaskStatus
-from fleet.core.context_assembly import assemble_task_context, assemble_heartbeat_context
+from fleet.core.context_assembly import assemble_task_context, assemble_heartbeat_context, clear_context_cache
 from fleet.core.role_providers import (
     ROLE_PROVIDERS,
     get_role_provider,
@@ -55,6 +55,9 @@ def _mock_mc():
 
 
 class TestAssembleTaskContext:
+    def setup_method(self):
+        clear_context_cache()
+
     @pytest.mark.asyncio
     async def test_basic_assembly(self):
         task = _make_task()

@@ -83,6 +83,13 @@ async def run_orchestrator_cycle(
 
     state = OrchestratorState()
 
+    # Clear context assembly cache for this cycle
+    try:
+        from fleet.core.context_assembly import clear_context_cache
+        clear_context_cache(cycle_id=str(datetime.now().timestamp()))
+    except Exception:
+        pass
+
     # Check effort profile — fleet may be paused or in minimal mode
     profile_name = config.get("effort_profile", "full")
     profile = get_profile(profile_name)

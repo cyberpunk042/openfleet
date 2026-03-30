@@ -19,6 +19,18 @@ from fleet.core.models import Task, TaskStatus
 
 logger = logging.getLogger(__name__)
 
+# Simple per-cycle cache for task context assembly.
+# Cleared at the start of each orchestrator cycle.
+_task_context_cache: dict[str, dict] = {}
+_cache_cycle_id: str = ""
+
+
+def clear_context_cache(cycle_id: str = "") -> None:
+    """Clear the task context cache. Called at start of each orchestrator cycle."""
+    global _task_context_cache, _cache_cycle_id
+    _task_context_cache = {}
+    _cache_cycle_id = cycle_id
+
 
 async def assemble_task_context(
     task: Task,
@@ -41,6 +53,10 @@ async def assemble_task_context(
     Returns:
         Aggregated task context dict.
     """
+    # Check cache
+    if task.id in _task_context_cache:
+        return _task_context_cache[task.id]
+
     cf = task.custom_fields
     result: dict[str, Any] = {}
 
@@ -202,6 +218,8 @@ async def assemble_task_context(
             "workspace": cf.plane_workspace,
         }
 
+    # Cache the result for this cycle
+    _task_context_cache[task.id] = result
     return result
 
 
