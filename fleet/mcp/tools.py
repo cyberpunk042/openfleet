@@ -2050,21 +2050,20 @@ def register_tools(server: FastMCP) -> None:
                         from fleet.core.transpose import from_html, get_artifact_type
                         obj = from_html(issue.description_html)
                         if obj:
-                            return {
                                 art_type = get_artifact_type(issue.description_html)
                                 from fleet.core.artifact_tracker import check_artifact_completeness
                                 comp = check_artifact_completeness(art_type or "", obj)
                                 return {
-                                "ok": True,
-                                "artifact_type": art_type,
-                                "data": obj,
-                                "source": "plane",
-                                "completeness": {
-                                    "required_pct": comp.required_pct,
-                                    "is_complete": comp.is_complete,
-                                    "missing_required": comp.missing_required,
-                                    "suggested_readiness": comp.suggested_readiness,
-                                },
+                                    "ok": True,
+                                    "artifact_type": art_type,
+                                    "data": obj,
+                                    "source": "plane",
+                                    "completeness": {
+                                        "required_pct": comp.required_pct,
+                                        "is_complete": comp.is_complete,
+                                        "missing_required": comp.missing_required,
+                                        "suggested_readiness": comp.suggested_readiness,
+                                    },
                             }
 
             return {"ok": True, "artifact_type": None, "data": None, "source": "none"}
