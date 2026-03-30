@@ -24,6 +24,6 @@ last_session:
   summary: Assessment completed
 setup:
   mission_control_url: http://localhost:8000
-  user: Jean Fortin
+  user: Fleet Admin
   organization: Personal
   board: Fleet Operations

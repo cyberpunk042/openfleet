@@ -43,6 +43,24 @@ def render_irc(event: FleetEvent) -> str:
         "online": f"[system] 🟢 {data.get('agent', '?')} online",
         "offline": f"[system] 🔴 {data.get('agent', '?')} offline",
         "stuck": f"[system] ⚠️ Agent stuck: {data.get('agent', '?')}",
+        # Immune system
+        "disease_detected": f"[doctor] 🔬 {data.get('disease', '?')} detected on {agent}: {data.get('signal', '')[:40]}",
+        "agent_pruned": f"[doctor] ✂️ PRUNED {agent} — {data.get('reason', '')[:40]}",
+        "context_compacted": f"[doctor] 📦 Compacted {agent} context",
+        "teaching_triggered": f"[doctor] 📚 Teaching {agent} — {data.get('disease', '')}",
+        "escalated_to_po": f"[doctor] 🚨 ESCALATED to PO: {agent} — {data.get('reason', '')[:40]}",
+        # Teaching system
+        "lesson_started": f"[teaching] 📖 Lesson for {agent}: {data.get('disease', '')}",
+        "practice_attempted": f"[teaching] ✏️ {agent} practice attempt #{data.get('attempt', '?')}",
+        "comprehension_verified": f"[teaching] ✅ {agent} comprehension verified",
+        "comprehension_failed": f"[teaching] ❌ {agent} comprehension failed",
+        "escalated_to_prune": f"[teaching] ✂️ {agent} failed teaching — escalated to prune",
+        # Methodology system
+        "stage_changed": f"[methodology] 📊 {data.get('subject', '?')[:8]} stage: {data.get('from_stage', '?')} → {data.get('to_stage', '?')}",
+        "readiness_changed": f"[methodology] 📈 {data.get('subject', '?')[:8]} readiness: {data.get('old', '?')}% → {data.get('new', '?')}%",
+        "check_passed": f"[methodology] ✅ {data.get('check', '?')} passed",
+        "check_failed": f"[methodology] ❌ {data.get('check', '?')} failed",
+        "protocol_violation": f"[methodology] ⚠️ {agent} violated {data.get('stage', '?')} protocol: {data.get('violation', '')[:40]}",
     }
 
     return templates.get(event_type, f"[{agent}] {event.type}: {str(data)[:60]}")
@@ -102,6 +120,11 @@ def render_ntfy(event: FleetEvent) -> dict:
         "offline": f"Agent offline: {data.get('agent', '?')}",
         "cycle_started": f"Sprint started: {data.get('cycle_name', '?')}",
         "cycle_completed": f"Sprint completed: {data.get('cycle_name', '?')}",
+        # Immune system (only severe events push-notify)
+        "agent_pruned": f"Agent PRUNED: {data.get('agent', '?')}",
+        "escalated_to_po": f"ESCALATION: {data.get('agent', '?')} needs attention",
+        # Teaching system
+        "escalated_to_prune": f"Teaching failed: {data.get('agent', '?')} — prune recommended",
     }
 
     title = title_templates.get(event_type, f"{event.type}")
@@ -160,6 +183,21 @@ def render_board_memory(event: FleetEvent) -> dict:
         "posted": f"ALERT [{data.get('severity', '?')}]: {data.get('title', '')}: {data.get('details', '')}",
         "pr_merged": f"PR merged: {data.get('task_title', '')} — {data.get('pr_url', '')}",
         "issue_created": f"Plane issue created: {data.get('title', '')} ({data.get('project', '')})",
+        # Immune system
+        "disease_detected": f"🔬 Doctor detected {data.get('disease', '?')} on {agent}: {data.get('signal', '')}",
+        "agent_pruned": f"✂️ Doctor PRUNED {agent}: {data.get('reason', '')}",
+        "context_compacted": f"📦 Doctor compacted {agent} context",
+        "teaching_triggered": f"📚 Doctor triggered teaching for {agent}: {data.get('disease', '')}",
+        "escalated_to_po": f"🚨 Doctor ESCALATED to PO: {agent} needs attention — {data.get('reason', '')}",
+        # Teaching system
+        "lesson_started": f"📖 Teaching lesson started for {agent}: {data.get('disease', '')}",
+        "comprehension_verified": f"✅ {agent} comprehension verified — returning to work",
+        "comprehension_failed": f"❌ {agent} comprehension failed — lesson continues",
+        "escalated_to_prune": f"✂️ Teaching failed for {agent} — escalated to prune",
+        # Methodology system
+        "stage_changed": f"📊 Task stage changed: {data.get('from_stage', '?')} → {data.get('to_stage', '?')} (authorized by {data.get('authorized_by', '?')})",
+        "readiness_changed": f"📈 Task readiness changed: {data.get('old', '?')}% → {data.get('new', '?')}%",
+        "protocol_violation": f"⚠️ Protocol violation by {agent}: {data.get('violation', '')}",
     }
 
     content = content_templates.get(event_type, f"[{event.type}] {str(data)[:200]}")
@@ -168,6 +206,16 @@ def render_board_memory(event: FleetEvent) -> dict:
     tags.append(event_type)
     if data.get("project"):
         tags.append(f"project:{data['project']}")
+
+    # Tag by system for filtering
+    if "immune" in event.type:
+        tags.append("immune-system")
+    elif "teaching" in event.type:
+        tags.append("teaching-system")
+    elif "methodology" in event.type:
+        tags.append("methodology")
+    if data.get("disease"):
+        tags.append(f"disease:{data['disease']}")
 
     return {
         "content": content[:500],
