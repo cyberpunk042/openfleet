@@ -368,19 +368,29 @@ def run_daemon(args: list[str] | None = None) -> int:
         f.write(str(os.getpid()))
 
     def cleanup(*_):
-        # Fleet daemon shutting down. Disable cron jobs so the gateway
-        # stops firing heartbeats. Do NOT kill the gateway — killing it
-        # destroys in-memory cron jobs that can't be recreated.
+        # Daemon shutting down. Only disable cron if MC is actually down.
+        # If MC is up, this is just a restart — leave cron enabled.
         try:
-            from fleet.infra.gateway_client import disable_gateway_cron_jobs
-            disable_gateway_cron_jobs()
+            import httpx
+            resp = httpx.get("http://localhost:8000/healthz", timeout=3)
+            mc_up = resp.status_code == 200
         except Exception:
-            pass
+            mc_up = False
+
+        if not mc_up:
+            try:
+                from fleet.infra.gateway_client import disable_gateway_cron_jobs
+                disable_gateway_cron_jobs()
+            except Exception:
+                pass
+            print("[daemon] Shutdown: MC is DOWN. Cron disabled.")
+        else:
+            print("[daemon] Shutdown: MC is UP. Cron left enabled for restart.")
+
         try:
             os.remove(pid_file)
         except Exception:
             pass
-        print("[daemon] Shutdown complete. Cron disabled. Zero consumption.")
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, cleanup)
