@@ -1205,7 +1205,7 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
                 lock_path = os.path.join(fleet_dir, ".gateway-starting")
 
                 # Check if gateway is alive (pgrep OR lock file exists)
-                _gw = _sp.run(["pgrep", "-x", "openclaw-gateway"],
+                _gw = _sp.run(["pgrep", "-f", "openclaw-gateway"],
                               capture_output=True, timeout=5)
                 gateway_alive = _gw.returncode == 0
 
