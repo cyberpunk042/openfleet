@@ -125,13 +125,93 @@ AICP already has significant infrastructure that fleet milestones didn't connect
 
 **Critical insight**: The RAG pipeline in AICP (`rag.py` + `kb.py`) uses SQLite for persistence — it survives docker purges because the DB is on the host filesystem. The LocalAI stores API (`stores.py`) is ephemeral. The solution to the PO's persistence requirement is to use the SQLite-backed RAG, not LocalAI stores.
 
-### 3.4 LocalAI Capabilities (Research pending)
+### 3.4 LocalAI Capabilities (Completed)
 
-*Awaiting research agent results.*
+**Full local RAG stack already available — not being used.**
 
-### 3.5 OpenClaw / Claude Plugins (Research pending)
+| Feature | Endpoint | Model | Runs On | Status |
+|---------|----------|-------|---------|--------|
+| Embeddings | `/v1/embeddings` | nomic-embed-text-v1.5 | CPU | Configured, not used by fleet |
+| Stores (vector DB) | `/stores/set`, `/stores/find` | N/A | CPU | Available, not used |
+| Reranking | `/v1/rerank` | bge-reranker-v2-m3 | CPU | Configured, not used by fleet |
+| Function calling | `/v1/chat/completions` (tools) | hermes models | GPU | Grammar config MISSING |
+| Vision | `/v1/chat/completions` (image) | LLaVA | GPU | Configured |
+| Speech-to-text | `/v1/audio/transcriptions` | Whisper | CPU | Configured |
+| Text-to-speech | `/v1/audio/speech` | Piper | CPU | Configured |
+| Image generation | `/v1/images/generations` | Stable Diffusion | GPU | Configured |
 
-*Awaiting research agent results.*
+**Critical: Embedding + Reranker run on CPU simultaneously with GPU LLM.** No model swapping needed for RAG operations. This is a huge advantage — RAG queries cost zero GPU time.
+
+**Critical persistence bug:** Docker-compose does NOT mount `/data` volume. All stores, agent state, and KB collections are lost on container recreate. Fix:
+```yaml
+volumes:
+  - ./data:/data
+environment:
+  - LOCALAI_DATA_PATH=/data
+```
+
+**LocalAI v4.0 new capabilities (may not be in current install):**
+- Built-in agent system with per-agent knowledge bases
+- MCP tool support in model YAML configs
+- Video generation, sound generation, voice activity detection, object detection
+- Realtime API (WebSocket for live audio)
+
+**Function calling grammar config (missing from hermes YAMLs):**
+```yaml
+function:
+  parallel_calls: true
+  mixed_mode: false
+```
+This enables grammar-constrained decoding for reliable tool use on small models.
+
+**Prompt caching (missing from hermes-3b):**
+```yaml
+prompt_cache_path: hermes-3b-cache
+prompt_cache_all: true
+```
+
+### 3.5 OpenClaw / Claude Ecosystem (Completed)
+
+**Scale of available tooling is massive — we're using almost none of it.**
+
+| Ecosystem | Scale | What It Offers |
+|-----------|-------|----------------|
+| OpenClaw Skills Registry | **5,400+ skills** | Ready-made capabilities via mcporter CLI |
+| Claude Code Plugins | **9,000+ plugins** | Packaged skills, agents, hooks, MCP servers |
+| MCP Server Registry | **1,000+ servers** | GitHub, Slack, Postgres, browsers, filesystems |
+| Agent Skills Standard | Open spec | SKILL.md with frontmatter, progressive disclosure |
+
+**Claude Agent SDK — Agent Teams (Swarm Mode):**
+- Lead agent + 2-5 teammates, each in own context window + git worktree
+- Shared task list with dependency tracking and file-locking
+- **Mailbox-based direct messaging** between teammates
+- Quality gates: `TeammateIdle`, `TaskCreated`, `TaskCompleted` hooks
+- Plan approval: teammates can be required to plan before implementing
+- Enable: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"`
+
+**This is critical**: Agent Teams provides the inter-agent communication protocol we identified as missing in the agent file review. Instead of building our own, we should evaluate whether Agent Teams fits our fleet orchestration model.
+
+**Claude Code Skills Architecture:**
+- SKILL.md with YAML frontmatter (description, model override, effort override, allowed-tools, context fork)
+- Progressive disclosure: descriptions load at ~100 tokens, full instructions only on invocation
+- Scopes: enterprise → personal → project → plugin (priority order)
+- Agent-specific skills via project directories, plugins, or subagent definitions
+- Dynamic: `$ARGUMENTS`, shell injection, supporting files
+
+**Cost Optimization:**
+- Prompt caching: **90% discount** on cached input tokens
+- Batch API: **50% discount** for async processing
+- Both directly relevant to fleet operations at scale
+
+**Knowledge Sharing Mechanisms:**
+- CLAUDE.md + auto memory (file-based, deterministic)
+- MCP servers (custom RAG endpoint)
+- Claude-Mem plugin (session capture + semantic retrieval)
+- `@imports` syntax in CLAUDE.md for shared docs
+- `--add-dir` for cross-project context
+- Agent SDK: session resume/fork for continuity
+
+**Key insight**: Claude Code's context system is file-based and deterministic, NOT embedding-based. For true semantic RAG, we need either our AICP RAG pipeline (SQLite + LocalAI embeddings) or a custom MCP server wrapping a vector DB. Both options are already partially built.
 
 ---
 
@@ -146,8 +226,8 @@ AICP already has significant infrastructure that fleet milestones didn't connect
 |----|-----------|-------------|
 | M-AI01 | **Agent Identity System** | Fill IDENTITY.md + CLAUDE.md for all 11 agents. Each gets personality, voice, working philosophy, IRC presence. Not templates — real characters. |
 | M-AI02 | **Agent Self-Knowledge** | Each agent gets populated USER.md (who they serve), TOOLS.md (their environment), and initial MEMORY.md. Agents know their context. |
-| M-AI03 | **Agent Communication Protocol** | Define how agents request help, escalate, coordinate. Structured `request_collaboration()` protocol. Driver boundaries (PM vs fleet-ops). |
-| M-AI04 | **Agent Research Capability** | Agents can research online (web search) and in code (grep, read, explore). Define which agents get which research tools. |
+| M-AI03 | **Agent Communication Protocol** | Evaluate Agent Teams (swarm mode) vs custom protocol. If Agent Teams fits: enable `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, configure mailbox messaging, shared task lists, quality gates. If not: build structured `request_collaboration()`. Define driver boundaries (PM vs fleet-ops). |
+| M-AI04 | **Agent Research Capability** | Agents can research online (WebSearch, WebFetch) and in code (Grep, Read, Glob, Explore agent). Define which agents get which research tools via `allowed-tools` in SKILL.md. |
 | M-AI05 | **Agent Memory Lifecycle** | Populate memory system: daily logs (memory/YYYY-MM-DD.md), curated wisdom (MEMORY.md). Define archival, retention, cross-session persistence. |
 | M-AI06 | **Context Injection Standard** | Standardize FleetContext fields, validation, guaranteed structure. Every agent gets consistent, complete context on every cycle. |
 
@@ -172,7 +252,7 @@ AICP already has significant infrastructure that fleet milestones didn't connect
 
 | ID | Milestone | Description |
 |----|-----------|-------------|
-| M-KB01 | **Connect AICP RAG to Fleet** | Wire `aicp/core/kb.py` into fleet agent context. Agents can query project knowledge before starting work. |
+| M-KB01 | **Connect AICP RAG to Fleet** | Wire `aicp/core/kb.py` into fleet agent context via custom MCP server. Agents query project knowledge using standard MCP tool calls. Alternatively: direct LocalAI stores API integration. |
 | M-KB02 | **Domain Knowledge Bases** | Create per-project KBs: fleet KB, AICP KB, DSPD KB, NNRT KB. Ingest docs, code comments, design docs. |
 | M-KB03 | **Knowledge Persistence IaC** | SQLite RAG DBs backed up to host filesystem. `make setup` restores. Survives docker purge. IaC for backup/restore. |
 | M-KB04 | **Agent Pre-Embedding** | Before each task, embed relevant context (task description, related docs, recent changes) and inject top-K chunks into agent prompt. |
@@ -185,10 +265,10 @@ AICP already has significant infrastructure that fleet milestones didn't connect
 
 | ID | Milestone | Description |
 |----|-----------|-------------|
-| M-TS01 | **Tool Registry** | Formalize tool definitions per agent. Map capabilities to actual tools (MCP servers, CLI commands, API endpoints). |
-| M-TS02 | **Skill Assignment Enforcement** | Move from documentary to enforced skill routing. Agent can only use skills assigned to it. Marketplace discovery for new skills. |
-| M-TS03 | **Stack Configuration** | Each agent's TOOLS.md populated with real stack: languages, frameworks, infra access, credentials (via env vars). |
-| M-TS04 | **Agent IaC** | `make agent-setup <name>` provisions an agent with all tools, skills, context, KB access. Reproducible from scratch. |
+| M-TS01 | **Tool Registry via MCP** | Map agent capabilities to MCP servers (1,000+ available). Each agent gets configured MCP servers in `.mcp.json`. GitHub, Slack, Postgres, filesystem, browser automation. |
+| M-TS02 | **Skill Assignment via SKILL.md** | Convert documentary skill-assignments.yaml to real SKILL.md files per agent. Use `allowed-tools`, `model` overrides, `context: fork` for isolation. Leverage 5,400+ OpenClaw skills registry. |
+| M-TS03 | **Stack Configuration** | Each agent's TOOLS.md populated with real stack: languages, frameworks, infra access, credentials (via env vars). Plugin packaging for shareable agent configs. |
+| M-TS04 | **Agent IaC** | `make agent-setup <name>` provisions an agent with all tools, skills, MCP servers, context, KB access. Plugin structure for reproducibility. |
 
 ### Wave 10: MODEL OPTIMIZATION (High)
 
@@ -214,6 +294,7 @@ AICP already has significant infrastructure that fleet milestones didn't connect
 | M-IP02 | **Writer Notification** | When content changes, notify technical-writer agent to review and enhance. Multi-block artifact compatibility. |
 | M-IP03 | **AICP ↔ Fleet Bridge** | Connect `router_unification.py` to AICP controller. Fleet routing decisions flow through AICP to actual backends. |
 | M-IP04 | **Fleet Runtime Deployment** | Actually run the orchestrator with agents. Operational readiness milestones (#17-21). |
+| M-IP05 | **Cost Optimization** | Enable prompt caching (90% discount), Batch API (50% discount) for non-latency-critical work. Claude-Mem plugin for cross-session knowledge. Track savings in budget analytics. |
 
 ---
 
@@ -246,21 +327,26 @@ Wave 11: INTEGRATION & PLANE ← brings everything together
 | Wave 8: Knowledge & RAG | 5 | High |
 | Wave 9: Tools & Specializations | 4 | High |
 | Wave 10: Model Optimization | 5 | High |
-| Wave 11: Integration & Plane | 4 | Medium |
-| **Total** | **29** | |
+| Wave 11: Integration & Plane | 5 | Medium |
+| **Total** | **30** | |
 
-Combined with the original 47: **76 total milestones** across 11 waves.
+Combined with the original 47: **77 total milestones** across 11 waves.
 
 ---
 
-## 7. Research Still Pending
+## 7. Research — ALL COMPLETE
 
-- [ ] LocalAI full capability audit (RAG, stores, embeddings, function calling, multimodal)
-- [ ] OpenClaw / Claude plugin ecosystem (MCP servers, Agent SDK, knowledge sharing)
-- [ ] Verify model landscape (Qwen3, Gemma 3, Phi-4-mini, BFCL standings)
-- [ ] LocalAI memory/collection persistence mechanisms
+- [x] Agent file audit — 11 agents, 10 critical gaps, 6.5/10 naturalness
+- [x] Model compression — KV cache quant available now, Qwen 2.5 > Hermes for general, dual GPU enables 14B
+- [x] LocalAI capabilities — full RAG stack on CPU, persistence bug found, v4 agents, function calling grammar
+- [x] OpenClaw/Claude ecosystem — 5,400+ skills, 9,000+ plugins, 1,000+ MCP servers, Agent Teams swarm mode, prompt caching 90% off
 
-These findings will refine Waves 8-10 when complete.
+### Items to verify (research agent knowledge may be stale):
+- Qwen3-8B release status and benchmarks
+- Gemma 3 variants
+- Phi-4-mini existence
+- BFCL leaderboard current standings for function calling
+- LocalAI v4.0 availability in our Docker image version
 
 ---
 
