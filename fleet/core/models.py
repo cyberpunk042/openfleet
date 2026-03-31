@@ -120,6 +120,14 @@ class TaskCustomFields:
     task_readiness: int = 0  # 0-100 percentage. Work protocol at 99-100%.
     requirement_verbatim: Optional[str] = None  # PO's exact words. The anchor.
     task_stage: Optional[str] = None  # conversation/analysis/investigation/reasoning/work
+    # Delivery phase fields — PO-defined maturity tracking
+    delivery_phase: Optional[str] = None  # PO-defined phase (e.g., poc, mvp, production)
+    phase_progression: Optional[str] = None  # Which progression sequence (standard, release, custom)
+    # Contribution fields — cross-agent synergy
+    contribution_type: Optional[str] = None  # What kind of contribution (qa_test_def, design_input, etc.)
+    contribution_target: Optional[str] = None  # Target task ID this contribution is for
+    # Cowork fields — multiple agents on one task
+    coworkers: Optional[list] = None  # List of agent names actively co-working this task
 
 
 @dataclass

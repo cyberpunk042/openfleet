@@ -1,0 +1,110 @@
+# Delivery Phases — PO-DEFINED
+#
+# This file is OWNED by the PO. The PO defines:
+# - Phase names (any name)
+# - Phase progressions (any sequence)
+# - Phase standards (any quality bars)
+# - Required contributions per phase
+# - Whether phases require PO approval (gates)
+#
+# The system reads this config and enforces whatever is defined here.
+# Change this file to change how phases work. No code changes needed.
+
+progressions:
+  # Standard maturity progression — PO's initial definition
+  standard:
+    - name: idea
+      description: "The idea exists"
+      standards: {}
+      required_contributions: []
+      gate: false
+
+    - name: conceptual
+      description: "Direction confirmed by PO"
+      standards:
+        design: required
+        requirements: captured
+      required_contributions:
+        - architect
+      gate: true
+
+    - name: poc
+      description: "Proves the concept works"
+      standards:
+        tests: "happy path"
+        docs: "readme"
+        security: "no secrets in code"
+      required_contributions:
+        - architect
+      gate: true
+
+    - name: mvp
+      description: "Core functionality usable for real"
+      standards:
+        tests: "main flows and critical edges"
+        docs: "setup, usage, API for public"
+        security: "auth, validation, dep audit"
+      required_contributions:
+        - architect
+        - qa-engineer
+        - devsecops-expert
+      gate: true
+
+    - name: staging
+      description: "Full-featured, hardened, tested"
+      standards:
+        tests: "comprehensive — unit, integration, load"
+        docs: "full — API, deployment, troubleshooting, runbook"
+        security: "pen-tested, audited, dep-scanned"
+        monitoring: "health checks, alerting, metrics"
+      required_contributions:
+        - architect
+        - qa-engineer
+        - devsecops-expert
+        - technical-writer
+      gate: true
+
+    - name: production
+      description: "Production-ready, fully certified"
+      standards:
+        tests: "complete — all paths, performance, resilience"
+        docs: "comprehensive — everything"
+        security: "certified, compliance-verified"
+        monitoring: "full observability"
+      required_contributions:
+        - architect
+        - qa-engineer
+        - devsecops-expert
+        - technical-writer
+        - accountability-generator
+      gate: true
+
+  # Release progression — PO can use for versioned releases
+  release:
+    - name: alpha
+      description: "Feature-complete, internal testing"
+      standards:
+        tests: "integration"
+        docs: "draft"
+      gate: true
+
+    - name: beta
+      description: "Stable for external testing"
+      standards:
+        tests: "comprehensive"
+        docs: "user guide"
+      gate: true
+
+    - name: rc
+      description: "Release candidate, final validation"
+      standards:
+        tests: "complete"
+        docs: "complete"
+      gate: true
+
+    - name: release
+      description: "Shipped"
+      standards:
+        tests: "complete"
+        docs: "complete + release notes + changelog"
+      gate: true

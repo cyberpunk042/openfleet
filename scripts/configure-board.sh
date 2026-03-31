@@ -87,6 +87,16 @@ FIELDS = [
      "ui_visibility": "hidden", "description": "Plane project UUID (sync mapping)"},
     {"field_key": "plane_workspace", "label": "Plane Workspace", "field_type": "text",
      "ui_visibility": "hidden", "description": "Plane workspace slug (sync mapping)"},
+    {"field_key": "delivery_phase", "label": "Delivery Phase", "field_type": "text",
+     "ui_visibility": "if_set", "description": "PO-defined delivery phase (e.g., poc, mvp, production)"},
+    {"field_key": "phase_progression", "label": "Phase Progression", "field_type": "text",
+     "ui_visibility": "hidden", "description": "Which phase progression sequence (standard, release, custom)"},
+    {"field_key": "contribution_type", "label": "Contribution Type", "field_type": "text",
+     "ui_visibility": "if_set", "description": "Type of contribution (qa_test_def, design_input, security_req, ux_spec)"},
+    {"field_key": "contribution_target", "label": "Contribution Target", "field_type": "text",
+     "ui_visibility": "if_set", "description": "Task ID this contribution is for"},
+    {"field_key": "coworkers", "label": "Coworkers", "field_type": "json",
+     "ui_visibility": "if_set", "description": "List of agent names actively co-working this task"},
 ]
 
 print("=== Configuring Board Custom Fields ===")
