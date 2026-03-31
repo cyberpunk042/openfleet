@@ -61,16 +61,45 @@ async def _pause(reason: str = "") -> int:
         except Exception:
             pass
 
-    # 4. Write pause marker
+    # 4. Disable gateway cron jobs — this is the CRITICAL step.
+    # Even if the gateway restarts somehow, disabled cron jobs
+    # will NOT fire Claude calls. Fleet OFF = zero consumption.
+    print("4. Disabling gateway cron jobs...")
+    try:
+        from fleet.infra.gateway_client import disable_gateway_cron_jobs
+        disabled = disable_gateway_cron_jobs()
+        print(f"   Disabled {disabled} cron job(s)")
+        actions += 1
+    except Exception as e:
+        print(f"   WARNING: Could not disable cron jobs: {e}")
+
+    # 5. Set effort profile to paused in config
     fleet_dir = str(Path(__file__).resolve().parent.parent.parent)
+    print("5. Setting effort profile to 'paused'...")
+    try:
+        import yaml
+        config_path = os.path.join(fleet_dir, "config", "fleet.yaml")
+        with open(config_path) as f:
+            cfg = yaml.safe_load(f) or {}
+        if "orchestrator" not in cfg:
+            cfg["orchestrator"] = {}
+        cfg["orchestrator"]["effort_profile"] = "paused"
+        with open(config_path, "w") as f:
+            yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
+        print("   Effort profile set to 'paused'")
+        actions += 1
+    except Exception as e:
+        print(f"   WARNING: Could not set effort profile: {e}")
+
+    # 6. Write pause marker
     pause_file = os.path.join(fleet_dir, ".fleet-paused")
     with open(pause_file, "w") as f:
         f.write(f"paused_at: {datetime.now().isoformat()}\n")
         if reason:
             f.write(f"reason: {reason}\n")
-    print(f"\n4. Pause marker written: {pause_file}")
+    print(f"\n6. Pause marker written: {pause_file}")
 
-    # 5. Notify via ntfy if available
+    # 7. Notify via ntfy if available
     try:
         from fleet.infra.ntfy_client import NtfyClient
         ntfy = NtfyClient()
@@ -81,9 +110,9 @@ async def _pause(reason: str = "") -> int:
             tags=["pause_button", "fleet"],
         )
         await ntfy.close()
-        print("5. ntfy notification sent")
+        print("7. ntfy notification sent")
     except Exception:
-        print("5. ntfy notification skipped (not available)")
+        print("7. ntfy notification skipped (not available)")
 
     print(f"\nFleet PAUSED. {actions} process groups killed.")
     print("To resume: python -m fleet resume")

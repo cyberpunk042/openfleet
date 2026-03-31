@@ -53,15 +53,22 @@ echo "ANTHROPIC_API_KEY=${NEW_TOKEN}" >> "$OPENCLAW_ENV"
 echo "Token refreshed (rotation detected)"
 
 # Restart gateway if requested (picks up new token)
+# SAFETY: only restart if fleet is not paused AND MC is reachable.
 if [[ "$RESTART_GATEWAY" == "true" ]]; then
-    echo "Restarting gateway..."
-    pkill -f "openclaw-gateway" 2>/dev/null || true
-    sleep 3
-    cd "$FLEET_DIR" && openclaw gateway run --port 18789 &
-    sleep 5
-    if curl -sf http://localhost:18789 > /dev/null 2>&1; then
-        echo "Gateway restarted with new token"
+    if [ -f "$FLEET_DIR/.fleet-paused" ]; then
+        echo "Fleet is PAUSED — NOT restarting gateway"
+    elif ! curl -sf http://localhost:8000/healthz > /dev/null 2>&1; then
+        echo "MC is DOWN — NOT restarting gateway"
     else
-        echo "WARN: Gateway may not have started" >&2
+        echo "Restarting gateway..."
+        pkill -f "openclaw-gateway" 2>/dev/null || true
+        sleep 3
+        cd "$FLEET_DIR" && openclaw gateway run --port 18789 &
+        sleep 5
+        if curl -sf http://localhost:18789 > /dev/null 2>&1; then
+            echo "Gateway restarted with new token"
+        else
+            echo "WARN: Gateway may not have started" >&2
+        fi
     fi
 fi

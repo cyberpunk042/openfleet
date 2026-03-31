@@ -7,6 +7,25 @@ set -euo pipefail
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
+# SAFETY: Check if fleet is paused. If paused, refuse to start.
+# Use "fleet resume" first, then start.
+if [ -f "$FLEET_DIR/.fleet-paused" ]; then
+    echo "ERROR: Fleet is PAUSED. Cannot start gateway."
+    echo "  Reason: $(cat "$FLEET_DIR/.fleet-paused")"
+    echo "  Run 'python -m fleet resume' first."
+    exit 1
+fi
+
+# SAFETY: Check if MC is reachable. If MC is down, refuse to start.
+# Starting the gateway without MC causes cron jobs to fire Claude
+# calls with no MC to serve — burning tokens for nothing.
+if ! curl -sf http://localhost:8000/healthz >/dev/null 2>&1; then
+    echo "ERROR: MC backend is not reachable (localhost:8000)."
+    echo "  Start MC first: docker compose up -d"
+    echo "  Then: make gateway"
+    exit 1
+fi
+
 echo "=== Starting OpenClaw Gateway ==="
 
 # Kill existing gateway processes (avoid duplicates)

@@ -1231,23 +1231,28 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
         except Exception as e:
             _outage.record_failure("mc_api", str(e))
             ts = datetime.now().strftime("%H:%M:%S")
-            print(f"[{ts}] [orchestrator] Error: {e}")
+            print(f"[{ts}] [orchestrator] MC UNREACHABLE: {e}")
 
-            # MC is unreachable — fleet is effectively OFF.
-            # Disable gateway cron jobs to prevent Claude calls with
-            # no MC to serve. This is the critical budget protection.
+            # MC is DOWN. Fleet is OFF. Kill EVERYTHING.
+            # No gateway = no sessions = no heartbeats = no Claude calls = ZERO.
+            import subprocess as _sp
+
+            # Kill gateway process
             try:
-                from fleet.infra.gateway_client import disable_gateway_cron_jobs
-                disabled = disable_gateway_cron_jobs()
-                if disabled:
-                    print(f"[{ts}] [orchestrator] MC DOWN — disabled {disabled} gateway cron jobs")
+                _sp.run(["pkill", "-f", "openclaw-gateway"], capture_output=True, timeout=5)
+                _sp.run(["pkill", "-f", "openclaw$"], capture_output=True, timeout=5)
+                print(f"[{ts}] [orchestrator] KILLED gateway — MC is DOWN")
             except Exception:
                 pass
 
-            # Alert on repeated failures
-            alerts = _outage.get_alerts()
-            if alerts:
-                for alert in alerts:
-                    print(f"  OUTAGE: {alert}")
+            # Disable cron jobs (safety: if gateway somehow restarts)
+            try:
+                from fleet.infra.gateway_client import disable_gateway_cron_jobs
+                disable_gateway_cron_jobs()
+            except Exception:
+                pass
 
-        await asyncio.sleep(interval)
+            # Stop orchestrator. Nothing to orchestrate. ZERO consumption.
+            print(f"[{ts}] [orchestrator] STOPPING — MC is DOWN. Fleet is OFF.")
+            print(f"[{ts}] [orchestrator] Start Docker, then: make daemons-start")
+            return  # EXIT the daemon loop — orchestrator is DEAD

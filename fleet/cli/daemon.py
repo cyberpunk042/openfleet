@@ -297,23 +297,76 @@ async def _run_plane_watcher_daemon(interval: int = 120) -> None:
         await asyncio.sleep(interval)
 
 
+async def _check_mc_alive() -> bool:
+    """Check if MC is reachable. If not, fleet is OFF."""
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=3) as client:
+            resp = await client.get("http://localhost:8000/healthz")
+            return resp.status_code == 200
+    except Exception:
+        return False
+
+
 async def _run_all(
     sync_interval: int = 60,
     monitor_interval: int = 300,
     orchestrator_interval: int = 30,
 ) -> None:
-    """Run all daemons concurrently."""
+    """Run all daemons concurrently.
+
+    If the orchestrator exits (MC down → fleet OFF), ALL daemons stop.
+    When any task in the gather completes, we cancel the rest and
+    kill the gateway. ZERO consumption when fleet is OFF.
+    """
     print(
         f"Fleet daemons starting (sync={sync_interval}s, monitor={monitor_interval}s, "
         f"auth=120s, orchestrator={orchestrator_interval}s, plane-watcher=120s)"
     )
-    await asyncio.gather(
-        _run_sync_daemon(sync_interval),
-        _run_auth_daemon(120),
-        _run_monitor_daemon(monitor_interval),
-        run_orchestrator_daemon(orchestrator_interval),
-        _run_plane_watcher_daemon(120),
-    )
+
+    # Verify MC is alive before starting anything
+    if not await _check_mc_alive():
+        print("[daemon] MC is DOWN. Cannot start fleet. Start Docker first.")
+        return
+
+    tasks = [
+        asyncio.create_task(_run_sync_daemon(sync_interval), name="sync"),
+        asyncio.create_task(_run_auth_daemon(120), name="auth"),
+        asyncio.create_task(_run_monitor_daemon(monitor_interval), name="monitor"),
+        asyncio.create_task(run_orchestrator_daemon(orchestrator_interval), name="orchestrator"),
+        asyncio.create_task(_run_plane_watcher_daemon(120), name="plane-watcher"),
+    ]
+
+    # Wait for ANY task to complete (the orchestrator exits when MC goes down)
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+    # One daemon exited — fleet is OFF. Cancel everything else.
+    for task in done:
+        ts = datetime.now().strftime("%H:%M:%S")
+        print(f"[{ts}] [daemon] {task.get_name()} exited")
+
+    for task in pending:
+        task.cancel()
+        ts = datetime.now().strftime("%H:%M:%S")
+        print(f"[{ts}] [daemon] Cancelling {task.get_name()}")
+
+    # Kill gateway — no daemon = no fleet = no Claude calls
+    import subprocess
+    try:
+        subprocess.run(["pkill", "-f", "openclaw-gateway"], capture_output=True, timeout=5)
+        subprocess.run(["pkill", "-f", "openclaw$"], capture_output=True, timeout=5)
+        print(f"[daemon] Gateway killed. Fleet is OFF. ZERO consumption.")
+    except Exception:
+        pass
+
+    # Disable cron jobs — safety net
+    try:
+        from fleet.infra.gateway_client import disable_gateway_cron_jobs
+        disable_gateway_cron_jobs()
+    except Exception:
+        pass
+
+    print("[daemon] All daemons stopped. Start Docker, then: make daemons-start")
 
 
 def run_daemon(args: list[str] | None = None) -> int:
@@ -340,8 +393,17 @@ def run_daemon(args: list[str] | None = None) -> int:
         else:
             i += 1
 
-    # Write PID file
+    # SAFETY: refuse to start if fleet is paused
     fleet_dir = os.environ.get("FLEET_DIR", str(Path(__file__).resolve().parent.parent.parent))
+    pause_file = os.path.join(fleet_dir, ".fleet-paused")
+    if os.path.exists(pause_file):
+        print("ERROR: Fleet is PAUSED. Cannot start daemon.")
+        with open(pause_file) as f:
+            print(f"  {f.read().strip()}")
+        print("Run 'python -m fleet resume' first.")
+        return 1
+
+    # Write PID file
     pid_file = os.path.join(fleet_dir, f".{mode}.pid")
     with open(pid_file, "w") as f:
         f.write(str(os.getpid()))
