@@ -19,26 +19,45 @@ from typing import Optional
 
 
 class AgentStatus(str, Enum):
-    """Smart agent status — drives heartbeat frequency and wake behavior."""
+    """Smart agent status — drives heartbeat frequency and wake behavior.
+
+    ACTIVE → IDLE → DROWSY → SLEEPING → OFFLINE
+
+    DROWSY is content-aware: after 2-3 consecutive HEARTBEAT_OK responses,
+    the agent signals "nothing for me" and the brain can evaluate
+    deterministically instead of making a Claude call.
+
+    > "the agent need to be able to do silent heartbeat when they deem
+    > after a while that there is nothing new from the heartbeat, (2-3..)
+    > then it relay the work to the brain to actually do a compare and an
+    > automated work of the heartbeat in order to determine if it require
+    > a real heartbeat."
+    """
 
     ACTIVE = "active"       # Working on a task right now
     IDLE = "idle"           # Awake, watching for work (no active task)
-    SLEEPING = "sleeping"   # Dormant, wakes on trigger (task assigned, @mention)
-    OFFLINE = "offline"     # Deep sleep, takes longer to bring back
+    DROWSY = "drowsy"       # 2-3 HEARTBEAT_OK — brain can evaluate instead
+    SLEEPING = "sleeping"   # Dormant, brain evaluates for free (no Claude calls)
+    OFFLINE = "offline"     # Extended sleep, longer wake time
 
 
-# Transition thresholds (seconds)
+# Transition thresholds (seconds) — time-based fallbacks
 IDLE_AFTER = 10 * 60          # 10 minutes without work → idle
 SLEEPING_AFTER = 30 * 60      # 30 minutes idle → sleeping
 OFFLINE_AFTER = 4 * 60 * 60   # 4 hours sleeping → offline
 
+# Content-aware thresholds — HEARTBEAT_OK count based
+DROWSY_AFTER_HEARTBEAT_OK = 2   # consecutive HEARTBEAT_OK → drowsy
+SLEEPING_AFTER_HEARTBEAT_OK = 3  # consecutive HEARTBEAT_OK → sleeping
+
 # Heartbeat intervals by status (seconds)
 # IMPORTANT: keep these long enough to avoid flooding the board
 HEARTBEAT_INTERVALS = {
-    AgentStatus.ACTIVE: 0,          # No heartbeat — agent is driving its own work
-    AgentStatus.IDLE: 30 * 60,      # 30 minutes — not too frequent
+    AgentStatus.ACTIVE: 0,              # No heartbeat — agent drives its own work
+    AgentStatus.IDLE: 30 * 60,          # 30 minutes — normal monitoring
+    AgentStatus.DROWSY: 60 * 60,        # 60 minutes — reduced, brain evaluates between
     AgentStatus.SLEEPING: 2 * 60 * 60,  # 2 hours — rare check
-    AgentStatus.OFFLINE: 2 * 60 * 60,  # 2 hours — minimal check
+    AgentStatus.OFFLINE: 2 * 60 * 60,   # 2 hours — minimal check
 }
 
 
@@ -52,6 +71,9 @@ class AgentState:
     last_heartbeat_at: Optional[datetime] = None  # Last heartbeat sent
     last_task_completed_at: Optional[datetime] = None
     current_task_id: Optional[str] = None
+    # Content-aware lifecycle fields
+    consecutive_heartbeat_ok: int = 0             # HEARTBEAT_OK count → drowsy/sleeping
+    last_heartbeat_data_hash: str = ""            # Hash of pre-embed data at last heartbeat
 
     def update_activity(self, now: datetime, has_active_task: bool, task_id: str = "") -> None:
         """Update agent state based on current activity."""
@@ -59,24 +81,51 @@ class AgentState:
             self.status = AgentStatus.ACTIVE
             self.last_active_at = now
             self.current_task_id = task_id
+            self.consecutive_heartbeat_ok = 0  # reset — agent is working
             return
 
-        # No active task — transition based on idle time
+        # No active task — transition based on HEARTBEAT_OK count
+        # (content-aware) with time-based fallback
         if self.last_active_at is None:
             self.last_active_at = now
 
         idle_seconds = (now - self.last_active_at).total_seconds()
 
-        if idle_seconds < IDLE_AFTER:
+        # Content-aware transitions take priority over time-based
+        if self.consecutive_heartbeat_ok >= SLEEPING_AFTER_HEARTBEAT_OK:
+            self.status = AgentStatus.SLEEPING
+        elif self.consecutive_heartbeat_ok >= DROWSY_AFTER_HEARTBEAT_OK:
+            self.status = AgentStatus.DROWSY
+        # Time-based fallback (if heartbeat_ok counting isn't happening)
+        elif idle_seconds < IDLE_AFTER:
             self.status = AgentStatus.IDLE
         elif idle_seconds < SLEEPING_AFTER:
-            self.status = AgentStatus.SLEEPING
+            # Use DROWSY as intermediate before SLEEPING
+            if self.status != AgentStatus.DROWSY:
+                self.status = AgentStatus.DROWSY
+            else:
+                self.status = AgentStatus.SLEEPING
         elif idle_seconds < OFFLINE_AFTER:
-            self.status = AgentStatus.SLEEPING  # Stay sleeping, not offline yet
+            self.status = AgentStatus.SLEEPING
         else:
             self.status = AgentStatus.OFFLINE
 
         self.current_task_id = None
+
+    def record_heartbeat_ok(self) -> None:
+        """Record that the agent's heartbeat returned HEARTBEAT_OK.
+
+        Called by the orchestrator when an agent heartbeat produces
+        no work. Drives content-aware sleep transitions.
+        """
+        self.consecutive_heartbeat_ok += 1
+
+    def record_heartbeat_work(self) -> None:
+        """Record that the agent's heartbeat produced actual work.
+
+        Resets the HEARTBEAT_OK counter — agent is active.
+        """
+        self.consecutive_heartbeat_ok = 0
 
     def needs_heartbeat(self, now: datetime) -> bool:
         """Check if this agent needs a heartbeat based on status and interval."""
@@ -100,10 +149,11 @@ class AgentState:
         """Explicitly wake this agent (task assigned, @mention, etc.)."""
         self.status = AgentStatus.IDLE
         self.last_active_at = now
+        self.consecutive_heartbeat_ok = 0  # reset — agent is awake
 
     def should_wake_for_task(self) -> bool:
         """Check if agent should be woken for a task assignment."""
-        return self.status in (AgentStatus.SLEEPING, AgentStatus.OFFLINE)
+        return self.status in (AgentStatus.DROWSY, AgentStatus.SLEEPING, AgentStatus.OFFLINE)
 
 
 class FleetLifecycle:
@@ -152,6 +202,7 @@ class FleetLifecycle:
         summary: dict[str, list[str]] = {
             "active": [],
             "idle": [],
+            "drowsy": [],
             "sleeping": [],
             "offline": [],
         }

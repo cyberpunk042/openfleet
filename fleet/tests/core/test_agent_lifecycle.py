@@ -8,6 +8,8 @@ from fleet.core.agent_lifecycle import (
     FleetLifecycle,
     IDLE_AFTER,
     SLEEPING_AFTER,
+    DROWSY_AFTER_HEARTBEAT_OK,
+    SLEEPING_AFTER_HEARTBEAT_OK,
 )
 
 
@@ -129,3 +131,100 @@ def test_fleet_not_idle_when_active():
     lifecycle.get_or_create("a").status = AgentStatus.ACTIVE
     lifecycle.get_or_create("b").status = AgentStatus.IDLE
     assert lifecycle.is_fleet_idle() is False
+
+
+# ─── DROWSY / Content-Aware Lifecycle ────────────────────────────────
+
+
+def test_drowsy_status_exists():
+    assert AgentStatus.DROWSY == "drowsy"
+
+
+def test_drowsy_after_consecutive_heartbeat_ok():
+    state = AgentState(name="test")
+    now = datetime.now()
+    state.last_active_at = now
+
+    # Record 2 HEARTBEAT_OK → should become DROWSY
+    state.record_heartbeat_ok()
+    state.record_heartbeat_ok()
+    assert state.consecutive_heartbeat_ok == DROWSY_AFTER_HEARTBEAT_OK
+
+    state.update_activity(now, has_active_task=False)
+    assert state.status == AgentStatus.DROWSY
+
+
+def test_sleeping_after_more_heartbeat_ok():
+    state = AgentState(name="test")
+    now = datetime.now()
+    state.last_active_at = now
+
+    # Record 3 HEARTBEAT_OK → should become SLEEPING
+    for _ in range(SLEEPING_AFTER_HEARTBEAT_OK):
+        state.record_heartbeat_ok()
+
+    state.update_activity(now, has_active_task=False)
+    assert state.status == AgentStatus.SLEEPING
+
+
+def test_heartbeat_ok_resets_on_active():
+    state = AgentState(name="test")
+    now = datetime.now()
+
+    state.record_heartbeat_ok()
+    state.record_heartbeat_ok()
+    assert state.consecutive_heartbeat_ok == 2
+
+    # Agent gets work → counter resets
+    state.update_activity(now, has_active_task=True, task_id="t1")
+    assert state.consecutive_heartbeat_ok == 0
+    assert state.status == AgentStatus.ACTIVE
+
+
+def test_heartbeat_ok_resets_on_wake():
+    state = AgentState(name="test")
+    state.status = AgentStatus.SLEEPING
+    state.consecutive_heartbeat_ok = 5
+    now = datetime.now()
+
+    state.wake(now)
+    assert state.consecutive_heartbeat_ok == 0
+    assert state.status == AgentStatus.IDLE
+
+
+def test_record_heartbeat_work_resets_counter():
+    state = AgentState(name="test")
+    state.record_heartbeat_ok()
+    state.record_heartbeat_ok()
+    assert state.consecutive_heartbeat_ok == 2
+
+    state.record_heartbeat_work()
+    assert state.consecutive_heartbeat_ok == 0
+
+
+def test_drowsy_agent_should_wake_for_task():
+    state = AgentState(name="test")
+    state.status = AgentStatus.DROWSY
+    assert state.should_wake_for_task() is True
+
+
+def test_drowsy_heartbeat_interval():
+    from fleet.core.agent_lifecycle import HEARTBEAT_INTERVALS
+    # DROWSY interval should be between IDLE and SLEEPING
+    idle_interval = HEARTBEAT_INTERVALS[AgentStatus.IDLE]
+    drowsy_interval = HEARTBEAT_INTERVALS[AgentStatus.DROWSY]
+    sleeping_interval = HEARTBEAT_INTERVALS[AgentStatus.SLEEPING]
+    assert idle_interval < drowsy_interval < sleeping_interval
+
+
+def test_fleet_status_summary_includes_drowsy():
+    lifecycle = FleetLifecycle()
+    lifecycle.get_or_create("a").status = AgentStatus.DROWSY
+    summary = lifecycle.get_status_summary()
+    assert "drowsy" in summary
+    assert "a" in summary["drowsy"]
+
+
+def test_data_hash_default():
+    state = AgentState(name="test")
+    assert state.last_heartbeat_data_hash == ""
