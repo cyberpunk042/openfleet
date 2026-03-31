@@ -1189,31 +1189,14 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
             board_id = await mc.get_board_id()
             _outage.record_success("mc_api")
 
-            # MC is reachable — ensure gateway and cron jobs are alive.
-            # They may have been killed/disabled by a previous MC-down event.
-            import subprocess as _sp
-
-            # Re-enable cron jobs
+            # MC is reachable — re-enable cron jobs if they were disabled.
+            # Gateway restart is handled by the MONITOR daemon (every 5min)
+            # which properly checks if gateway is already running.
+            # The orchestrator must NOT start the gateway — it runs every
+            # 30s and would spawn duplicate processes.
             try:
                 from fleet.infra.gateway_client import enable_gateway_cron_jobs
                 enable_gateway_cron_jobs()
-            except Exception:
-                pass
-
-            # Restart gateway if not running
-            try:
-                _gw_check = _sp.run(["pgrep", "-f", "openclaw-gateway"],
-                                    capture_output=True, timeout=5)
-                if _gw_check.returncode != 0:
-                    # Gateway is dead — restart it
-                    fleet_dir = os.path.dirname(os.path.dirname(
-                        os.path.dirname(os.path.abspath(__file__))))
-                    start_script = os.path.join(fleet_dir, "scripts", "start-fleet.sh")
-                    if os.path.exists(start_script):
-                        _sp.Popen(["bash", start_script],
-                                  stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
-                        ts = datetime.now().strftime("%H:%M:%S")
-                        print(f"[{ts}] [orchestrator] MC is BACK — restarting gateway")
             except Exception:
                 pass
 
