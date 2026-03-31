@@ -164,6 +164,9 @@ async def run_orchestrator_cycle(
             _fleet_lifecycle.get_or_create(a.name)
     _fleet_lifecycle.update_all(now, active_agents)
 
+    # Step 0: Refresh agent context files — pre-embed full data for heartbeats
+    await _refresh_agent_contexts(tasks, agents, board_id, mc, fleet_state)
+
     # Step 1: Security scan — check new/changed tasks for suspicious content
     await _security_scan(mc, irc, board_id, tasks, changes, state, dry_run)
 
@@ -198,6 +201,121 @@ async def run_orchestrator_cycle(
     # The orchestrator only: dispatch tasks, evaluate parents, check health.
 
     return state
+
+
+# ─── Step 0: Refresh Agent Contexts ─────────────────────────────────────
+
+
+async def _refresh_agent_contexts(
+    tasks: list[Task],
+    agents: list,
+    board_id: str,
+    mc,
+    fleet_state,
+) -> None:
+    """Refresh every agent's context/ files with full pre-embedded data.
+
+    Runs every orchestrator cycle. The gateway reads these files when
+    the agent heartbeats. FULL data, not compressed.
+    """
+    try:
+        from fleet.core.preembed import build_heartbeat_preembed, build_task_preembed
+        from fleet.core.context_writer import write_heartbeat_context, write_task_context
+        from fleet.core.role_providers import get_role_provider
+        from fleet.core.directives import parse_directives
+
+        # Get messages and directives
+        try:
+            memory = await mc.list_memory(board_id, limit=30)
+        except Exception:
+            memory = []
+
+        directives = []
+        try:
+            directives = [
+                {"content": d.content, "from": d.source, "urgent": d.urgent}
+                for d in parse_directives(memory)
+            ]
+        except Exception:
+            pass
+
+        fleet_state_dict = {
+            "work_mode": fleet_state.work_mode if fleet_state else "",
+            "cycle_phase": fleet_state.cycle_phase if fleet_state else "",
+            "backend_mode": fleet_state.backend_mode if fleet_state else "",
+        }
+
+        online_count = sum(1 for a in agents if a.status == "online" and "Gateway" not in a.name)
+        total_count = sum(1 for a in agents if "Gateway" not in a.name)
+
+        for agent in agents:
+            if "Gateway" in agent.name:
+                continue
+
+            agent_name = agent.name
+
+            # Agent's assigned tasks
+            my_tasks = [
+                t for t in tasks
+                if t.custom_fields.agent_name == agent_name
+                and t.status in (TaskStatus.INBOX, TaskStatus.IN_PROGRESS)
+            ]
+
+            # Messages for this agent
+            agent_messages = []
+            for m in memory:
+                tags = m.tags if hasattr(m, 'tags') else m.get('tags', [])
+                if f"mention:{agent_name}" in tags or "mention:all" in tags:
+                    content = m.content if hasattr(m, 'content') else m.get('content', '')
+                    source = m.source if hasattr(m, 'source') else m.get('source', '')
+                    agent_messages.append({"from": source, "content": content})
+
+            # Agent directives
+            agent_directives = [
+                d for d in directives
+                if d.get("from") == "human"  # all directives are from human
+            ]
+
+            # Role-specific data
+            role_data = {}
+            try:
+                role = agent_name  # role = agent name for provider lookup
+                provider = get_role_provider(role)
+                role_data = await provider(
+                    agent_name=agent_name,
+                    tasks=tasks,
+                    agents=agents,
+                    mc=mc,
+                    board_id=board_id,
+                )
+            except Exception:
+                pass
+
+            # Build FULL heartbeat pre-embed
+            heartbeat_text = build_heartbeat_preembed(
+                agent_name=agent_name,
+                role=agent_name,
+                assigned_tasks=my_tasks,
+                messages=agent_messages if agent_messages else None,
+                directives=agent_directives if agent_directives else None,
+                role_data=role_data if role_data else None,
+                fleet_mode=fleet_state_dict.get("work_mode", ""),
+                fleet_phase=fleet_state_dict.get("cycle_phase", ""),
+                fleet_backend=fleet_state_dict.get("backend_mode", ""),
+                agents_online=online_count,
+                agents_total=total_count,
+            )
+
+            write_heartbeat_context(agent_name, heartbeat_text)
+
+            # Also write task context for in-progress tasks
+            in_progress = [t for t in my_tasks if t.status == TaskStatus.IN_PROGRESS]
+            if in_progress:
+                task_text = build_task_preembed(in_progress[0])
+                write_task_context(agent_name, task_text)
+
+    except Exception:
+        pass  # Context refresh must not break orchestrator cycle
 
 
 # ─── Step 2: Doctor — Immune System ─────────────────────────────────────
