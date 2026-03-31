@@ -173,8 +173,8 @@ async def run_orchestrator_cycle(
     # Step 3: Ensure review tasks have approvals (so fleet-ops can review them)
     await _ensure_review_approvals(mc, board_id, tasks, state, dry_run)
 
-    # Step 4: Wake fleet-ops urgently if there are pending approvals to process
-    await _wake_lead_for_reviews(mc, irc, board_id, tasks, agent_name_map, state, dry_run)
+    # Step 4: Wake drivers — PM for unassigned tasks, fleet-ops for approvals
+    await _wake_drivers(mc, irc, board_id, tasks, agents, agent_name_map, state, dry_run)
 
     # Step 5: Dispatch unblocked inbox tasks to assigned agents
     # (respects doctor report — skips agents flagged by immune system)
@@ -585,6 +585,83 @@ async def _transition_approved_reviews(
 # ─── Step 2: Wake Fleet-Ops for Pending Reviews ─────────────────────────
 
 _last_review_wake: Optional[datetime] = None
+
+
+# Cooldown tracking for driver waking
+_last_pm_wake: datetime | None = None
+_last_ops_wake: datetime | None = None
+
+
+async def _wake_drivers(
+    mc: MCClient,
+    irc: IRCClient,
+    board_id: str,
+    tasks: list[Task],
+    agents: list,
+    agent_name_map: dict,
+    state: OrchestratorState,
+    dry_run: bool,
+) -> None:
+    """Wake PM and fleet-ops when there's work that needs their attention.
+
+    PM wakes when: unassigned inbox tasks exist
+    Fleet-ops wakes when: pending approvals exist
+
+    Waking = inject pre-embedded data into agent's session via gateway.
+    The agent then heartbeats with full awareness.
+    """
+    global _last_pm_wake, _last_ops_wake
+    now = datetime.now()
+
+    # ── Wake PM for unassigned tasks ────────────────────────────
+    unassigned = [t for t in tasks if t.status == TaskStatus.INBOX and not t.custom_fields.agent_name]
+    if unassigned and (not _last_pm_wake or (now - _last_pm_wake).total_seconds() > 120):
+        pm = agent_name_map.get("project-manager")
+        if pm and pm.session_key:
+            if dry_run:
+                state.notes.append(f"[dry_run] WOULD wake PM for {len(unassigned)} unassigned tasks")
+            else:
+                try:
+                    from fleet.core.preembed import build_heartbeat_preembed, format_task_full
+                    from fleet.infra.gateway_client import inject_content
+
+                    # Build PM-specific wake data with unassigned task details
+                    task_details = "\n\n".join(format_task_full(t) for t in unassigned[:10])
+                    wake_msg = (
+                        f"# PM WAKE — {len(unassigned)} UNASSIGNED TASKS\n\n"
+                        f"You have {len(unassigned)} unassigned inbox tasks.\n"
+                        f"ASSIGN agents to these tasks NOW.\n\n"
+                        f"{task_details}"
+                    )
+                    await inject_content(pm.session_key, wake_msg)
+                    state.notes.append(f"Woke PM for {len(unassigned)} unassigned tasks")
+                    await _notify(irc, "#fleet", f"[orchestrator] Woke PM — {len(unassigned)} unassigned tasks")
+                except Exception as e:
+                    state.errors.append(f"Failed to wake PM: {e}")
+            _last_pm_wake = now
+
+    # ── Wake fleet-ops for pending approvals ────────────────────
+    review_tasks = [t for t in tasks if t.status == TaskStatus.REVIEW]
+    if review_tasks and (not _last_ops_wake or (now - _last_ops_wake).total_seconds() > 120):
+        ops = agent_name_map.get("fleet-ops")
+        if ops and ops.session_key:
+            if dry_run:
+                state.notes.append(f"[dry_run] WOULD wake fleet-ops for {len(review_tasks)} reviews")
+            else:
+                try:
+                    from fleet.infra.gateway_client import inject_content
+
+                    wake_msg = (
+                        f"# FLEET-OPS WAKE — {len(review_tasks)} PENDING REVIEWS\n\n"
+                        f"You have {len(review_tasks)} tasks awaiting review.\n"
+                        f"PROCESS approvals NOW.\n"
+                    )
+                    await inject_content(ops.session_key, wake_msg)
+                    state.notes.append(f"Woke fleet-ops for {len(review_tasks)} reviews")
+                    await _notify(irc, "#reviews", f"[orchestrator] Woke fleet-ops — {len(review_tasks)} pending reviews")
+                except Exception as e:
+                    state.errors.append(f"Failed to wake fleet-ops: {e}")
+            _last_ops_wake = now
 
 
 async def _wake_lead_for_reviews(
