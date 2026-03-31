@@ -204,6 +204,25 @@ Integration with operational readiness (#17-21), LocalAI stages, and
 Fleet Elevation. Success criteria per wave. Critical rule: do NOT resume
 autonomous flow without Wave 1 complete.
 
+### 13. Cross-System Integration
+**Document:** `integration-testing-plan.md`
+**Status:** COMPLETE — Phase 1 (wiring) and Phase 2 (tests) done
+
+8 cross-system connections wired (W1-W8):
+- Budget → Challenge, Stamp ↔ Challenge, Storm → Budget
+- Shadow → Promotion, Health → Router, Promotion → Router
+- Tier → Codex Review, Session Telemetry → All Systems
+
+23 integration tests across 5 end-to-end flows. 767 total tests passing.
+
+### 14. Context Window Awareness
+**Document:** `context-window-awareness-and-control.md`
+**Status:** COMPLETE — configurations applied
+
+Statusline IaC (`make install-statusline`), `.claudeignore` for 4 projects,
+session telemetry adapter (`session_telemetry.py`) feeding real Claude Code
+JSON data into fleet systems. Context pressure as storm indicator.
+
 ---
 
 ## Dependency Map (Updated 2026-03-31)
@@ -258,6 +277,9 @@ active/
 ├── iterative-validation-and-challenge-loops.md ← NEW: challenge loops
 ├── model-upgrade-path.md                   ← NEW: LocalAI model upgrades
 ├── storm-prevention-system.md              ← NEW: storm prevention
+├── implementation-roadmap.md               ← NEW: 5-wave sequencing
+├── context-window-awareness-and-control.md ← NEW: context/cost management
+├── integration-testing-plan.md             ← NEW: 8 wires, 5 flows, 23 tests
 ├── immune-system/
 │   ├── 01-overview.md ... 07-integration.md
 ├── teaching-system/
