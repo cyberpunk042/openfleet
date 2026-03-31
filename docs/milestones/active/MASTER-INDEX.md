@@ -1,6 +1,6 @@
 # Master Milestone Index — All Fleet Work
 
-**Date:** 2026-03-30
+**Date:** 2026-03-31
 **Status:** Active — living index of all milestone documents
 
 ---
@@ -129,7 +129,116 @@ everything works end-to-end.
 | Transpose Layer | 7 | **7 done — COMPLETE** |
 | Context System | 36 | **34 done**, 2 nice-to-haves remaining |
 | Operational Readiness | 5 | Pending (needs fleet running) |
-| **Total** | **~134** | **~128 implemented** |
+| **Labor Attribution (M-LA)** | **8** | **8 done — COMPLETE** |
+| **Budget Mode System (M-BM)** | **6** | **6 done — COMPLETE** |
+| **Multi-Backend Router (M-BR)** | **8** | **8 done — COMPLETE** (4 FUTURE schema-ready) |
+| **Iterative Validation (M-IV)** | **8** | **8 done — COMPLETE** |
+| **Model Upgrade Path (M-MU)** | **8** | **8 done — COMPLETE** (3 FUTURE schema-ready) |
+| **Storm Prevention (M-SP)** | **9** | **9 done — COMPLETE** |
+| **Total** | **~181** | **~175 implemented, 47 strategic milestones COMPLETE** |
+
+---
+
+### 6. Labor Attribution and Provenance System
+**Document:** `labor-attribution-and-provenance.md`
+**Milestones:** M-LA01 through M-LA08
+**Status:** COMPLETE — all 8 milestones implemented (Wave 1 + Wave 4)
+
+Every fleet artifact carries a labor stamp: agent, backend, model, effort,
+skills, confidence tier, cost. Trainee/community tier work gets extra review.
+
+### 7. Budget Mode System for OCMC Orders
+**Document:** `budget-mode-system.md`
+**Milestones:** M-BM01 through M-BM06
+**Status:** COMPLETE — all 6 milestones implemented (Wave 1 + Wave 2 + Wave 4 + Wave 5)
+
+Graduated budget modes: blitz, standard, economic, frugal, survival, blackout.
+Per-order cost envelopes. Auto-transitions based on quota pressure.
+
+### 8. Multi-Backend Routing Decision Engine
+**Document:** `multi-backend-routing-engine.md`
+**Milestones:** M-BR01 through M-BR08
+**Status:** COMPLETE — all 8 milestones implemented (Wave 2 + Wave 5; M-BR08 FUTURE schema-ready)
+
+Plugin-style backend registry. Claude + LocalAI + OpenRouter free + Codex CLI.
+Budget-constrained routing. Fallback chains. Cheapest capable backend wins.
+
+### 9. Iterative Validation and Challenge Loops
+**Document:** `iterative-validation-and-challenge-loops.md`
+**Milestones:** M-IV01 through M-IV08
+**Status:** COMPLETE — all 8 milestones implemented (Wave 3)
+
+Multi-round adversarial challenges. Automated + agent + cross-model + scenario.
+Confidence tier determines challenge depth. Budget-aware skip/defer logic.
+
+### 10. Model Upgrade Path — LocalAI Next-Gen
+**Document:** `model-upgrade-path.md`
+**Milestones:** M-MU01 through M-MU08
+**Status:** COMPLETE — all 8 milestones implemented (Wave 4 + Wave 5; M-MU05/06/08 FUTURE schema-ready)
+
+Upgrade hermes-3b → Qwen3-8B. Plan for 19GB dual-GPU. Shadow routing.
+TurboQuant and BitNet monitoring. Confidence tier progression tracking.
+
+### 11. Storm Prevention System
+**Document:** `storm-prevention-system.md`
+**Milestones:** M-SP01 through M-SP09
+**Status:** COMPLETE — all 9 milestones implemented (Wave 1 + Wave 2 + Wave 3)
+
+Automatic graduated response. 9 indicators, 5 severity levels. Circuit
+breakers per-agent and per-backend. Diagnostic snapshots. Post-incident reports.
+
+---
+
+### 12. Implementation Roadmap
+**Document:** `implementation-roadmap.md`
+**Status:** ACTIVE PLAN
+
+5 implementation waves sequencing all 47 new milestones:
+- Wave 1: Foundation (safety + observability) — 10 milestones, CRITICAL
+- Wave 2: Routing (multi-backend + budget control) — 10 milestones, HIGH
+- Wave 3: Validation (challenge loops) — 9 milestones, HIGH
+- Wave 4: Evolution (better models + analytics) — 10 milestones, MEDIUM
+- Wave 5: Scale (dual GPU + advanced) — 8 milestones, MEDIUM-LOW
+
+Integration with operational readiness (#17-21), LocalAI stages, and
+Fleet Elevation. Success criteria per wave. Critical rule: do NOT resume
+autonomous flow without Wave 1 complete.
+
+---
+
+## Dependency Map (Updated 2026-03-31)
+
+```
+Event Bus (done) ─── events infrastructure
+  ↓
+Fleet Autonomy (done) ─── orchestrator, MCP tools
+  ↓
+Foundation + Methodology + Teaching + Immune (done)
+  ↓
+Control Surface (done) ─── PO visibility
+  ↓
+Operational Readiness (#17-21)
+  ↓
+┌─────────────────────────────────────────────────┐
+│  NEW STRATEGIC MILESTONES (2026-03-31)          │
+│                                                 │
+│  Storm Prevention (M-SP) ← infrastructure guard │
+│    ↓                                            │
+│  Budget Mode System (M-BM) ← spending strategy  │
+│    ↓                                            │
+│  Multi-Backend Router (M-BR) ← cheapest backend │
+│    ↓                                            │
+│  Labor Attribution (M-LA) ← provenance chain    │
+│    ↓                                            │
+│  Iterative Validation (M-IV) ← challenge loops  │
+│    ↓                                            │
+│  Model Upgrade Path (M-MU) ← better local AI   │
+└─────────────────────────────────────────────────┘
+  ↓
+LocalAI Independence (Stages 2-5)
+  ↓
+Autonomous Operation at Scale
+```
 
 ---
 
@@ -137,29 +246,24 @@ everything works end-to-end.
 
 ```
 active/
-├── MASTER-INDEX.md                    ← this file
-├── fleet-control-surface.md           ← control surface design
-├── fleet-event-bus-architecture.md    ← event bus milestones
-├── fleet-event-bus-audit.md           ← event bus audit
-├── milestone-plan-three-systems.md    ← 44 milestones detailed
-├── three-systems-runtime.md           ← how 3 systems interact
+├── MASTER-INDEX.md                         ← this file
+├── fleet-control-surface.md                ← control surface design
+├── fleet-event-bus-architecture.md         ← event bus milestones
+├── fleet-event-bus-audit.md                ← event bus audit
+├── milestone-plan-three-systems.md         ← 44 milestones detailed
+├── three-systems-runtime.md                ← how 3 systems interact
+├── labor-attribution-and-provenance.md     ← NEW: labor stamps
+├── budget-mode-system.md                   ← NEW: budget modes
+├── multi-backend-routing-engine.md         ← NEW: multi-backend router
+├── iterative-validation-and-challenge-loops.md ← NEW: challenge loops
+├── model-upgrade-path.md                   ← NEW: LocalAI model upgrades
+├── storm-prevention-system.md              ← NEW: storm prevention
 ├── immune-system/
-│   ├── 01-overview.md
-│   ├── 02-the-doctor.md
-│   ├── 03-disease-catalogue.md
-│   ├── 04-research-findings.md
-│   ├── 05-detection.md
-│   ├── 06-response.md
-│   └── 07-integration.md
+│   ├── 01-overview.md ... 07-integration.md
 ├── teaching-system/
 │   └── 01-overview.md
-└── methodology-system/
-    ├── 01-overview.md
-    ├── 02-conversation-protocol.md
-    ├── 03-analysis-protocol.md
-    ├── 04-investigation-protocol.md
-    ├── 05-reasoning-protocol.md
-    ├── 06-work-protocol.md
-    ├── 07-standards-and-examples.md
-    └── new-custom-fields.md
+├── methodology-system/
+│   ├── 01-overview.md ... new-custom-fields.md
+└── fleet-elevation/
+    ├── 01-overview.md ... 31-transition.md
 ```
