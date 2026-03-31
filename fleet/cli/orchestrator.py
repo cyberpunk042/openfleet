@@ -1197,23 +1197,21 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
             except Exception:
                 pass
 
-            # One-time: ensure agents are provisioned after a restart.
-            # Template sync creates sessions and cron jobs for all agents.
-            # Only runs once per daemon lifetime (not every 30s cycle).
+            # One-time: ensure all agents have heartbeat cron jobs.
+            # After a restart, some cron jobs may be missing. This reads
+            # the agent list from ~/.openclaw/openclaw.json and creates
+            # missing cron jobs WITHOUT a full MC template sync (which
+            # causes gateway restart storms).
             if not _agents_provisioned:
                 try:
-                    import subprocess as _sp
-                    fleet_dir = os.path.dirname(os.path.dirname(
-                        os.path.dirname(os.path.abspath(__file__))))
-                    prov_script = os.path.join(fleet_dir, "scripts", "provision-agents.sh")
-                    if os.path.exists(prov_script):
+                    from fleet.infra.gateway_client import ensure_agent_cron_jobs
+                    created = ensure_agent_cron_jobs()
+                    if created:
                         ts = datetime.now().strftime("%H:%M:%S")
-                        print(f"[{ts}] [orchestrator] Provisioning agents (one-time)...")
-                        _sp.Popen(["bash", prov_script],
-                                  stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
+                        print(f"[{ts}] [orchestrator] Created {created} missing heartbeat cron jobs")
                     _agents_provisioned = True
                 except Exception:
-                    pass
+                    _agents_provisioned = True  # don't retry on error
 
             # Circuit breaker: disable cron jobs with too many consecutive
             # errors DURING NORMAL OPERATION (MC is up). Only runs after
