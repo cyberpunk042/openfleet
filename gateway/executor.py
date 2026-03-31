@@ -104,14 +104,16 @@ def _build_agent_context(agent_dir: Path, config: Dict[str, Any]) -> str:
     # CLAUDE.md
     claude_md = agent_dir / "CLAUDE.md"
     if claude_md.exists():
-        parts.append(claude_md.read_text(errors="replace")[:2000])
+        parts.append(claude_md.read_text(errors="replace")[:4000])
 
-    # Context files
+    # Context files — FULL data, not compressed.
+    # Each file can be up to 8000 chars. No limit on number of files.
+    # The pre-embedded data is the agent's FULL working context.
     context_dir = agent_dir / "context"
     if context_dir.exists():
         for f in sorted(context_dir.iterdir()):
             if f.is_file() and f.suffix in (".md", ".txt", ".yaml", ".json"):
-                content = f.read_text(errors="replace")[:1000]
+                content = f.read_text(errors="replace")[:8000]
                 parts.append(f"Context ({f.name}):\n{content}")
 
     return "\n\n".join(parts) if parts else ""

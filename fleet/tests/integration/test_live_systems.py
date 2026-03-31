@@ -300,7 +300,7 @@ class TestContextSystemLive:
         if tasks:
             text = build_task_preembed(tasks[0])
             assert "TASK CONTEXT" in text
-            assert len(text) < 1500
+            # No size limit — FULL data
 
         hb_text = build_heartbeat_preembed(
             agent_name="fleet-ops", role="fleet-ops",

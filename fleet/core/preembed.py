@@ -1,101 +1,93 @@
-"""Pre-embedded data — compact context injected before agent starts.
+"""Pre-embedded data — FULL context injected before agent starts.
 
-Two pre-embed builders:
-- build_task_preembed: task data for dispatch (injected when agent starts working)
-- build_heartbeat_preembed: fleet awareness for heartbeat (injected before heartbeat)
+The pre-embedded data IS the full data the agent needs. NOT compressed.
+NOT summarized. The COMPLETE data set for the agent's role.
 
-Pre-embeds are COMPACT — they go into the agent's system prompt or context
-files. The full data is available via MCP calls. Pre-embeds give the agent
-immediate awareness without needing to call anything.
+MCP calls are for aggregating ADDITIONAL data — not for getting what
+should already be here.
 
-Size budget: ~1000 chars for context/ files in gateway.
+Gateway context/ files now support up to 8000 chars each. Multiple
+files can be used. No practical limit on total pre-embedded data.
 """
 
 from __future__ import annotations
 
+from typing import Optional
 from fleet.core.models import Task, TaskStatus
 
 
-def format_events_compact(events: list[dict], limit: int = 5) -> str:
-    """Format events into a compact summary for pre-embed.
-
-    Takes event dicts (from event store or heartbeat context) and
-    produces a compact multi-line summary.
-
-    Args:
-        events: List of event dicts with type, agent, summary.
-        limit: Max events to include.
-
-    Returns:
-        Compact text summary.
-    """
+def format_events(events: list[dict], limit: int = 10) -> str:
+    """Format events with full detail."""
     if not events:
-        return ""
+        return "No events since last heartbeat."
 
     lines = []
     for event in events[:limit]:
         etype = event.get("type", "").split(".")[-1]
         agent = event.get("agent", "system")
-        summary = event.get("summary", "")[:60]
-        lines.append(f"  {etype}: {agent} — {summary}")
+        summary = event.get("summary", "")
+        time = event.get("time", "")[:19]
+        lines.append(f"  {time} [{etype}] {agent}: {summary}")
 
     if len(events) > limit:
-        lines.append(f"  ... +{len(events) - limit} more")
+        lines.append(f"  ... +{len(events) - limit} more events")
+
+    return "\n".join(lines)
+
+
+def format_task_full(task: Task) -> str:
+    """Format a single task with FULL details — not truncated."""
+    cf = task.custom_fields
+    lines = [
+        f"### {task.title}",
+        f"- ID: {task.id[:8]}",
+        f"- Status: {task.status.value}",
+        f"- Priority: {task.priority}",
+        f"- Agent: {cf.agent_name or 'UNASSIGNED'}",
+        f"- Type: {cf.task_type or 'unset'}",
+        f"- Stage: {cf.task_stage or 'unset'}",
+        f"- Readiness: {cf.task_readiness}%",
+        f"- Story Points: {cf.story_points or 'unset'}",
+    ]
+    if cf.requirement_verbatim:
+        lines.append(f"- Verbatim Requirement: {cf.requirement_verbatim}")
+    if task.description:
+        lines.append(f"- Description: {task.description[:500]}")
+    if task.is_blocked:
+        lines.append(f"- BLOCKED by: {task.blocked_by_task_ids}")
+    if cf.pr_url:
+        lines.append(f"- PR: {cf.pr_url}")
+    if cf.plane_issue_id:
+        lines.append(f"- Plane: {cf.plane_issue_id[:8]}")
 
     return "\n".join(lines)
 
 
 def build_task_preembed(task: Task, completeness_summary: str = "") -> str:
-    """Build compact task pre-embed for dispatch injection.
+    """Build FULL task pre-embed for dispatch injection.
 
-    Includes the essential data the agent needs immediately — task ID,
-    title, verbatim requirement, stage, readiness, and what to work on.
-
-    Args:
-        task: The Task being dispatched.
-        completeness_summary: Optional artifact completeness one-liner.
-
-    Returns:
-        Compact text for injection into agent context.
+    Includes everything the agent needs about THIS task.
+    Not compressed. Full data.
     """
     cf = task.custom_fields
     lines = [
-        "═══ TASK CONTEXT ═══",
-        f"Task: {task.id[:8]} — {task.title}",
-        f"Status: {task.status.value} | Priority: {task.priority}",
-        f"Stage: {cf.task_stage or 'unknown'} | Readiness: {cf.task_readiness}%",
+        "# TASK CONTEXT",
+        "",
+        format_task_full(task),
     ]
 
-    if cf.requirement_verbatim:
-        # Verbatim requirement — always included, the anchor
-        verbatim = cf.requirement_verbatim
-        if len(verbatim) > 300:
-            verbatim = verbatim[:297] + "..."
-        lines.append(f"Requirement: {verbatim}")
-
-    if cf.project:
-        lines.append(f"Project: {cf.project}")
-
     if completeness_summary:
-        lines.append(f"Artifact: {completeness_summary}")
+        lines.append(f"- Artifact: {completeness_summary}")
 
-    # Stage-specific instruction (compact)
+    # Stage instructions
     stage = cf.task_stage or ""
-    if stage == "conversation":
-        lines.append("→ DISCUSS with PO. Do NOT produce code.")
-    elif stage == "analysis":
-        lines.append("→ ANALYZE codebase. Produce analysis document.")
-    elif stage == "investigation":
-        lines.append("→ RESEARCH options. Explore multiple approaches.")
-    elif stage == "reasoning":
-        lines.append("→ PLAN approach. Reference the verbatim requirement.")
-    elif stage == "work":
-        lines.append("→ EXECUTE the confirmed plan. Follow tool sequence.")
+    if stage:
+        from fleet.core.stage_context import get_stage_instructions
+        instructions = get_stage_instructions(stage)
+        if instructions:
+            lines.append("")
+            lines.append(instructions)
 
-    if task.is_blocked:
-        lines.append("⚠ BLOCKED — check dependencies before starting")
-
-    lines.append("═══════════════════")
     return "\n".join(lines)
 
 
@@ -103,62 +95,77 @@ def build_heartbeat_preembed(
     agent_name: str,
     role: str,
     assigned_tasks: list[Task],
-    messages_count: int = 0,
-    events_count: int = 0,
-    directives_count: int = 0,
-    role_summary: str = "",
+    messages: list[dict] | None = None,
+    directives: list[dict] | None = None,
+    events: list[dict] | None = None,
+    role_data: dict | None = None,
     fleet_mode: str = "",
     fleet_phase: str = "",
+    fleet_backend: str = "",
     agents_online: int = 0,
     agents_total: int = 0,
 ) -> str:
-    """Build compact heartbeat pre-embed for session injection.
+    """Build FULL heartbeat pre-embed.
 
-    Gives the agent immediate awareness of messages, events, role
-    responsibilities, and assigned work without any MCP call.
-
-    Args:
-        agent_name: The agent's name.
-        role: The agent's role.
-        assigned_tasks: Tasks assigned to this agent.
-        messages_count: Pending messages for this agent.
-        events_count: Events since last heartbeat.
-        directives_count: Pending PO directives.
-        role_summary: One-line role-specific summary.
-        fleet_mode: Current work mode.
-        fleet_phase: Current cycle phase.
-        agents_online: Online agent count.
-        agents_total: Total agent count.
-
-    Returns:
-        Compact text for injection into agent context.
+    Includes everything the agent needs to do their job.
+    Not compressed. Full data per role.
     """
     lines = [
-        "═══ HEARTBEAT CONTEXT ═══",
-        f"Agent: {agent_name} | Role: {role}",
-        f"Fleet: {agents_online}/{agents_total} online | Mode: {fleet_mode} | Phase: {fleet_phase}",
+        "# HEARTBEAT CONTEXT",
+        "",
+        f"Agent: {agent_name}",
+        f"Role: {role}",
+        f"Fleet: {agents_online}/{agents_total} online | Mode: {fleet_mode} | Phase: {fleet_phase} | Backend: {fleet_backend}",
+        "",
     ]
 
-    if messages_count:
-        lines.append(f"📬 {messages_count} message(s) waiting")
-    if directives_count:
-        lines.append(f"📋 {directives_count} directive(s) from PO")
-    if events_count:
-        lines.append(f"📡 {events_count} event(s) since last heartbeat")
+    # Directives (highest priority)
+    if directives:
+        lines.append("## PO DIRECTIVES")
+        for d in directives:
+            urgent = "URGENT " if d.get("urgent") else ""
+            lines.append(f"- {urgent}{d.get('content', '')} (from {d.get('from', '?')})")
+        lines.append("")
 
-    if role_summary:
-        lines.append(f"Role: {role_summary}")
+    # Messages
+    if messages:
+        lines.append("## MESSAGES")
+        for m in messages:
+            lines.append(f"- From {m.get('from', '?')}: {m.get('content', '')}")
+        lines.append("")
 
+    # Assigned tasks (FULL detail)
     if assigned_tasks:
-        lines.append(f"Tasks: {len(assigned_tasks)} assigned")
-        for t in assigned_tasks[:3]:
-            stage = t.custom_fields.task_stage or "?"
-            readiness = t.custom_fields.task_readiness
-            lines.append(f"  • {t.title[:40]} [{stage} {readiness}%]")
-        if len(assigned_tasks) > 3:
-            lines.append(f"  ... and {len(assigned_tasks) - 3} more")
+        lines.append(f"## ASSIGNED TASKS ({len(assigned_tasks)})")
+        for t in assigned_tasks:
+            lines.append("")
+            lines.append(format_task_full(t))
+        lines.append("")
     else:
-        lines.append("Tasks: none assigned — idle")
+        lines.append("## ASSIGNED TASKS: None")
+        lines.append("")
 
-    lines.append("═════════════════════════")
+    # Role-specific data (FULL)
+    if role_data:
+        lines.append("## ROLE DATA")
+        for key, value in role_data.items():
+            if isinstance(value, list):
+                lines.append(f"### {key} ({len(value)})")
+                for item in value:
+                    if isinstance(item, dict):
+                        lines.append(f"  - {item}")
+                    else:
+                        lines.append(f"  - {item}")
+            elif isinstance(value, (int, float)):
+                lines.append(f"- {key}: {value}")
+            else:
+                lines.append(f"- {key}: {value}")
+        lines.append("")
+
+    # Events
+    if events:
+        lines.append("## EVENTS SINCE LAST HEARTBEAT")
+        lines.append(format_events(events))
+        lines.append("")
+
     return "\n".join(lines)

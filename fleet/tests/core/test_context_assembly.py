@@ -209,7 +209,7 @@ class TestPreembedIntegration:
             agent_name="architect",
             role="architect",
             assigned_tasks=tasks,
-            messages_count=2,
+            messages=[{"from": "pm", "content": "check this"}, {"from": "human", "content": "do that"}],
             fleet_mode="full-autonomous",
             fleet_phase="execution",
             agents_online=8,
@@ -218,4 +218,4 @@ class TestPreembedIntegration:
         assert "HEARTBEAT CONTEXT" in text
         assert "architect" in text
         assert "8/10" in text
-        assert "2 message" in text
+        assert "MESSAGES" in text
