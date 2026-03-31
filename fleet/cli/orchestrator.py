@@ -1291,6 +1291,6 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
             except Exception:
                 pass
 
-            # Reset so gateway restarts on next MC recovery
-            _gateway_down_cycles = 0
-            _agents_provisioned = False
+            # Note: _agents_provisioned is NOT reset. Agents stay
+            # provisioned across MC restarts. Only cron enable/disable
+            # changes. Reprovisioning causes gateway restart storms.
