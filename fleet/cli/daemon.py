@@ -368,13 +368,9 @@ def run_daemon(args: list[str] | None = None) -> int:
         f.write(str(os.getpid()))
 
     def cleanup(*_):
-        # Fleet is going OFF. Kill gateway. Disable cron. Zero consumption.
-        import subprocess as _sp
-        try:
-            _sp.run(["pkill", "-f", "openclaw-gateway"], capture_output=True, timeout=5)
-            _sp.run(["pkill", "-f", "openclaw$"], capture_output=True, timeout=5)
-        except Exception:
-            pass
+        # Fleet daemon shutting down. Disable cron jobs so the gateway
+        # stops firing heartbeats. Do NOT kill the gateway — killing it
+        # destroys in-memory cron jobs that can't be recreated.
         try:
             from fleet.infra.gateway_client import disable_gateway_cron_jobs
             disable_gateway_cron_jobs()
@@ -384,7 +380,7 @@ def run_daemon(args: list[str] | None = None) -> int:
             os.remove(pid_file)
         except Exception:
             pass
-        print("[daemon] Shutdown complete. Gateway killed. Cron disabled. Zero consumption.")
+        print("[daemon] Shutdown complete. Cron disabled. Zero consumption.")
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, cleanup)

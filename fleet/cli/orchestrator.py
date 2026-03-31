@@ -1250,25 +1250,17 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
             ts = datetime.now().strftime("%H:%M:%S")
             print(f"[{ts}] [orchestrator] MC UNREACHABLE: {e}")
 
-            # MC is DOWN. Fleet is OFF. Kill the gateway.
-            # No gateway = no sessions = no heartbeats = no Claude calls = ZERO.
-            # But keep the orchestrator ALIVE — when MC comes back, bring
-            # everything back up automatically.
-            import subprocess as _sp
-
-            # Kill gateway process
-            try:
-                _sp.run(["pkill", "-f", "openclaw-gateway"], capture_output=True, timeout=5)
-                _sp.run(["pkill", "-f", "openclaw$"], capture_output=True, timeout=5)
-                print(f"[{ts}] [orchestrator] KILLED gateway — MC is DOWN")
-            except Exception:
-                pass
-
-            # Disable cron jobs (safety: if gateway somehow restarts)
+            # MC is DOWN. Fleet is OFF. Disable cron jobs so the gateway
+            # stops firing heartbeats. Do NOT kill the gateway process —
+            # killing it destroys in-memory cron jobs that aren't persisted
+            # to disk, and they can't be recreated without a full reprovision.
+            # Disabling cron jobs is sufficient: no heartbeats = no Claude calls.
             try:
                 from fleet.infra.gateway_client import disable_gateway_cron_jobs
-                disable_gateway_cron_jobs()
+                disabled = disable_gateway_cron_jobs()
+                if disabled:
+                    print(f"[{ts}] [orchestrator] MC DOWN — disabled {disabled} cron jobs. ZERO consumption.")
+                else:
+                    print(f"[{ts}] [orchestrator] MC DOWN — cron jobs already disabled.")
             except Exception:
                 pass
-
-            print(f"[{ts}] [orchestrator] Fleet is OFF. Watching for MC to come back...")
