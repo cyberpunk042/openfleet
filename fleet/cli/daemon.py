@@ -191,31 +191,9 @@ async def _run_monitor_daemon(interval: int = 300) -> None:
 
             if not mc_up:
                 ts = datetime.now().strftime("%H:%M:%S")
-                print(f"[{ts}] [monitor] MC is DOWN — fleet is OFF. NOT restarting gateway.")
-            else:
-                # MC is up — check if gateway needs restart
-                try:
-                    async with _httpx.AsyncClient(timeout=5) as _hc:
-                        resp = await _hc.get("http://localhost:18789/")
-                        # Gateway is alive
-                except Exception:
-                    # Only restart if orchestrator isn't already doing it
-                    fleet_dir = os.environ.get("FLEET_DIR", str(Path(__file__).resolve().parent.parent.parent))
-                    lock_path = os.path.join(fleet_dir, ".gateway-starting")
-                    if not os.path.exists(lock_path):
-                        ts = datetime.now().strftime("%H:%M:%S")
-                        print(f"[{ts}] [monitor] Gateway DOWN (MC is UP) — restarting...")
-                        start_script = os.path.join(fleet_dir, "scripts", "start-fleet.sh")
-                        if os.path.exists(start_script):
-                            result = subprocess.run(
-                                ["bash", start_script],
-                                capture_output=True, text=True, timeout=120,
-                            )
-                            ts = datetime.now().strftime("%H:%M:%S")
-                            if result.returncode == 0:
-                                print(f"[{ts}] [monitor] Gateway restarted successfully")
-                            else:
-                                print(f"[{ts}] [monitor] Gateway restart FAILED: {result.stderr[:200]}")
+                print(f"[{ts}] [monitor] MC is DOWN — fleet is OFF.")
+            # Gateway restart is handled by the ORCHESTRATOR (30s cycle).
+            # Monitor does NOT restart the gateway — causes race conditions.
         except Exception:
             pass
 
