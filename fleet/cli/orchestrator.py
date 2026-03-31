@@ -1174,6 +1174,7 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
     from fleet.core.outage_detector import OutageDetector
     _outage = OutageDetector()
     _agents_provisioned = False  # one-time flag: provision agents on first MC success
+    _gateway_started = False     # one-time flag: start gateway on first MC success
 
     while True:
         # Check if we should run this cycle (outage/backoff)
@@ -1197,21 +1198,27 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
             except Exception:
                 pass
 
-            # One-time: ensure all agents have heartbeat cron jobs.
-            # After a restart, some cron jobs may be missing. This reads
-            # the agent list from ~/.openclaw/openclaw.json and creates
-            # missing cron jobs WITHOUT a full MC template sync (which
-            # causes gateway restart storms).
-            if not _agents_provisioned:
+            # Ensure gateway is running. Only try ONCE per MC recovery
+            # to avoid process storm (the old bug that spawned dozens).
+            if not _gateway_started:
                 try:
-                    from fleet.infra.gateway_client import ensure_agent_cron_jobs
-                    created = ensure_agent_cron_jobs()
-                    if created:
-                        ts = datetime.now().strftime("%H:%M:%S")
-                        print(f"[{ts}] [orchestrator] Created {created} missing heartbeat cron jobs")
-                    _agents_provisioned = True
+                    import subprocess as _sp
+                    _gw = _sp.run(["pgrep", "-f", "openclaw-gateway"],
+                                  capture_output=True, timeout=5)
+                    if _gw.returncode != 0:
+                        fleet_dir = os.path.dirname(os.path.dirname(
+                            os.path.dirname(os.path.abspath(__file__))))
+                        start_script = os.path.join(fleet_dir, "scripts", "start-fleet.sh")
+                        if os.path.exists(start_script):
+                            _sp.run(["bash", start_script],
+                                    capture_output=True, timeout=120)
+                            ts = datetime.now().strftime("%H:%M:%S")
+                            print(f"[{ts}] [orchestrator] Gateway started")
+                    _gateway_started = True
                 except Exception:
-                    _agents_provisioned = True  # don't retry on error
+                    _gateway_started = True  # don't retry
+
+            _agents_provisioned = True
 
             # Circuit breaker: disable cron jobs with too many consecutive
             # errors DURING NORMAL OPERATION (MC is up). Only runs after
@@ -1264,3 +1271,7 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
                     print(f"[{ts}] [orchestrator] MC DOWN — cron jobs already disabled.")
             except Exception:
                 pass
+
+            # Reset flags so gateway restarts on next MC recovery
+            _gateway_started = False
+            _agents_provisioned = False
