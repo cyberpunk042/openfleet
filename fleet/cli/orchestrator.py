@@ -1223,9 +1223,11 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
                         print(f"[{ts}] [orchestrator] Starting gateway...")
 
                 elif gateway_alive and os.path.exists(lock_path):
-                    # Gateway just came up — remove lock and provision agents.
-                    # Template sync creates agent sessions and cron jobs.
+                    # Gateway just came up — remove lock
                     os.remove(lock_path)
+
+                # Provision agents once after gateway is confirmed alive
+                if gateway_alive and not _agents_provisioned:
                     prov_script = os.path.join(fleet_dir, "scripts", "provision-agents.sh")
                     if os.path.exists(prov_script):
                         _sp.Popen(["bash", prov_script],
@@ -1233,10 +1235,9 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
                                   stderr=_sp.STDOUT)
                         ts = datetime.now().strftime("%H:%M:%S")
                         print(f"[{ts}] [orchestrator] Provisioning agents...")
+                    _agents_provisioned = True
             except Exception:
                 pass
-
-            _agents_provisioned = True
 
             # Circuit breaker: disable cron jobs with too many consecutive
             # errors DURING NORMAL OPERATION (MC is up). Only runs after
