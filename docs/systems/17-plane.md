@@ -1,66 +1,87 @@
-# System 17: Plane Integration
+# Plane Integration — Bidirectional Sync
 
-**Source:** `fleet/core/plane_sync.py`, `fleet/core/plane_methodology.py`, `fleet/core/plane_watcher.py`, `fleet/core/config_sync.py`
-**Status:** 🔨 Sync works. Methodology labels work. Comment sync NOT implemented.
-**Design docs:** `agent-rework/11-plane-integration.md`
+> **4 files. 1208 lines. Keeps Plane and OCMC in sync. Methodology labels on Plane issues.**
+>
+> Plane is for humans (PO, stakeholders). OCMC is for agents. Both
+> must show the same state. Plane → OCMC: new issues become tasks.
+> OCMC → Plane: completed tasks update issue state. Methodology
+> (stage, readiness) tracked via Plane labels since CE lacks custom fields.
+> IaC config sync ensures state survives restarts.
 
----
+## 1. Why It Exists
 
-## Purpose
+Without sync, the PO sees one state in Plane and agents see another in
+OCMC. Tasks created in Plane wouldn't reach agents. Completions by
+agents wouldn't appear in Plane. The PO would need to manually update
+both surfaces — "every manual step is a bug."
 
-Bidirectional sync between Plane (project management) and OCMC (agent coordination). Plane is for humans and PO visibility. OCMC is for agents. Both stay in sync. IaC config sync ensures restart recovery.
+## 2. How It Works
 
-## Key Concepts
+### 2.1 Plane → OCMC
 
-### Plane → OCMC (plane_sync.py)
+```
+PlaneSyncer.ingest_from_plane()
+  ↓
+Discover new Plane issues (not yet linked to OCMC tasks)
+  ↓
+Create OCMC task with:
+  plane_issue_id, plane_project_id, plane_workspace
+  ↓
+PM sees new task in heartbeat → assigns agent
+```
 
-`ingest_from_plane()` — discovers new Plane issues, creates OCMC tasks with:
-- `plane_issue_id` — Plane issue UUID
-- `plane_project_id` — Plane project UUID
-- `plane_workspace` — Plane workspace slug
+### 2.2 OCMC → Plane
 
-### OCMC → Plane (plane_sync.py)
+```
+PlaneSyncer.push_completions_to_plane()
+  ↓
+Find OCMC tasks in "done" status with plane_issue_id
+  ↓
+Update Plane issue state to configured "done" state
+```
 
-`push_completions_to_plane()` — OCMC tasks that reached `done` with `plane_issue_id` → Plane issue state updated.
-
-### Methodology on Plane (plane_methodology.py)
+### 2.3 Methodology on Plane (No Custom Fields)
 
 Plane CE lacks custom fields. Hybrid approach:
-- Stage → labels: `stage:conversation`, `stage:work`
-- Readiness → labels: `readiness:0`, `readiness:50`, `readiness:99`
-- Verbatim requirement → HTML section in description with `fleet-verbatim` span marker
+```
+Stage    → labels: stage:conversation, stage:analysis, stage:work
+Readiness → labels: readiness:0, readiness:50, readiness:99
+Verbatim  → HTML section with fleet-verbatim span markers
+```
 
-Valid readiness values enforced: `0, 5, 10, 20, 30, 50, 70, 80, 90, 95, 99, 100`
+Valid readiness labels: 0, 5, 10, 20, 30, 50, 70, 80, 90, 95, 99, 100
 
-### Config Sync (config_sync.py)
+### 2.4 Config Sync (IaC)
 
-When Plane watcher detects changes, updates DSPD config YAML files. PO requirement: "if we restart it will pick up where we left."
+When Plane watcher detects changes → update DSPD config YAML files.
+PO requirement: "if we restart it will pick up where we left."
 
-### Plane Watcher (plane_watcher.py)
+## 3. File Map
 
-Monitors Plane for changes. Feeds change_detector. Part of monitor daemon.
+```
+fleet/core/
+├── plane_sync.py          Bidirectional sync: ingest + push      (varies)
+├── plane_methodology.py   Stage/readiness labels, verbatim HTML   (varies)
+├── plane_watcher.py       Monitor Plane for changes               (varies)
+└── config_sync.py         IaC YAML updates from Plane state       (varies)
+```
 
-## NOT Implemented
+## 4. Consumers
 
-- Task comment sync (OCMC comments → Plane comments) — agent work trail invisible on Plane
-- PM pre-embedded Plane sprint data (AR-11)
-- Plane module listing in agent context
+MCP tools (7 fleet_plane_* tools), orchestrator (sync cycle), transpose (artifact HTML), context assembly (Plane data in task context), events (Plane events).
 
-## Connections to Other Systems
+## 5. Design Decisions
 
-| System | Connection | Direction |
-|--------|-----------|-----------|
-| **Orchestrator** | Plane sync runs in orchestrator/daemon cycle | Orchestrator → Plane |
-| **MCP Tools** | 7 fleet_plane_* tools access Plane API | MCP → Plane |
-| **Transpose** | Artifact HTML rendered to Plane descriptions | Transpose → Plane |
-| **Methodology** | Stage/readiness labels on Plane issues | Methodology → Plane |
-| **Events** | Plane changes emit events | Plane → Events |
-| **Config Sync** | Plane changes → IaC YAML updates | Plane → Config |
-| **Context Assembly** | Plane issue data in task context | Plane → Context |
+**Why labels for methodology?** Plane CE has no custom fields. Labels are the only structured metadata available. Prefix convention (stage:, readiness:) prevents collision with other labels.
 
-## What's Needed
+**Why verbatim in HTML, not labels?** Verbatim requirements are long text. Labels have length limits. Hidden span markers in description_html allow full verbatim text while keeping it machine-parseable.
 
-- [ ] Task comment sync (OCMC → Plane, bidirectional)
-- [ ] PM pre-embed Plane sprint data (AR-11)
-- [ ] Writer auto-update Plane pages on task completion
-- [ ] Live test: Plane issue → OCMC task → agent works → Plane synced
+**Why config sync to YAML?** IaC principle: "if we restart it will pick up where we left." YAML files in git mean the state is version-controlled and reproducible.
+
+## 6. NOT Implemented
+
+- Task comment sync (OCMC comments → Plane comments)
+- PM pre-embed Plane sprint data (AR-11)
+- Writer auto-update Plane pages on completion
+
+## 7. Test Coverage: **40+ tests**
