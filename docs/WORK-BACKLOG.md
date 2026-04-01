@@ -8,6 +8,13 @@
 
 ## 1. BLOCKERS — Must Fix Before First Live Test
 
+### B0: Agent Directory Cleanup (BEFORE writing agent files)
+
+**Source:** agent-directory-cleanup.md
+**Work:** Restructure agents/ so templates+config are committed, agent directories are fully untracked runtime output. Create provision script. Update .gitignore. Move accountability src/ to fleet module.
+**Why first:** New CLAUDE.md files must go into `_template/CLAUDE.md/{role}.md`, not `agents/{name}/CLAUDE.md`. If we write B1 before B0, the files go in the wrong place.
+**Effort:** 4-8 hours
+
 ### B1: Agent CLAUDE.md (0/10 per spec)
 
 **Source:** SPEC-TO-CODE §1.2, fleet-elevation/02+05-14+20, AR-10
