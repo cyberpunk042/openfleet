@@ -59,6 +59,7 @@ READING ORDER for new context:
 | [fleet-vision-architecture.md](milestones/active/fleet-vision-architecture.md) | 731 | "What code actually exists?" Code-verified audit of 94 modules. Honest assessment: what's built vs designed vs missing. |
 | [fleet-vision-architecture-part2.md](milestones/active/fleet-vision-architecture-part2.md) | 478 | Gateway integration, per-agent state, critical path to live test, document index with honest status. |
 | [MASTER-INDEX.md](milestones/active/MASTER-INDEX.md) | 257 | "What's the status of everything?" 255 milestones across 36 docs. Honest: ✅ live tested, 🔨 code exists, 📐 design only. |
+| [SPEC-TO-CODE.md](SPEC-TO-CODE.md) | 222 | "Does the code match the design specs?" 69 specs mapped to 94 modules. Shows divergences and gaps. |
 
 ---
 
