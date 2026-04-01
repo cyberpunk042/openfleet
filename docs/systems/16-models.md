@@ -350,24 +350,75 @@ test what the fleet actually needs.
 
 ---
 
-## 8. Model Landscape (From Research)
+## 8. Model Landscape (Updated April 2026)
 
-Research findings (March 2026) — what's available for 8GB VRAM:
+### 8.1 What Fits 8GB VRAM Now
 
 | Model | Size (Q4_K_M) | Strengths | Status |
 |-------|---------------|-----------|--------|
 | hermes-3b | 2.0GB | Fast, function calling trained | Current default |
 | hermes (7B) | 4.4GB | Complex reasoning, Hermes 2 Pro | Configured |
-| Qwen 2.5 7B | ~5GB | Best general 8B, strong instruction | NOT configured |
+| **Qwen3.5-4B** | **~2.5GB** | **15+ pts ahead of Qwen3-4B reasoning. Gated DeltaNet.** | **NOT configured** |
+| **Qwen3.5-9B** | **~5GB** | **Best 9B available. MMLU-Pro 79.1%, GPQA 76.2%.** | **NOT configured** |
+| Qwen3-8B | ~5GB | Strong general 8B | NOT configured |
+| Qwen 2.5 7B | ~5GB | Strong instruction following | NOT configured |
 | Qwen 2.5 Coder 7B | ~5GB | Best coding 8B | NOT configured |
-| DeepSeek R1 8B | ~5GB | Strong reasoning (chain-of-thought) | NOT configured |
-| Phi-4-mini | ~3GB | Small, efficient | NOT configured |
+| DeepSeek R1 8B | ~5GB | Strong reasoning (chain-of-thought, verbose) | NOT configured |
 
-**KV cache quantization applied** (M-MO01): Q4_0 KV + Flash Attention
-on all models. Extends practical context from 8K to 16-24K on 8GB.
+**Recommended upgrade path:**
+1. **Qwen3.5-4B** as new default (replaces hermes-3b) — faster, smarter, 2.5GB leaves room for context
+2. **Qwen3.5-9B** as primary workhorse — significantly better than any 7-8B model, fits 8GB at Q4_K_M
+3. Keep **hermes (7B)** for function calling (Hermes 2 Pro still best for tool use)
 
-**Dual GPU (19GB)** would enable: 14B models at Q5_K_M (massive
-quality jump), or 8B models at FP16 (zero quantization loss).
+### 8.2 Qwen3.5-Omni — NOT For Local
+
+Qwen3.5-Omni (multimodal, omni-modal) is **PROPRIETARY** (API only).
+Cannot be downloaded or run locally. Not relevant to LocalAI independence.
+The open-source Qwen3-Omni-30B-A3B is too large for 8GB VRAM.
+
+### 8.3 TurboQuant — Coming Q3 2026
+
+Google Research, ICLR 2026. KV cache compression (NOT weight quantization):
+- TQ4 (4-bit): **3.8x compression**, quality indistinguishable from FP16
+- TQ3 (3-bit): **4.9x compression**, degrades on <8B models
+- TurboQuant+ (community): **up to 6.4x compression**
+
+**Impact for our 8GB VRAM:**
+```
+CURRENT (with our Q4_0 KV cache):
+  Qwen3.5-9B Q4_K_M (~5GB weights) + Q4_0 KV → ~16-24K context
+
+WITH TurboQuant TQ4 (when available):
+  Qwen3.5-9B Q4_K_M (~5GB weights) + TQ4 KV → ~48-64K context
+  
+WITH TurboQuant+ TQ3:
+  Qwen3.5-9B Q4_K_M (~5GB weights) + TQ3 KV → ~64-96K context
+```
+
+**Status:** NOT in llama.cpp main. Q3 2026 roadmap. Community forks
+exist (`spiritbuun/llama-cpp-turboquant-cuda`). LocalAI will get it
+automatically when llama.cpp merges. Our `turboquant.py` schema module
+is ready for when this lands.
+
+**We already applied Q4_0 KV cache quantization** (M-MO01) which gives
+~4x KV compression. TurboQuant TQ4 would not replace this — it would
+be a DIFFERENT approach to the same problem, potentially giving better
+quality at similar compression or better compression at same quality.
+
+### 8.4 RAM/VRAM Market
+
+Global memory supply shortage (2024-2026). HBM for AI GPUs consuming
+wafer capacity. Brief 22% dip after TurboQuant announcement but NOT
+sustained. Earliest meaningful price relief: late 2027.
+
+**Plan around current 8GB VRAM.** Techniques (quantization, KV cache
+compression, TurboQuant when it lands) are more effective than waiting
+for cheaper hardware.
+
+### 8.5 Dual GPU (19GB)
+
+Would enable: Qwen3.5-27B at Q4_K_M or Qwen3.5-9B at FP16.
+Both massive quality jumps. Hardware dependent.
 
 ---
 
@@ -410,10 +461,18 @@ PromotionRecord(
 
 ## 10. What's Needed
 
-- **Add Qwen 2.5 models** to config registry (M-MO02)
-- **Run REAL benchmarks** against actual LocalAI (M-MO03)
-- **Shadow routing live test** with real inference (M-MO03)
-- **Multi-model strategy** in router: Hermes for function calling, Qwen for general (M-MO04)
-- **Dual GPU preparation** when hardware arrives (M-MO05)
+### Immediate
+- **Add Qwen3.5-4B and Qwen3.5-9B** to config registry — GGUF available, Apache 2.0
+- **Run REAL benchmarks** against actual LocalAI (model_benchmark.py exists, never run against real inference)
+- **Shadow routing live test** — compare Qwen3.5-9B against hermes-3b on real fleet prompts
+
+### Short-Term
+- **Multi-model strategy in router:** Qwen3.5-4B for heartbeats (fast, tiny), Qwen3.5-9B for reasoning (smart), hermes for function calling (trained for it)
+- **Monitor TurboQuant** llama.cpp integration (Q3 2026 roadmap) — when merged, update model YAMLs and context configs
+- **Update turboquant.py** schema module with real TQ4/TQ3 parameters from paper
+
+### Strategic
+- **Dual GPU** when hardware arrives — Qwen3.5-27B at Q4_K_M or Qwen3.5-9B at FP16
+- **Qwen3-Coder-30B-A3B** (MoE, 3B active) — evaluate if MoE models work well on 8GB with offloading
 
 ### Test Coverage: **130 tests** across 6 active modules + 21 for FUTURE schemas.

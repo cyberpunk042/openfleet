@@ -430,10 +430,96 @@ instructions guides agents to use the right tool at the right time.
 
 ---
 
-## 8. Test Coverage
+---
+
+## 8. Claude Code Full Anatomy — All Extension Points
+
+Agents run as Claude Code sessions. Each extension point is a
+configuration surface the fleet can use. Per-agent customization
+uses ALL of these, not just mcp.json.
+
+### 8.1 Core Extension Points (6)
+
+| Extension | Location | What It Does | Fleet Use |
+|-----------|----------|-------------|-----------|
+| **MCP Servers** | `.mcp.json` | External tools/data access | Per-agent: filesystem, github, playwright, docker |
+| **Subagents** | `.claude/agents/` | Specialized Claude instances | Explore agent for code research, reviewer agent |
+| **Hooks** | `settings.json` | Shell commands at lifecycle points (no AI) | Pre-commit linting, post-task cleanup |
+| **Skills** | `.claude/skills/*/SKILL.md` | Reusable workflows as slash commands | Per-role skills: `/architecture-review`, `/quality-audit` |
+| **Plugins** | `.claude-plugin/` | Bundled skills+agents+hooks+MCP | codex-plugin-cc, Claude-Mem, Context7 |
+| **Agent Teams** | Runtime orchestration | Independent peers coordinating | Multi-agent collaboration on epics |
+
+### 8.2 Configuration Layers (5)
+
+| Layer | Location | What It Does | Fleet Use |
+|-------|----------|-------------|-----------|
+| **Rules** | `.claude/rules/*.md` | Path-scoped modular instructions | Per-directory coding standards |
+| **Memory** | `CLAUDE.md` + `MEMORY.md` | Project instructions + auto-memory | CLAUDE.md = role rules. MEMORY.md = learned patterns. |
+| **Keybindings** | `~/.claude/keybindings.json` | Custom keyboard shortcuts | Not agent-relevant (human tool) |
+| **Statusline** | `settings.json` statusline | Custom status bar | Context %, cost, rate limits display |
+| **Settings** | `.claude/settings.json` | Permissions, model, env vars | Per-agent permissions, model override |
+
+### 8.3 What Each Agent Should Have
+
+```
+agents/{name}/
+├── .mcp.json               ← Per-role MCP servers (NOT just fleet)
+├── .claude/
+│   ├── settings.json       ← Per-agent permissions + model
+│   ├── skills/             ← Per-role skills (SKILL.md files)
+│   │   ├── role-specific/
+│   │   └── shared/
+│   ├── agents/             ← Subagent definitions (explore, reviewer)
+│   └── rules/              ← Path-scoped rules
+├── CLAUDE.md               ← Role rules + anti-corruption (COMMITTED)
+├── HEARTBEAT.md            ← Action protocol (COMMITTED)
+├── agent.yaml              ← Gateway config (COMMITTED)
+├── context/                ← Pre-embedded data (GENERATED)
+└── plugins installed:
+    ├── claude-mem           ← Cross-session memory (ALL agents)
+    ├── context7             ← Library docs (architect + engineer)
+    └── codex-plugin-cc      ← Adversarial review (ALL agents)
+```
+
+### 8.4 New: Agent Teams (Feb 2026)
+
+Agent Teams enables multi-agent collaboration WITHOUT our orchestrator
+managing individual sessions:
+
+```
+Lead agent + 2-5 teammates:
+  ├── Each in own context window + git worktree
+  ├── Shared task list with dependency tracking
+  ├── Mailbox-based direct messaging between teammates
+  ├── File-locking to prevent conflicts
+  └── Quality gates: TeammateIdle, TaskCreated, TaskCompleted hooks
+
+Enable: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"
+```
+
+**Evaluation needed:** Does this complement or compete with our
+orchestrator? Likely COMPLEMENT — use Agent Teams for within-task
+collaboration (architect + engineer on same epic) while our
+orchestrator handles fleet-wide coordination.
+
+### 8.5 New: /loop Command
+
+Cron-style scheduled tasks within Claude Code:
+```
+/loop 5m /status-check    → runs every 5 minutes
+/loop "daily at 9am" /digest → daily digest
+```
+
+Could replace some daemon functionality for lightweight monitoring.
+
+---
+
+## 9. Test Coverage
 
 This is configuration, not code. Testing means:
 - `make agent-setup-all` succeeds from clean state
 - Each agent's mcp.json is valid JSON with expected servers
 - Each MCP server responds to tool list query
 - Skill assignments match agent capabilities in agent.yaml
+- Plugins installed and functional per agent
+- Claude Code anatomy fully leveraged per role
