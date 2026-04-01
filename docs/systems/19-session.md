@@ -182,22 +182,73 @@ Total: **1157 lines** across 5 modules.
 
 ---
 
-## 4. Per-File Key Functions
+## 4. Per-File Documentation
 
-### session_telemetry.py (230 lines)
-`ingest(data)` → SessionSnapshot. Distribution: `to_labor_fields()`, `to_claude_health()`, `to_storm_indicators()`, `to_cost_delta()`.
+### 4.1 `session_telemetry.py` — W8 Adapter (230 lines)
 
-### context_assembly.py (331 lines)
-`assemble_task_context()` — full task bundle from MC+Plane+events+methodology+transpose. `assemble_heartbeat_context()` — role-specific via providers. Per-cycle cache.
+Parses Claude Code session JSON into typed `SessionSnapshot` and
+distributes real values to fleet systems via helper functions.
 
-### heartbeat_context.py (340 lines)
-`HeartbeatBundle` — 20+ fields, `format_message()` renders emoji-prefixed text with ACTION. `build_heartbeat_context()` — build from direct data (no AI, no API calls).
+| Class/Function | Lines | What It Does |
+|---------------|-------|-------------|
+| `SessionSnapshot` | 21-97 | 18 typed fields: model_id, context_window_size, context_used_pct, total_cost_usd, total_duration_ms, total_lines_added/removed, cache_read_tokens, five_hour_used_pct, seven_day_used_pct, etc. Properties: context_label, context_pressure, cache_hit_rate, duration_seconds, api_latency_ms. |
+| `ingest(data)` | 104-157 | Parse JSON dict → SessionSnapshot. Handles missing/null fields gracefully (all default to zero/empty). Nested extraction: model.id, context_window.used_percentage, rate_limits.five_hour.used_percentage. |
+| `to_labor_fields(snap)` | 163-182 | Returns dict matching LaborStamp field names: model, model_version, duration_seconds, estimated_tokens, estimated_cost_usd, lines_added, lines_removed, cache_read_tokens, session_type. |
+| `to_claude_health(snap)` | 185-207 | Returns dict matching ClaudeHealth fields: latency_ms, model_available, quota_used_pct (from 5h window), weekly_quota_used_pct, context_window_size. |
+| `to_storm_indicators(snap)` | 210-244 | Returns list[(name, value)]: context_pressure (if ≥70%), quota_pressure_5h (if ≥80%), quota_pressure_7d (if ≥80%), cache_miss (if hit_rate <10% and >10K tokens). |
+| `to_cost_delta(snap, previous)` | 247-253 | Returns incremental cost: max(snap.total_cost_usd - previous, 0.0). |
 
-### preembed.py (170 lines)
-`format_task_full()` — FULL task (NOT truncated). `build_heartbeat_preembed()` — directives + messages + tasks + role_data + events. `build_task_preembed()` — task + stage instructions.
+### 4.2 `context_assembly.py` — Aggregator (331 lines)
 
-### context_writer.py (86 lines)
-`write_heartbeat_context()` → fleet-context.md. `write_task_context()` → task-context.md. `clear_task_context()` → remove on completion/prune.
+Single source of truth for context bundles. Cached per orchestrator cycle.
+
+| Function | Lines | What It Does |
+|----------|-------|-------------|
+| `clear_context_cache(cycle_id)` | 28-32 | Clear per-cycle cache. Called at start of each orchestrator cycle. |
+| `assemble_task_context(task, mc, board_id, plane, event_store)` | 35-223 | Aggregates 7 sections: (1) task core (id, title, status, priority), (2) custom_fields (readiness, stage, verbatim, agent, SP), (3) methodology (stage instructions via stage_context, required/next stages), (4) artifact (from Plane HTML via transpose — type, data, completeness with missing fields + suggested readiness), (5) comments (last 20 via MC API), (6) activity (last 15 events from store), (7) related_tasks (children, parent, dependencies with status). Cached by task_id per cycle. |
+| `assemble_heartbeat_context(agent, role, tasks, agents, mc, board_id, event_store, role_providers, fleet_state)` | 226-331 | Role-specific via providers. Assigns tasks filtered by agent name. Messages filtered by @mention tags. Events filtered by agent relevance. Fleet state from board config. |
+
+### 4.3 `heartbeat_context.py` — HeartbeatBundle (340 lines)
+
+Pre-computes FULL agent awareness WITHOUT AI — direct Python logic only.
+
+| Class | Lines | Purpose |
+|-------|-------|---------|
+| `HeartbeatBundle` | 37-165 | 20+ fields covering work, communication, domain, sprint, Plane, fleet health, budget, control state. `format_message()` renders emoji-prefixed sections with ACTION directive at end. |
+
+| Function | Lines | What It Does |
+|----------|-------|-------------|
+| `build_heartbeat_context(agent_name, tasks, agents, board_memory, approvals, fleet_id, sprint_id, plane_data, event_feed, fleet_state)` | 168-340 | Builds HeartbeatBundle from DIRECT DATA passed by caller. No API calls, no AI. Filters: tasks by agent_name, messages by @mention tags (including lead/all aliases), domain events by AGENT_CAPABILITIES keyword match. Sets stage_instructions from primary task's stage. Plane data only for PM/fleet-ops. Budget warning from fleet state. |
+
+Key behaviors in `build_heartbeat_context()`:
+- Verbatim requirement: `task_info["requirement_verbatim"]` — ALWAYS present, NEVER compacted (line 206)
+- Stage instruction: `get_stage_instructions(stage)` injected for primary task (line 220)
+- Domain filtering: `any(cap in content_lower for cap in capabilities[:5])` — top 5 capabilities matched against board memory content (line 249)
+- Urgent/important events from event_feed promoted to domain_events (line 289)
+- Mentioned agents from events tracked in `mentioned_by` (line 293)
+
+### 4.4 `preembed.py` — Markdown Formatting (170 lines)
+
+Formats assembled data as structured markdown agents read naturally.
+
+| Function | Lines | What It Does |
+|----------|-------|-------------|
+| `format_events(events, limit)` | 19-35 | Format event list: timestamp, type, agent, summary. Truncates at limit. |
+| `format_task_full(task)` | 38-63 | FULL task: id, status, priority, agent, type, stage, readiness, SP, verbatim (FULL), description (500 char), blocked_by, PR, Plane. This is NOT truncated — verbatim requirement appears in full. |
+| `build_task_preembed(task, completeness)` | 66-91 | Task context = format_task_full() + stage instructions from stage_context.py + artifact completeness if available. |
+| `build_heartbeat_preembed(agent, role, tasks, messages, directives, events, role_data, fleet_mode, fleet_phase, fleet_backend, agents_online, agents_total)` | 94-170 | Structured markdown with headers: HEARTBEAT CONTEXT → PO DIRECTIVES → MESSAGES → ASSIGNED TASKS (FULL per task) → ROLE DATA → EVENTS. Fleet state on first line. |
+
+### 4.5 `context_writer.py` — File Writer (86 lines)
+
+Writes to `agents/{name}/context/` directory. Gateway reads on heartbeat.
+
+| Function | Lines | What It Does |
+|----------|-------|-------------|
+| `write_heartbeat_context(agent_name, content)` | 24-37 | Write `fleet-context.md`. Creates context/ dir if missing. Returns True on success. |
+| `write_task_context(agent_name, content)` | 40-53 | Write `task-context.md`. Created at dispatch time, refreshed every cycle for in-progress tasks. |
+| `clear_task_context(agent_name)` | 56-67 | Delete `task-context.md`. Called when task completes or agent is pruned. |
+
+AGENTS_DIR resolved from `__file__` → `fleet/core/` → `../../agents/` = repo root `agents/`.
 
 ---
 
@@ -239,4 +290,126 @@ Total: **1157 lines** across 5 modules.
 - **HeartbeatBundle → orchestrator unification** — heartbeat_context.py produces richer bundles than preembed.py. Should be unified.
 - **Context size tracking** — monitor how much context each agent uses per heartbeat.
 
-## 8. Test Coverage: **65+ tests** (30 telemetry + 15 assembly + 10 preembed + 10 heartbeat)
+---
+
+## 8. Role Provider Data — What Each Agent Gets
+
+The orchestrator uses role_providers to give each role different data
+in their heartbeat context:
+
+| Provider | Agent | Returns |
+|----------|-------|---------|
+| `fleet_ops_provider` | fleet-ops | `pending_approvals` (count + [{id, task_id, status}]), `review_queue` ([{id, title, agent}]), `offline_agents` ([names]) |
+| `project_manager_provider` | PM | `unassigned_tasks` (count + [{id, title, priority}]), `blocked_tasks` (count), `progress` ("5/15 done (33%)"), `inbox_count` |
+| `architect_provider` | architect | `design_tasks` ([{id, title, stage}] — epics/stories in analysis/investigation/reasoning), `high_complexity` ([{id, title}]) |
+| `devsecops_provider` | devsecops | `security_tasks` ([{id, title}] — tagged security), `prs_needing_security_review` ([{id, title, pr}]) |
+| `worker_provider` | all others | `my_tasks_count`, `in_review` ([{id, title, pr}]) |
+
+Registry: `ROLE_PROVIDERS` dict → `get_role_provider(role)` falls back to worker_provider.
+
+---
+
+## 9. Data Shapes
+
+### SessionSnapshot
+
+```python
+SessionSnapshot(
+    model_id="claude-opus-4-6",
+    context_window_size=1_000_000,
+    context_used_pct=42.0,
+    total_cost_usd=0.15,
+    total_duration_ms=180_000,
+    total_lines_added=256,
+    total_lines_removed=31,
+    cache_read_tokens=2000,
+    five_hour_used_pct=23.5,
+    seven_day_used_pct=41.2,
+    # context_label = "1M"
+    # context_pressure = "low"
+    # cache_hit_rate = 0.13
+)
+```
+
+### Assembled Task Context (dict)
+
+```python
+{
+    "task": {"id": "abc123", "title": "Add Fleet Controls", "status": "in_progress"},
+    "custom_fields": {"readiness": 30, "stage": "analysis", "requirement_verbatim": "Add fleet controls..."},
+    "methodology": {
+        "stage": "analysis",
+        "stage_summary": "Analyzing codebase — produce analysis document",
+        "stage_instructions": "## Current Stage: ANALYSIS\n\n### What you MUST do:\n...",
+        "readiness": 30,
+        "required_stages": ["analysis", "reasoning", "work"],
+        "next_stage": "reasoning",
+    },
+    "artifact": {
+        "type": "analysis_document",
+        "data": {"title": "Header Analysis", "scope": "DashboardShell.tsx", "findings": [...]},
+        "completeness": {
+            "required_pct": 60,
+            "missing_required": ["implications"],
+            "suggested_readiness": 50,
+            "summary": "Analysis: 3/5 required (60%). Missing: implications.",
+        },
+    },
+    "comments": [{"author": "project-manager", "content": "Assigned for analysis...", "time": "..."}],
+    "activity": [{"type": "fleet.task.dispatched", "time": "...", "agent": "architect"}],
+    "related_tasks": [{"id": "def456", "title": "Design Review", "status": "inbox", "relation": "child"}],
+    "plane": {"issue_id": "plane-uuid", "project_id": "project-uuid", "workspace": "fleet"},
+}
+```
+
+### Context File (what gateway injects)
+
+```markdown
+# HEARTBEAT CONTEXT
+
+Agent: architect
+Role: architect
+Fleet: 7/10 online | Mode: full-autonomous | Phase: execution | Backend: claude
+
+## PO DIRECTIVES
+- Focus on AICP Stage 1 (from human)
+
+## ASSIGNED TASKS (1)
+
+### Add Fleet Controls to Header
+- ID: abc123
+- Status: in_progress
+- Stage: analysis
+- Readiness: 30%
+- Verbatim Requirement: Add fleet controls to the OCMC header bar
+  so the PO can switch work mode, cycle phase, and backend mode
+  without modifying config files.
+
+## Current Stage: ANALYSIS
+### What you MUST do:
+- Read and examine the codebase, existing implementation, architecture
+- Produce an analysis document (iterative, work-in-progress)
+- Reference SPECIFIC files and line numbers
+### What you MUST NOT do:
+- Do NOT produce solutions (that's reasoning stage)
+- Do NOT call fleet_commit or fleet_task_complete
+
+## ROLE DATA
+### design_tasks (3)
+  - {'id': 'ghi789', 'title': 'Implement budget mode...', 'stage': 'reasoning'}
+
+## EVENTS SINCE LAST HEARTBEAT
+  2026-04-01T10:35 [completed] software-engineer: Task xyz done
+```
+
+---
+
+## 10. Test Coverage
+
+| File | Tests | Coverage |
+|------|-------|---------|
+| `test_session_telemetry.py` | 30 | Ingest (full/minimal/empty/null), all distribution helpers, properties |
+| `test_context_assembly.py` | 15+ | Task + heartbeat assembly, methodology inclusion, caching |
+| `test_preembed.py` | 10+ | format_task_full (verbatim preserved), build functions |
+| `test_heartbeat_context.py` | 10+ | Bundle building, capability filtering, format_message |
+| **Total** | **65+** | Core logic covered. Missing: runtime integration, role provider integration |
