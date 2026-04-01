@@ -60,6 +60,7 @@ READING ORDER for new context:
 | [fleet-vision-architecture-part2.md](milestones/active/fleet-vision-architecture-part2.md) | 478 | Gateway integration, per-agent state, critical path to live test, document index with honest status. |
 | [MASTER-INDEX.md](milestones/active/MASTER-INDEX.md) | 257 | "What's the status of everything?" 255 milestones across 36 docs. Honest: ✅ live tested, 🔨 code exists, 📐 design only. |
 | [SPEC-TO-CODE.md](SPEC-TO-CODE.md) | 222 | "Does the code match the design specs?" 69 specs mapped to 94 modules. Shows divergences and gaps. |
+| [WORK-BACKLOG.md](WORK-BACKLOG.md) | 260 | "What's left to do?" 31 items consolidated from all system docs. Prioritized: blockers → high → medium → low. |
 
 ---
 
@@ -254,7 +255,10 @@ fleet-elevation/* + agent-rework/*
 → ecosystem-deployment-plan.md → systems/21-agent-tooling.md → systems/20-infrastructure.md
 
 ### "I want to reach live fleet operation"
-→ path-to-live.md (10 steps in order) → each step references which docs to read
+→ WORK-BACKLOG.md (prioritized items) → path-to-live.md (10 steps in order)
+
+### "I want to restructure agent directories"
+→ agent-directory-cleanup.md → then provision from templates
 
 ### "I want to understand the PO's vision"
 → agent-rework/14-full-fleet-vision.md → extension requirements (in memory)
