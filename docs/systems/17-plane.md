@@ -95,7 +95,7 @@ OCMC (Operations)
 │    - Has its OWN readiness (0 → 99 → 100)            │
 │    - Gets its OWN labor stamp                         │
 │    - May face its OWN challenges                      │
-│    - Leaves trail on PM task (comments + artifacts)   │
+│    - Updates PM task (completion comments + artifacts)  │
 │                                                      │
 │  PM task advances as ops tasks complete:              │
 │    All contributions received → reasoning complete   │
