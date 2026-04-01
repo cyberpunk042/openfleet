@@ -272,6 +272,13 @@ bash scripts/install-codex-plugin.sh || {
 }
 echo ""
 
+# Step 13c: Install Claude Code statusline (context awareness)
+echo "=== Statusline Setup ==="
+bash scripts/install-statusline.sh || {
+    echo "  WARN: Statusline setup failed (non-critical, can retry with: make install-statusline)"
+}
+echo ""
+
 # Step 14: Configure board custom fields and tags
 echo "=== Configuring Board ==="
 bash scripts/configure-board.sh

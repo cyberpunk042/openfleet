@@ -7,7 +7,7 @@ FLEET = .venv/bin/python -m fleet
        agents agents-register skills-list skills-install skills-sync \
        mc-up mc-down mc-logs irc-up irc-down irc-connect lounge-up lounge-down \
        gateway gateway-stop gateway-restart refresh-auth logs changelog integrate \
-       codex-setup
+       codex-setup install-statusline
 
 # ─── Setup & Provision ──────────────────────────────────────────────────────
 
@@ -176,6 +176,9 @@ fleet-setup:
 
 codex-setup:
 	bash scripts/install-codex-plugin.sh
+
+install-statusline:
+	bash scripts/install-statusline.sh
 
 # ─── Testing & Cleanup ──────────────────────────────────────────────────────
 
