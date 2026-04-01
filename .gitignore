@@ -28,14 +28,10 @@ logs/
 .fleet-errors.json
 .gateway.log
 workspace-lead-*/
-agents/*/.openclaw/
-agents/*/AGENTS.md
-agents/*/IDENTITY.md
-agents/*/SOUL.md
-agents/*/TOOLS.md
-agents/*/USER.md
-agents/*/MEMORY.md
-agents/*/BOOTSTRAP.md
+# Agent runtime directories — generated from templates + config
+# Only _template/ is source of truth (IaC)
+agents/*/
+!agents/_template/
 # Event bus persistent state (survives restarts, not in git)
 .fleet-events.jsonl
 .fleet-events.seen.json
