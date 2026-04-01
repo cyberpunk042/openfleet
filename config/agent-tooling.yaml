@@ -1,0 +1,146 @@
+# Agent Tooling — Per-role MCP servers, plugins, skills
+#
+# This config drives scripts/setup-agent-tools.sh
+# Each agent gets role-specific tools installed via IaC.
+#
+# MCP servers: installed via npx, configured in per-agent mcp.json
+# Plugins: installed via claude plugin install
+# Skills: assigned from skill-assignments.yaml + custom per role
+# System tools: expected to be available on the system
+
+defaults:
+  mcp_servers:
+    - name: fleet
+      command: "{{FLEET_VENV}}/bin/python"
+      args: ["-m", "fleet.mcp.server"]
+      env:
+        FLEET_DIR: "{{FLEET_DIR}}"
+        FLEET_AGENT: "{{AGENT_NAME}}"
+  plugins:
+    - claude-mem          # cross-session memory (all agents)
+  skills: []              # per-role below
+
+agents:
+  architect:
+    mcp_servers:
+      - name: filesystem
+        package: "@modelcontextprotocol/server-filesystem"
+        args: ["{{WORKSPACE}}"]
+      - name: github
+        package: "@modelcontextprotocol/server-github"
+    plugins:
+      - context7          # library/framework documentation
+    skills:
+      - architecture-propose
+      - architecture-review
+      - scaffold
+
+  software-engineer:
+    mcp_servers:
+      - name: filesystem
+        package: "@modelcontextprotocol/server-filesystem"
+        args: ["{{WORKSPACE}}"]
+      - name: github
+        package: "@modelcontextprotocol/server-github"
+      - name: playwright
+        package: "@playwright/mcp@latest"
+    plugins:
+      - context7
+    skills:
+      - feature-implement
+      - debug
+      - refactor-extract
+
+  qa-engineer:
+    mcp_servers:
+      - name: filesystem
+        package: "@modelcontextprotocol/server-filesystem"
+        args: ["{{WORKSPACE}}"]
+      - name: playwright
+        package: "@playwright/mcp@latest"
+    plugins: []
+    skills:
+      - quality-coverage
+      - quality-audit
+      - foundation-testing
+
+  devops:
+    mcp_servers:
+      - name: filesystem
+        package: "@modelcontextprotocol/server-filesystem"
+        args: ["{{WORKSPACE}}"]
+      - name: github
+        package: "@modelcontextprotocol/server-github"
+      - name: docker
+        package: "@modelcontextprotocol/server-docker"
+    plugins: []
+    skills:
+      - foundation-docker
+      - foundation-ci
+      - ops-deploy
+      - ops-maintenance
+
+  devsecops-expert:
+    mcp_servers:
+      - name: filesystem
+        package: "@modelcontextprotocol/server-filesystem"
+        args: ["{{WORKSPACE}}"]
+      - name: docker
+        package: "@modelcontextprotocol/server-docker"
+    plugins: []
+    skills:
+      - infra-security
+      - quality-audit
+
+  fleet-ops:
+    mcp_servers:
+      - name: github
+        package: "@modelcontextprotocol/server-github"
+    plugins: []
+    skills:
+      - pm-assess
+      - quality-audit
+
+  project-manager:
+    mcp_servers:
+      - name: github
+        package: "@modelcontextprotocol/server-github"
+    plugins: []
+    skills:
+      - pm-plan
+      - pm-status-report
+      - pm-retrospective
+      - pm-changelog
+
+  technical-writer:
+    mcp_servers:
+      - name: filesystem
+        package: "@modelcontextprotocol/server-filesystem"
+        args: ["{{WORKSPACE}}"]
+      - name: github
+        package: "@modelcontextprotocol/server-github"
+    plugins: []
+    skills:
+      - feature-document
+      - pm-changelog
+      - pm-handoff
+
+  ux-designer:
+    mcp_servers:
+      - name: filesystem
+        package: "@modelcontextprotocol/server-filesystem"
+        args: ["{{WORKSPACE}}"]
+      - name: playwright
+        package: "@playwright/mcp@latest"
+    plugins: []
+    skills:
+      - quality-accessibility
+
+  accountability-generator:
+    mcp_servers:
+      - name: filesystem
+        package: "@modelcontextprotocol/server-filesystem"
+        args: ["{{WORKSPACE}}"]
+    plugins: []
+    skills:
+      - quality-audit
