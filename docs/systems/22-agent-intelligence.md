@@ -363,41 +363,197 @@ Research finding → ingest into kb.py
 
 ---
 
-## 4. Context-Aware Agent Behavior
+## 4. Context Endgame — The Strategic Shift
 
-### 4.1 The Problem
+### PO Requirement (Verbatim)
 
-Agents don't know how full their context is. They don't prepare for
-compaction. They don't strategically extract artifacts before context
-overflows. When compaction happens, they lose track of where they were.
+> "do we strategically suggest when the status line tells us that we
+> have 7% context remaining? that we better get to dumping into
+> artifact(s), plan(s) or execute already defined work(s)."
 
-### 4.2 What Agents Should Do
+> "there is a fine tune notion there that if you find just the right
+> time to stop in order to prevent premature compaction that completely
+> destroy the context."
+
+> "exactly like the shift we did a little while ago that you took
+> very well and started to barely consume context at this point"
+
+### 4.1 The Two Modes
+
+An agent session operates in TWO modes:
 
 ```
-Context at 50%:
-  Normal operation. No action needed.
+EXPANSION MODE (context < 70%):
+  Agent is BUILDING understanding:
+  ├── Reading files, exploring code
+  ├── Researching online, comparing options
+  ├── Producing analysis/investigation artifacts
+  ├── Having conversations with PO and colleagues
+  └── Context GROWS with each action
 
-Context at 70%:
-  Agent notices (via session telemetry or system warning):
-  → Finish current artifact update (don't leave partial)
-  → Post progress comment on task
-  → Consider: is there work that should be in a subtask instead?
+DELIVERY MODE (context ≥ 70%):
+  Agent is PRODUCING output from understood work:
+  ├── Writing code from confirmed plans
+  ├── Committing changes (small, focused)
+  ├── Saving artifacts (fleet_artifact_update)
+  ├── Posting decisions to board memory
+  └── Context BARELY grows — actions are small and focused
+```
 
-Context at 85%:
-  Agent prepares for compaction:
-  → fleet_artifact_update() — save all in-progress work to artifact
-  → fleet_task_progress() — post current state
-  → fleet_chat() — any decisions or findings to board memory
-  → Agent has saved everything recoverable
+The shift from expansion to delivery is NOT sudden. It's a GRADIENT
+that the agent manages based on context pressure. The key insight:
+**once the work is fully understood, every remaining action should
+PRODUCE OUTPUT rather than CONSUME INPUT.**
 
-Context at 95%:
-  Agent triggers strategic compact:
-  → /compact with preservation instructions:
-    "Preserve: task abc123 current stage, verbatim requirement,
-     artifact state (3/5 fields completed), plan reference"
-  → After compact: context reduced but key info preserved
-  → Agent continues from artifact state (pre-embedded on next heartbeat)
-  → Memory system provides cross-session context (Claude-Mem)
+### 4.2 The Context Pressure Zones
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ZONE 1: EXPANSION (context 0-70%)                      │
+│                                                          │
+│  Normal operation. Read, research, explore freely.       │
+│  Produce analysis artifacts progressively.               │
+│  No restrictions on context growth.                      │
+│                                                          │
+│  Actions: Read files, WebSearch, fleet_read_context,     │
+│           fleet_artifact_create, investigation, analysis  │
+├─────────────────────────────────────────────────────────┤
+│  ZONE 2: EFFICIENCY (context 70-85%)                     │
+│                                                          │
+│  Still working but AWARE of pressure.                    │
+│  No unnecessary reads (don't re-read files already seen).│
+│  Finish current artifact section, don't start new ones.  │
+│  Consider: should remaining work be a SUBTASK?           │
+│                                                          │
+│  Actions: fleet_artifact_update (save work), commit code │
+│           that's ready, post progress updates             │
+├─────────────────────────────────────────────────────────┤
+│  ZONE 3: DELIVERY (context 85-93%)                       │
+│                                                          │
+│  STOP EXPANDING. Start DELIVERING.                       │
+│  Execute already-defined work. Follow confirmed plan.    │
+│  Every action should produce output, not consume input.  │
+│  Save ALL in-progress work to artifacts.                 │
+│  Post ALL decisions to board memory.                     │
+│                                                          │
+│  Actions: fleet_commit (code that's written),            │
+│           fleet_artifact_update (save analysis/plan),     │
+│           fleet_task_progress (current state),            │
+│           fleet_chat (decisions, findings to memory)      │
+│                                                          │
+│  DO NOT: start new file reads, start new research,       │
+│          open new investigation branches                  │
+├─────────────────────────────────────────────────────────┤
+│  ZONE 4: EXTRACTION (context 93-97%)                     │
+│                                                          │
+│  EVERYTHING MUST BE SAVED before compaction.             │
+│  Complete any in-progress commits.                       │
+│  fleet_task_complete if work is done.                    │
+│  fleet_task_progress with full state if work continues.  │
+│  All learnings to memory (MEMORY.md).                    │
+│                                                          │
+│  Actions: ONLY output tools. No reads. No research.     │
+│           Every action = producing a recoverable artifact │
+├─────────────────────────────────────────────────────────┤
+│  ZONE 5: COMPACT OR COMPLETE (context 97%+)              │
+│                                                          │
+│  If work is DONE → fleet_task_complete (triggers full    │
+│  completion chain — PR, review, approval, IRC, Plane)    │
+│                                                          │
+│  If work is NOT done → strategic /compact:               │
+│  "Preserve: task {id}, stage {stage}, verbatim,          │
+│   artifact state ({N}/{M} fields), plan reference"       │
+│  → After compact: pre-embed has task state               │
+│  → Agent continues from where artifacts show             │
+│                                                          │
+│  NEVER: let compaction happen uncontrolled. Either        │
+│  complete the work OR compact with instructions.         │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 4.3 Why This Works — The Pattern Observed
+
+The PO observed this pattern happen naturally in a real session:
+
+1. Early session: heavy research, file reads, design exploration
+   → context grew rapidly
+2. Understanding crystallized: requirements clear, plan confirmed
+3. **Shift happened:** AI switched to small edits, focused commits,
+   minimal reads — context barely grew
+4. Artifacts produced efficiently from understood material
+5. Work delivered BEFORE compaction hit
+
+This shift was EFFECTIVE because the AI had FULLY UNDERSTOOD the work
+before the context filled. The efficiency zone wasn't forced — it was
+natural because all remaining actions were well-defined.
+
+**The system should ENGINEER this shift:**
+- Session telemetry provides `context_used_pct`
+- HeartbeatBundle can include context pressure zone (1-5)
+- CLAUDE.md can include context management protocol
+- The ACTION directive in heartbeat can change based on zone:
+  - Zone 1-2: "Work on your assigned tasks"
+  - Zone 3: "DELIVERY MODE: produce output from understood work"
+  - Zone 4: "EXTRACTION: save all work to artifacts NOW"
+
+### 4.4 Implementation Across Systems
+
+This isn't one module — it's a cross-cutting behavior:
+
+| System | What It Does |
+|--------|-------------|
+| **Session Telemetry** | Provides `context_used_pct` and `context_pressure` |
+| **HeartbeatBundle** | Includes context zone in ACTION directive |
+| **CLAUDE.md** | Includes context management protocol (5 zones) |
+| **Orchestrator** | Brain can adjust max_turns based on context pressure |
+| **Storm Monitor** | context_pressure at 70%+ → storm indicator |
+| **Methodology** | Zone 3+ → prioritize completing current stage over starting new |
+| **MCP Tools** | Could warn on Read/Grep calls in Zone 4+ |
+| **Memory** | Zone 4 → auto-save learnings to MEMORY.md |
+
+### 4.5 The Right Time to Shift
+
+The PO said: "if you find just the right time to stop in order to
+prevent premature compaction." The RIGHT time is:
+
+```
+WRONG: Shift at fixed percentage (always at 85%)
+  → Sometimes work isn't understood enough at 85%
+  → Forces premature delivery of half-baked work
+
+RIGHT: Shift when understanding is COMPLETE
+  → Requirement understood (verbatim processed)
+  → Plan confirmed (PO approved, readiness 99)
+  → All contributions received (if applicable)
+  → Remaining work is EXECUTION, not EXPLORATION
+  → THEN shift to delivery mode regardless of context %
+
+The zone system is a FALLBACK for when the natural shift doesn't
+happen soon enough. If context hits 85% and the agent is still
+exploring, the system FORCES the shift to prevent context waste.
+```
+
+### 4.6 Connection to Agent Lifecycle
+
+Context endgame connects to the lifecycle system:
+
+```
+Agent completes work in delivery mode → fleet_task_complete
+  → Context was used efficiently → task delivered
+  → Compaction doesn't matter — work is done
+
+Agent runs out of context before completing → strategic compact
+  → Preserve task state in compact instructions
+  → Next heartbeat: pre-embed has artifact state
+  → Agent resumes from artifacts (not from scratch)
+  → Consecutive HEARTBEAT_OK doesn't increment (agent has work)
+
+Agent context is wasted (expansion too long, no delivery)
+  → Doctor detects: "context at 95%, no artifacts produced"
+  → This IS a disease: context_contamination
+  → Teaching lesson: "Extract work to artifacts before context fills"
+  → Force compact if agent doesn't respond
+```
 
 Agent is pruned (by doctor):
   → Session killed. ALL context lost.
