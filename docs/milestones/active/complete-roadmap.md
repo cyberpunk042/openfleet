@@ -1121,22 +1121,137 @@ Each tool needs its full chain implemented per fleet-elevation/24.
 
 ---
 
+---
+
+## PHASE 5: KNOWLEDGE MAP + ECOSYSTEM (from research groups 01-04)
+
+> PO: "The most advanced and sophisticated metadata and maps net
+> in order to create our own autocomplete web that organically and
+> very easily access the right branches and leaves of the tree."
+
+### 5.1 Knowledge Map Architecture
+
+| # | Milestone | Source | Status |
+|---|-----------|--------|--------|
+| KM-001 | Design _map.yaml schema (metadata format for all manuals) | research/group-03 | PENDING |
+| KM-002 | System manuals: condensed versions (22 systems × 50 lines) | research/group-03, docs/systems/ | PENDING |
+| KM-003 | System manuals: minimal versions (22 systems × 5 lines) | research/group-03 | PENDING |
+| KM-004 | System manuals: _map.yaml cross-references (22 systems) | research/group-03 | PENDING |
+| KM-005 | Agent manuals: full specs from fleet-elevation (10 agents) | fleet-elevation/05-14 | PENDING |
+| KM-006 | Agent manuals: condensed versions (10 agents) | research/group-03 | PENDING |
+| KM-007 | Agent manuals: minimal versions (10 agents) | research/group-03 | PENDING |
+| KM-008 | Agent manuals: _map.yaml (role, tools, skills, plugins, commands) | research/group-03 | PENDING |
+| KM-009 | Module manuals: per-module purpose + signature (94 modules) | research/group-03, §86 | PENDING |
+| KM-010 | Module manuals: _map.yaml (imports, exports, called-by) | research/group-03 | PENDING |
+| KM-011 | Tool manuals: fleet MCP tools full call trees (29 tools) | fleet-elevation/24 | PENDING |
+| KM-012 | Tool manuals: built-in tools reference (33 tools) | research/group-02 | PENDING |
+| KM-013 | Tool manuals: _map.yaml (chain, who-uses, stage-gating) | research/group-03 | PENDING |
+| KM-014 | Skill manuals: all 37 substantive skills documented | research/group-04 | PENDING |
+| KM-015 | Skill manuals: _map.yaml (role, stage, priority) | research/group-04 | PENDING |
+| KM-016 | Plugin manuals: codex-plugin-cc capabilities + config | research/group-01 | PENDING |
+| KM-017 | Plugin manuals: claude-mem capabilities + SQLite-only mode | research/group-01 | PENDING |
+| KM-018 | Plugin manuals: Superpowers methodology integration | research/group-04 | PENDING |
+| KM-019 | Plugin manuals: safety-net hook protection | research/group-02 | PENDING |
+| KM-020 | Command manuals: 50+ commands with per-role/stage guidance | research/group-02 | PENDING |
+| KM-021 | Standards manual: 8 standards + 13 artifact types | standards/ | PENDING |
+| KM-022 | Methodology manual: 5 stages × tool/skill/command recs | stage_context.py, research/group-02 | PENDING |
+| KM-023 | cross-references.yaml (system→module→tool→agent relationships) | research/group-03 | PENDING |
+| KM-024 | intent-map.yaml (situation → what to inject) | research/group-03 | PENDING |
+| KM-025 | Injection profile: opus-1m (full detail) | research/group-03 | PENDING |
+| KM-026 | Injection profile: sonnet-200k (condensed) | research/group-03 | PENDING |
+| KM-027 | Injection profile: localai-8k (minimal) | research/group-03 | PENDING |
+| KM-028 | Injection profile: heartbeat (just enough for idle check) | research/group-03 | PENDING |
+| KM-029 | Navigator module: brain reads map, selects content, assembles chain | research/group-03 | PENDING |
+| KM-030 | Integrate navigator with context_writer.py | research/group-03 | PENDING |
+| KM-031 | Integrate navigator with preembed.py | research/group-03 | PENDING |
+| KM-032 | Integrate navigator with autocomplete.py (rework) | research/group-03 | PENDING |
+| KM-033 | LightRAG indexes full manual content | §46, research/group-03 | PENDING |
+
+### 5.2 Ecosystem Adoption
+
+| # | Milestone | Source | Status |
+|---|-----------|--------|--------|
+| EA-001 | Install claude-mem on all agents (SQLite-only mode for WSL2) | research/group-01 | PENDING |
+| EA-002 | Install context7 on architect + engineer | research/group-02 | PENDING |
+| EA-003 | Evaluate + install Superpowers on coding agents | research/group-04 | PENDING |
+| EA-004 | Adapt Superpowers autonomy level for fleet guardrails | research/group-04 | PENDING |
+| EA-005 | Install safety-net hook on ALL agents | research/group-02 | PENDING |
+| EA-006 | Evaluate codex-plugin-cc for fleet-ops + devsecops | research/group-01 | PENDING |
+| EA-007 | Implement review gate pattern natively (from codex concept) | research/group-01 | PENDING |
+| EA-008 | Install pyright-lsp on all Python agents | research/group-02 | PENDING |
+| EA-009 | Evaluate pr-review-toolkit for fleet-ops reviews | research/group-02 | PENDING |
+| EA-010 | Evaluate claude-octopus for multi-model review | research/group-02 | PENDING |
+| EA-011 | Evaluate Plane official MCP server vs direct API | research/group-02 | PENDING |
+| EA-012 | Install Snyk MCP for devsecops (11 security tools) | research/group-02 | PENDING |
+| EA-013 | Install Trivy MCP for devsecops (open source scanner) | research/group-02 | PENDING |
+| EA-014 | Install Semgrep MCP for devsecops (30+ language SAST) | research/group-02 | PENDING |
+| EA-015 | Install pytest-mcp-server for QA + engineer | research/group-02 | PENDING |
+| EA-016 | Evaluate sequential-thinking MCP for architect | research/group-02 | PENDING |
+| EA-017 | Evaluate diagram-bridge MCP for architect + writer | research/group-02 | PENDING |
+| EA-018 | Trail of Bits security skills for devsecops (21 skills) | research/group-04 | PENDING |
+| EA-019 | alirezarezvani agent-designer + rag-architect for architect | research/group-04 | PENDING |
+| EA-020 | HashiCorp Terraform skills for devops (11 skills) | research/group-04 | PENDING |
+
+### 5.3 Skills Infrastructure
+
+| # | Milestone | Source | Status |
+|---|-----------|--------|--------|
+| SK-001 | Update agent-tooling.yaml: add 7 fleet skills to roles | research/group-04 | PENDING |
+| SK-002 | Update agent-tooling.yaml: add fleet-communicate to ALL | research/group-04 | PENDING |
+| SK-003 | Update agent-tooling.yaml: equip fleet-ops (7+ missing) | research/group-04 | PENDING |
+| SK-004 | Update agent-tooling.yaml: equip PM (fleet-plan/sprint/plane) | research/group-04 | PENDING |
+| SK-005 | Update agent-tooling.yaml: add reactive ops to devops | research/group-04 | PENDING |
+| SK-006 | Differentiate 48 template skills with real content | research/group-04 | PENDING |
+| SK-007 | Build skill deployment script (AICP→agent workspaces) | research/group-04 | PENDING |
+| SK-008 | Per-stage skill recommendations in agent context | research/group-04, §34.5 | PENDING |
+| SK-009 | Skill evaluation: which actually help (measure impact) | research/group-04 | PENDING |
+| SK-010 | AICP skill adaptation for fleet agent context | research/group-04 | PENDING |
+
+### 5.4 Hooks Infrastructure
+
+| # | Milestone | Source | Status |
+|---|-----------|--------|--------|
+| HK-001 | Evaluate safety-net hook pattern for fleet agents | research/group-02 | PENDING |
+| HK-002 | Implement PreToolUse hook: destructive command protection | research/group-02, 26 hooks | PENDING |
+| HK-003 | Implement PostToolUse hook: trail event recording | research/group-02 | PENDING |
+| HK-004 | Implement Stop hook: review gate pattern (from codex concept) | research/group-01 | PENDING |
+| HK-005 | Implement PreCompact hook: save state before compaction | research/group-02 | PENDING |
+| HK-006 | Implement SessionStart hook: inject fleet knowledge map context | research/group-02 | PENDING |
+| HK-007 | Implement FileChanged hook: watch for config changes | research/group-02 | PENDING |
+| HK-008 | Per-agent hook configuration via IaC | research/group-02 | PENDING |
+
+### 5.5 AICP Parity (from claw-code-parity research)
+
+| # | Milestone | Source | Status |
+|---|-----------|--------|--------|
+| AP-001 | Extract 184-tool list from claw-code-parity surface snapshot | research/group-03 | PENDING |
+| AP-002 | Classify 122 "missing" tools (relevant vs internal/UI) | research/group-03 | PENDING |
+| AP-003 | Identify AICP features missing from Claude Code parity | research/group-03 | PENDING |
+| AP-004 | Router decision matrix: which ops need Claude vs LocalAI | research/group-03, §94 | PENDING |
+
+---
+
 ## STATUS SUMMARY (EXPANDED)
 
-| Phase | Total | Ready to Test | Pending | Not Explored |
-|-------|-------|--------------|---------|-------------|
-| 1: Foundation (F-001 to F-120) | 120 | 36 | 77 | 7 |
-| 2: Infrastructure (I-001 to I-369) | 369 | 1 | 368 | ~50 |
-| 3: Features (FT-001 to FT-167) | 167 | 1 | 166 | ~30 |
-| 4: Testing & Tuning (T-001 to T-094) | 94 | 0 | 94 | 0 |
-| **TOTAL** | **750** | **38** | **705** | **~87** |
+| Phase | Total | Ready to Test | Pending | Researched |
+|-------|-------|--------------|---------|-----------|
+| 1: Foundation (F-001 to F-120) | 120 | 36 | 84 | — |
+| 2: Infrastructure (I-001 to I-369) | 369 | 1 | 368 | — |
+| 3: Features (FT-001 to FT-167) | 167 | 1 | 166 | — |
+| 4: Testing & Tuning (T-001 to T-094) | 94 | 0 | 94 | — |
+| 5: Knowledge Map (KM-001 to KM-033) | 33 | 0 | 33 | ✓ groups 01-04 |
+| 5: Ecosystem Adoption (EA-001 to EA-020) | 20 | 0 | 20 | ✓ groups 01-04 |
+| 5: Skills Infrastructure (SK-001 to SK-010) | 10 | 0 | 10 | ✓ group 04 |
+| 5: Hooks Infrastructure (HK-001 to HK-008) | 8 | 0 | 8 | ✓ group 02 |
+| 5: AICP Parity (AP-001 to AP-004) | 4 | 0 | 4 | ✓ group 03 |
+| **TOTAL** | **825** | **38** | **787** | **4 groups** |
 
 **Status definitions:**
 - **READY TO TEST** = code exists, unit tests pass, NOT live tested with real agents
 - **PENDING** = requirements known, code not written
-- **NOT EXPLORED** = requirements referenced but not fully researched (e.g., codex-plugin-cc, claude-mem, 1000+ skills/plugins classification)
+- **RESEARCHED** = research groups 01-04 complete, findings documented
 
-**"Not Explored" items need the research workflow FIRST:**
+**Research workflow established:**
 1. Research the actual tool/plugin/capability (read repos, docs)
 2. Classify per agent role (specialized vs general)
 3. Document requirements, directives, usage instructions
