@@ -2303,3 +2303,444 @@ def register_tools(server: FastMCP) -> None:
         except Exception as e:
             _report_error("fleet_artifact_create", str(e))
             return {"ok": False, "error": str(e)}
+
+    # ─── §33.2: Missing MCP Tools ────────────────────────────────────
+
+    @server.tool()
+    async def fleet_contribute(
+        task_id: str,
+        contribution_type: str,
+        content: str,
+    ) -> dict:
+        """Contribute to another agent's task — post specialist input.
+
+        When you're assigned a contribution task, use this to deliver
+        your input (design_input, security_requirement, qa_test_definition,
+        ux_spec, documentation_outline, etc.) to the target task.
+
+        Your contribution is embedded into the target agent's context
+        so they can reference it during implementation.
+
+        Args:
+            task_id: The TARGET task ID (the task you're contributing TO).
+            contribution_type: Type of contribution (design_input, security_requirement,
+                qa_test_definition, ux_spec, feasibility_assessment, etc.)
+            content: Your contribution content (full text, not compressed).
+        """
+        ctx = _get_ctx()
+        board_id = await ctx.resolve_board_id()
+        agent = ctx.agent_name or "agent"
+
+        try:
+            # Post contribution as typed comment on target task
+            await ctx.mc.post_comment(
+                board_id, task_id,
+                f"**Contribution ({contribution_type})** from {agent}:\n\n{content}",
+            )
+
+            # Update target task custom fields with contribution data
+            try:
+                await ctx.mc.update_task(
+                    board_id, task_id,
+                    custom_fields={"contribution_type": contribution_type},
+                )
+            except Exception:
+                pass
+
+            # Mark own contribution task as done (if we have one)
+            own_task_id = ctx.task_id
+            if own_task_id and own_task_id != task_id:
+                try:
+                    await ctx.mc.update_task(
+                        board_id, own_task_id, status="done",
+                    )
+                except Exception:
+                    pass
+
+            # Emit event for chain processing
+            _emit_event(
+                "fleet.contribution.posted",
+                subject=task_id,
+                contributor=agent,
+                contribution_type=contribution_type,
+                target_task_id=task_id,
+            )
+
+            # Trail event
+            try:
+                await ctx.mc.post_memory(
+                    board_id,
+                    content=(
+                        f"**[trail]** Contribution posted: {contribution_type} "
+                        f"from {agent} → task:{task_id[:8]}"
+                    ),
+                    tags=[
+                        "trail", f"task:{task_id}", "contribution",
+                        contribution_type, f"from:{agent}",
+                    ],
+                    source=agent,
+                )
+            except Exception:
+                pass
+
+            # Notify target task owner via mention
+            try:
+                task = await ctx.mc.get_task(board_id, task_id)
+                owner = (task.custom_fields.agent_name
+                         if hasattr(task, 'custom_fields') else "")
+                if owner:
+                    await ctx.mc.post_memory(
+                        board_id,
+                        content=(
+                            f"**[{agent}]** @{owner} Contribution received: "
+                            f"{contribution_type} for your task {task_id[:8]}"
+                        ),
+                        tags=["chat", f"mention:{owner}", f"task:{task_id}"],
+                        source=agent,
+                    )
+            except Exception:
+                pass
+
+            # IRC notification
+            try:
+                await ctx.irc.notify(
+                    "#fleet",
+                    f"[contribute] {agent} → {task_id[:8]}: {contribution_type}",
+                )
+            except Exception:
+                pass
+
+            # Plane sync
+            try:
+                task = await ctx.mc.get_task(board_id, task_id)
+                plane_id = (task.custom_fields.plane_issue_id
+                            if hasattr(task, 'custom_fields') else "")
+                if plane_id and ctx.plane:
+                    workspace = task.custom_fields.plane_workspace or ""
+                    project_id = task.custom_fields.plane_project_id or ""
+                    if workspace and project_id:
+                        await ctx.plane.add_comment(
+                            workspace, project_id, plane_id,
+                            f"**Contribution ({contribution_type})** from {agent}:\n\n{content}",
+                        )
+            except Exception:
+                pass
+
+            return {
+                "ok": True,
+                "contributor": agent,
+                "target_task": task_id,
+                "contribution_type": contribution_type,
+            }
+
+        except Exception as e:
+            _report_error("fleet_contribute", str(e))
+            return {"ok": False, "error": str(e)}
+
+    @server.tool()
+    async def fleet_request_input(
+        task_id: str,
+        from_role: str,
+        question: str,
+    ) -> dict:
+        """Request a specific role's input on your task.
+
+        When you need a colleague's expertise (architect for design,
+        QA for test criteria, devsecops for security review), use this
+        to ask them directly.
+
+        Args:
+            task_id: Your task ID (what you need input on).
+            from_role: Role to request from (architect, qa-engineer, devsecops-expert, etc.)
+            question: What you need from them — be specific.
+        """
+        ctx = _get_ctx()
+        board_id = await ctx.resolve_board_id()
+        agent = ctx.agent_name or "agent"
+
+        try:
+            # Post to board memory with @mention
+            await ctx.mc.post_memory(
+                board_id,
+                content=(
+                    f"**[{agent}]** @{from_role} Input requested for "
+                    f"task:{task_id[:8]}: {question}"
+                ),
+                tags=[
+                    "chat", f"mention:{from_role}", f"task:{task_id}",
+                    f"from:{agent}", "input_request",
+                ],
+                source=agent,
+            )
+
+            # Comment on task
+            await ctx.mc.post_comment(
+                board_id, task_id,
+                f"**Input requested** from @{from_role}: {question}",
+            )
+
+            # Trail
+            try:
+                await ctx.mc.post_memory(
+                    board_id,
+                    content=(
+                        f"**[trail]** Input requested: {agent} → @{from_role} "
+                        f"for task:{task_id[:8]}"
+                    ),
+                    tags=["trail", f"task:{task_id}", "input_request"],
+                    source=agent,
+                )
+            except Exception:
+                pass
+
+            # IRC
+            try:
+                await ctx.irc.notify(
+                    "#fleet",
+                    f"[request] {agent} → @{from_role}: {question[:60]}",
+                )
+            except Exception:
+                pass
+
+            _emit_event(
+                "fleet.input.requested",
+                subject=task_id,
+                requester=agent,
+                target_role=from_role,
+            )
+
+            return {
+                "ok": True,
+                "requester": agent,
+                "target_role": from_role,
+                "task_id": task_id,
+            }
+
+        except Exception as e:
+            _report_error("fleet_request_input", str(e))
+            return {"ok": False, "error": str(e)}
+
+    @server.tool()
+    async def fleet_gate_request(
+        task_id: str,
+        gate_type: str,
+        summary: str,
+    ) -> dict:
+        """Request PO approval at a readiness gate.
+
+        Use at readiness 50% (direction checkpoint) or 90% (final gate).
+        PO must approve before task can advance to next stage.
+
+        Args:
+            task_id: Task requiring PO gate approval.
+            gate_type: Gate type (readiness_50, readiness_90, phase_advance).
+            summary: What you've done and why PO approval is needed.
+        """
+        ctx = _get_ctx()
+        board_id = await ctx.resolve_board_id()
+        agent = ctx.agent_name or "agent"
+
+        try:
+            task = await ctx.mc.get_task(board_id, task_id)
+            task_title = task.title if task else task_id[:8]
+
+            # Post gate request to board memory
+            await ctx.mc.post_memory(
+                board_id,
+                content=(
+                    f"**GATE REQUEST** ({gate_type})\n"
+                    f"Task: {task_title}\n"
+                    f"Agent: {agent}\n"
+                    f"Summary: {summary}"
+                ),
+                tags=[
+                    "gate", "po-required", gate_type,
+                    f"task:{task_id}", f"from:{agent}",
+                ],
+                source=agent,
+            )
+
+            # Mark gate pending on task
+            try:
+                await ctx.mc.update_task(
+                    board_id, task_id,
+                    custom_fields={"gate_pending": gate_type},
+                )
+            except Exception:
+                pass
+
+            # Notify PO via ntfy (high priority)
+            try:
+                from fleet.infra.notification_router import notify_human
+                await notify_human(
+                    title=f"Gate: {gate_type}",
+                    message=f"Task: {task_title}\n{summary}",
+                    event_type="escalation",
+                )
+            except Exception:
+                pass
+
+            # IRC #fleet (would be #gates when channel exists)
+            try:
+                await ctx.irc.notify(
+                    "#fleet",
+                    f"[gate] {gate_type}: {task_title} — PO approval needed",
+                )
+            except Exception:
+                pass
+
+            # Trail
+            try:
+                await ctx.mc.post_memory(
+                    board_id,
+                    content=(
+                        f"**[trail]** Gate requested: {gate_type} by {agent} "
+                        f"for task:{task_id[:8]}"
+                    ),
+                    tags=["trail", f"task:{task_id}", "gate_requested"],
+                    source=agent,
+                )
+            except Exception:
+                pass
+
+            _emit_event(
+                "fleet.gate.requested",
+                subject=task_id,
+                gate_type=gate_type,
+                agent=agent,
+            )
+
+            return {
+                "ok": True,
+                "gate_type": gate_type,
+                "task_id": task_id,
+                "status": "pending_po_approval",
+            }
+
+        except Exception as e:
+            _report_error("fleet_gate_request", str(e))
+            return {"ok": False, "error": str(e)}
+
+    @server.tool()
+    async def fleet_transfer(
+        task_id: str,
+        to_agent: str,
+        context_summary: str,
+    ) -> dict:
+        """Transfer a task to another agent with full context packaging.
+
+        Packages all context (artifacts, comments, contributions, trail)
+        and reassigns the task. The receiving agent gets the transfer
+        context in their next heartbeat.
+
+        Args:
+            task_id: Task to transfer.
+            to_agent: Agent to transfer to (e.g., "software-engineer").
+            context_summary: Summary of what you've done and what remains.
+        """
+        ctx = _get_ctx()
+        board_id = await ctx.resolve_board_id()
+        agent = ctx.agent_name or "agent"
+
+        try:
+            task = await ctx.mc.get_task(board_id, task_id)
+            task_title = task.title if task else task_id[:8]
+            stage = (task.custom_fields.task_stage
+                     if hasattr(task, 'custom_fields') else "unknown")
+            readiness = (task.custom_fields.task_readiness
+                         if hasattr(task, 'custom_fields') else 0)
+
+            # Reassign task
+            await ctx.mc.update_task(
+                board_id, task_id,
+                custom_fields={"agent_name": to_agent},
+            )
+
+            # Post transfer comment with full context
+            await ctx.mc.post_comment(
+                board_id, task_id,
+                (
+                    f"**Task transferred** from {agent} to {to_agent}\n\n"
+                    f"**Stage:** {stage} | **Readiness:** {readiness}%\n\n"
+                    f"**Context:**\n{context_summary}"
+                ),
+            )
+
+            # Trail
+            try:
+                await ctx.mc.post_memory(
+                    board_id,
+                    content=(
+                        f"**[trail]** Transfer: {agent} → {to_agent} "
+                        f"task:{task_id[:8]} at stage:{stage} readiness:{readiness}"
+                    ),
+                    tags=[
+                        "trail", f"task:{task_id}", "transfer",
+                        f"from:{agent}", f"to:{to_agent}",
+                    ],
+                    source=agent,
+                )
+            except Exception:
+                pass
+
+            # Notify receiving agent
+            try:
+                await ctx.mc.post_memory(
+                    board_id,
+                    content=(
+                        f"**[{agent}]** @{to_agent} Task transferred to you: "
+                        f"{task_title} (stage: {stage}, readiness: {readiness}%)\n"
+                        f"Context: {context_summary[:200]}"
+                    ),
+                    tags=[
+                        "chat", f"mention:{to_agent}", f"task:{task_id}",
+                    ],
+                    source=agent,
+                )
+            except Exception:
+                pass
+
+            # Plane sync
+            try:
+                plane_id = (task.custom_fields.plane_issue_id
+                            if hasattr(task, 'custom_fields') else "")
+                if plane_id and ctx.plane:
+                    workspace = task.custom_fields.plane_workspace or ""
+                    project_id = task.custom_fields.plane_project_id or ""
+                    if workspace and project_id:
+                        await ctx.plane.add_comment(
+                            workspace, project_id, plane_id,
+                            f"Transferred from {agent} to {to_agent}",
+                        )
+            except Exception:
+                pass
+
+            # IRC
+            try:
+                await ctx.irc.notify(
+                    "#fleet",
+                    f"[transfer] {agent} → {to_agent}: {task_title[:50]}",
+                )
+            except Exception:
+                pass
+
+            _emit_event(
+                "fleet.task.transferred",
+                subject=task_id,
+                from_agent=agent,
+                to_agent=to_agent,
+                stage=stage,
+            )
+
+            return {
+                "ok": True,
+                "from_agent": agent,
+                "to_agent": to_agent,
+                "task_id": task_id,
+                "stage": stage,
+                "readiness": readiness,
+            }
+
+        except Exception as e:
+            _report_error("fleet_transfer", str(e))
+            return {"ok": False, "error": str(e)}
