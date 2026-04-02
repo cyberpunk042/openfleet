@@ -1,6 +1,6 @@
 FLEET = .venv/bin/python -m fleet
 
-.PHONY: setup provision test clean \
+.PHONY: setup provision setup-tools validate-agents test clean \
        status create-task dispatch monitor trace chat watch sessions \
        sync sync-start sync-stop daemons-start daemons-stop \
        monitor-start monitor-stop digest quality board-setup \
@@ -17,6 +17,12 @@ setup:
 provision:
 	bash scripts/configure-openclaw.sh
 	bash scripts/push-soul.sh
+
+setup-tools:
+	bash scripts/setup-agent-tools.sh
+
+validate-agents:
+	bash scripts/validate-agents.sh
 
 # ─── Fleet Operations ───────────────────────────────────────────────────────
 
