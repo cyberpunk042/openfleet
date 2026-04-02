@@ -17,8 +17,10 @@ defaults:
         FLEET_DIR: "{{FLEET_DIR}}"
         FLEET_AGENT: "{{AGENT_NAME}}"
   plugins:
-    - claude-mem          # cross-session memory (all agents)
-  skills: []              # per-role below
+    - claude-mem          # cross-session memory — github.com/thedotmack/claude-mem
+                          # SQLite-only mode recommended for WSL2 (avoids ChromaDB spawn storms)
+  skills:
+    - fleet-communicate   # ALL agents: communication surface guide (IRC/ntfy/board/Plane)
 
 agents:
   architect:
@@ -34,6 +36,8 @@ agents:
       - architecture-propose
       - architecture-review
       - scaffold
+      - feature-plan          # plan changes for features
+      - refactor-architecture # restructure project architecture
 
   software-engineer:
     mcp_servers:
@@ -48,7 +52,12 @@ agents:
       - context7
     skills:
       - feature-implement
+      - feature-plan            # plan changes for features
+      - feature-test            # write and run tests
       - refactor-extract
+      - refactor-split          # split large modules
+      - foundation-deps         # dependency management
+      - quality-lint            # linting + fixes
       # note: /debug is Claude built-in, not a custom skill
 
   qa-engineer:
@@ -62,7 +71,12 @@ agents:
     skills:
       - quality-coverage
       - quality-audit
+      - quality-lint            # linting as quality gate
+      - quality-debt            # identify tech debt
       - foundation-testing
+      - feature-test            # write and run tests
+      - feature-review          # code review
+      - fleet-test              # fleet: run + analyze test results for review
 
   devops:
     mcp_servers:
@@ -77,8 +91,14 @@ agents:
     skills:
       - foundation-docker
       - foundation-ci
+      - foundation-config       # configuration management
       - ops-deploy
+      - ops-rollback            # rollback on failure
+      - ops-incident            # incident response + RCA
+      - ops-backup              # backup/restore procedures
       - ops-maintenance
+      - config-deploy           # deployment configuration
+      - infra-monitoring        # monitoring setup
 
   devsecops-expert:
     mcp_servers:
@@ -91,6 +111,9 @@ agents:
     skills:
       - infra-security
       - quality-audit
+      - config-secrets          # secret management + rotation
+      - foundation-auth         # auth implementation review
+      - fleet-security-audit    # fleet: security review (code, infra, supply chain)
 
   fleet-ops:
     mcp_servers:
@@ -100,6 +123,12 @@ agents:
     skills:
       - pm-assess
       - quality-audit
+      - fleet-review            # fleet: 7-step review checklist
+      - openclaw-health         # fleet: OpenClaw health check
+      - openclaw-fleet-status   # fleet: fleet operational status
+      - openclaw-setup          # fleet: OpenClaw setup
+      - openclaw-add-agent      # fleet: add agent to OpenClaw
+      - scaffold-subagent       # create new agent in fleet
 
   project-manager:
     mcp_servers:
@@ -108,9 +137,16 @@ agents:
     plugins: []
     skills:
       - pm-plan
+      - pm-assess               # project state assessment
       - pm-status-report
       - pm-retrospective
       - pm-changelog
+      - pm-handoff              # handoff documentation
+      - idea-capture            # structured idea capture
+      - feature-plan            # feature change planning
+      - fleet-plan              # fleet: break epic into sprint tasks
+      - fleet-sprint            # fleet: sprint lifecycle management
+      - fleet-plane             # fleet: Plane sprint management
 
   technical-writer:
     mcp_servers:
@@ -124,6 +160,7 @@ agents:
       - feature-document
       - pm-changelog
       - pm-handoff
+      - quality-debt            # identify documentation gaps
 
   ux-designer:
     mcp_servers:
@@ -144,3 +181,6 @@ agents:
     plugins: []
     skills:
       - quality-audit
+      - quality-debt            # identify process/quality gaps
+      - quality-coverage        # verify test coverage
+      - pm-status-report        # generate compliance reports
