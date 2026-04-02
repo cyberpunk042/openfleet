@@ -1,0 +1,115 @@
+# Synergy Matrix — Who contributes what to whom
+#
+# Source: fleet-elevation/15-cross-agent-synergy.md
+# Used by: fleet/core/contributions.py (brain module)
+#
+# When a task enters REASONING stage, the brain creates parallel
+# contribution subtasks based on this matrix.
+#
+# Contributions are CONDITIONAL:
+#   - required: always created for this role's tasks
+#   - recommended: created unless PO opts out
+#   - conditional: only when specific conditions met
+#
+# The PO can modify this file to adjust contribution requirements.
+
+contributions:
+  # To software-engineer work
+  software-engineer:
+    - role: architect
+      type: design_input
+      priority: required
+      description: "Architecture constraints, patterns, integration points"
+
+    - role: devsecops-expert
+      type: security_requirement
+      priority: conditional
+      condition: "security-relevant task (auth, data, external calls, deps)"
+      description: "Threat model, required controls, compliance needs"
+
+    - role: qa-engineer
+      type: qa_test_definition
+      priority: required
+      description: "Test scenarios, edge cases, acceptance tests"
+
+  # To architect work
+  architect:
+    - role: software-engineer
+      type: feasibility_assessment
+      priority: recommended
+      description: "Can we build this? Implementation constraints"
+
+    - role: devsecops-expert
+      type: security_review
+      priority: conditional
+      condition: "architecture involves auth, data flow, or external systems"
+      description: "Architecture security assessment"
+
+  # To devops work
+  devops:
+    - role: architect
+      type: infrastructure_design
+      priority: required
+      description: "Deployment architecture, scaling strategy"
+
+    - role: devsecops-expert
+      type: security_requirement
+      priority: conditional
+      condition: "infrastructure involves secrets, network, or access control"
+      description: "Infrastructure security requirements"
+
+    - role: software-engineer
+      type: application_requirements
+      priority: recommended
+      description: "What the application needs from infrastructure"
+
+  # To qa-engineer work
+  qa-engineer:
+    - role: software-engineer
+      type: implementation_context
+      priority: required
+      description: "How the implementation works, key decisions"
+
+    - role: architect
+      type: design_context
+      priority: recommended
+      description: "Why it works that way, architecture rationale"
+
+  # To technical-writer work
+  technical-writer:
+    - role: software-engineer
+      type: technical_accuracy
+      priority: required
+      description: "Verify facts, API signatures, behavior descriptions"
+
+    - role: architect
+      type: architecture_context
+      priority: recommended
+      description: "System design context for documentation"
+
+  # To devsecops-expert work
+  devsecops-expert:
+    - role: architect
+      type: architecture_context
+      priority: required
+      description: "What systems to assess, architecture overview"
+
+    - role: software-engineer
+      type: implementation_context
+      priority: recommended
+      description: "How the code works, key implementation details"
+
+  # PM receives status from all (not contribution subtasks — just status updates)
+  # Fleet-ops, accountability, UX: receive contextually, not by default matrix
+
+# Task types that skip contributions entirely
+skip_contributions:
+  - subtask       # too small, direct work
+  - blocker       # urgent, no time for contributions
+  - concern       # investigation only, no implementation
+  - spike         # research only, no implementation
+
+# Task types that get ALL required contributions
+full_contributions:
+  - epic          # architectural scope, needs all perspectives
+  - story         # feature scope, needs design + QA + security
