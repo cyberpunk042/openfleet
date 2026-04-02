@@ -25,6 +25,7 @@ async def _run_dispatch(
     agent_name: str,
     task_id: str,
     project_name: str = "",
+    backend_mode: str = "claude",
 ) -> int:
     """Dispatch a task to an agent."""
     loader = ConfigLoader()
@@ -86,26 +87,24 @@ async def _run_dispatch(
     except Exception:
         pass
 
-    # Select model and effort based on task complexity, constrained by budget mode
+    # Route to backend based on backend_mode setting from OCMC
+    from fleet.core.backend_router import route_task
     from fleet.core.model_selection import select_model_for_task
-    from fleet.core.budget_modes import get_active_mode_name
     from fleet.core.labor_stamp import DispatchRecord
 
-    active_budget_mode = get_active_mode_name(fleet_dir)
-    model_config = select_model_for_task(task, agent_name, budget_mode=active_budget_mode)
-    print(f"Model:    {model_config.model} (effort={model_config.effort})")
-    print(f"Budget:   {active_budget_mode}")
-    print(f"          {model_config.reason}")
+    routing = route_task(task, agent_name, backend_mode=backend_mode)
+    print(f"Backend:  {routing.backend} (tier={routing.confidence_tier})")
+    print(f"Model:    {routing.model} (effort={routing.effort})")
+    print(f"          {routing.reason}")
 
     # Record dispatch intent — the provenance chain starts here
     dispatch_record = DispatchRecord(
         task_id=task_id,
         agent_name=agent_name,
-        backend="claude-code",  # Current dispatch is always via Claude Code gateway
-        model=model_config.model,
-        effort=model_config.effort,
-        selection_reason=model_config.reason,
-        budget_mode=active_budget_mode,
+        backend=routing.backend,
+        model=routing.model,
+        effort=routing.effort,
+        selection_reason=routing.reason,
         skills=[],  # Populated when skill system is integrated
     )
 

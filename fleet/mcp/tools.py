@@ -127,7 +127,14 @@ def _emit_event(
 
 # Tools restricted to specific methodology stages.
 # Tools not listed here are allowed in ALL stages.
-WORK_ONLY_TOOLS = {"fleet_commit", "fleet_task_complete"}
+
+# fleet_task_complete: only in work stage (task must be fully done)
+WORK_ONLY_TOOLS = {"fleet_task_complete"}
+
+# fleet_commit: allowed in stages 2-5 (agents produce artifacts in all
+# post-conversation stages: analysis docs, investigation reports, plans, code)
+COMMIT_ALLOWED_STAGES = {"analysis", "investigation", "reasoning", "work"}
+
 REASONING_AND_WORK_TOOLS = {"fleet_task_accept"}  # plan submission
 
 # Stages where work tools are allowed
@@ -166,6 +173,25 @@ def _check_stage_allowed(tool_name: str) -> dict | None:
             ),
             "stage": stage,
             "allowed_stages": ["work"],
+        }
+
+    if tool_name == "fleet_commit" and stage not in COMMIT_ALLOWED_STAGES:
+        _emit_event(
+            "fleet.methodology.protocol_violation",
+            subject=task_id,
+            tool=tool_name,
+            stage=stage,
+            violation=f"{tool_name} called during {stage} stage",
+        )
+        return {
+            "ok": False,
+            "error": (
+                f"Methodology violation: {tool_name} is not allowed during "
+                f"'{stage}' stage. Commits are allowed in analysis, "
+                f"investigation, reasoning, and work stages."
+            ),
+            "stage": stage,
+            "allowed_stages": sorted(COMMIT_ALLOWED_STAGES),
         }
 
     return None
@@ -747,7 +773,6 @@ def register_tools(server: FastMCP) -> None:
             custom_update["labor_cost_usd"] = labor_stamp.estimated_cost_usd
             custom_update["labor_duration_s"] = labor_stamp.duration_seconds
             custom_update["labor_iteration"] = labor_stamp.iteration
-            custom_update["budget_mode"] = labor_stamp.budget_mode
 
         try:
             await ctx.mc.update_task(

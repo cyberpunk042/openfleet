@@ -82,8 +82,6 @@ async def run_orchestrator_cycle(
     dry_run: bool = False,
 ) -> OrchestratorState:
     """Execute one orchestrator cycle."""
-    from fleet.core.effort_profiles import get_active_profile_name, get_profile
-
     state = OrchestratorState()
 
     # Clear context assembly cache for this cycle
@@ -92,19 +90,6 @@ async def run_orchestrator_cycle(
         clear_context_cache(cycle_id=str(datetime.now().timestamp()))
     except Exception:
         pass
-
-    # Check effort profile — fleet may be paused or in minimal mode
-    profile_name = config.get("effort_profile", "full")
-    profile = get_profile(profile_name)
-    if profile and not profile.allow_dispatch:
-        return state  # Profile says don't dispatch — skip cycle
-
-    # Override max dispatch from profile
-    if profile:
-        config["max_dispatch_per_cycle"] = min(
-            config.get("max_dispatch_per_cycle", 2),
-            profile.max_dispatch_per_cycle,
-        )
 
     # ─── Storm Monitor: Evaluate and apply graduated response ───
     # Budget mode and fleet dir for storm diagnostics
@@ -145,7 +130,7 @@ async def run_orchestrator_cycle(
     # ─── Diagnostic snapshot on WARNING+ (M-SP03) ──────────────
     if severity_index(storm_severity) >= severity_index(StormSeverity.WARNING):
         try:
-            diag = _storm_monitor.capture_diagnostic(budget_mode=active_budget_mode)
+            diag = _storm_monitor.capture_diagnostic()
             _persist_diagnostic(diag, fleet_dir)
             state.notes.append(f"diagnostic snapshot captured: {diag.severity}")
         except Exception:
@@ -1040,7 +1025,10 @@ async def _dispatch_ready_tasks(
             continue
 
         try:
-            result = await _run_dispatch(agent.name, task.id, project)
+            result = await _run_dispatch(
+                agent.name, task.id, project,
+                backend_mode=fleet_state.backend_mode if fleet_state else "claude",
+            )
             if result == 0:
                 state.tasks_dispatched += 1
                 busy_agent_ids.add(task.assigned_agent_id)

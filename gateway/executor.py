@@ -92,28 +92,48 @@ def _load_agent_config(agent_dir: Path) -> Dict[str, Any]:
 
 
 def _build_agent_context(agent_dir: Path, config: Dict[str, Any]) -> str:
-    """Build context string from agent's CLAUDE.md and context/ files."""
+    """Build context from agent files in 8-file onion injection order.
+
+    Order (fleet-elevation/02):
+    IDENTITY → SOUL → CLAUDE → TOOLS → AGENTS → context/ → HEARTBEAT
+    """
     parts = []
 
-    # Agent identity
+    # Agent identity from config (fallback if IDENTITY.md not present)
     name = config.get("name", agent_dir.name)
     mission = config.get("mission", "")
     if mission:
         parts.append(f"You are the {name} agent. Mission: {mission}")
 
-    # CLAUDE.md
+    # Layer 1-2: Identity and values (grounding + boundaries)
+    for identity_file in ("IDENTITY.md", "SOUL.md"):
+        path = agent_dir / identity_file
+        if path.exists():
+            parts.append(path.read_text(errors="replace")[:4000])
+
+    # Layer 3: Role-specific rules
     claude_md = agent_dir / "CLAUDE.md"
     if claude_md.exists():
         parts.append(claude_md.read_text(errors="replace")[:4000])
 
-    # Context files — FULL data, not compressed.
+    # Layer 4-5: Capabilities and team knowledge
+    for knowledge_file in ("TOOLS.md", "AGENTS.md"):
+        path = agent_dir / knowledge_file
+        if path.exists():
+            parts.append(path.read_text(errors="replace")[:4000])
+
+    # Layer 6-7: Dynamic context — FULL data, not compressed.
     # Each file can be up to 8000 chars. No limit on number of files.
-    # The pre-embedded data is the agent's FULL working context.
     context_dir = agent_dir / "context"
     if context_dir.exists():
         for f in sorted(context_dir.iterdir()):
             if f.is_file() and f.suffix in (".md", ".txt", ".yaml", ".json"):
                 content = f.read_text(errors="replace")[:8000]
                 parts.append(f"Context ({f.name}):\n{content}")
+
+    # Layer 8: Action protocol (last — drives immediate behavior)
+    heartbeat_md = agent_dir / "HEARTBEAT.md"
+    if heartbeat_md.exists():
+        parts.append(heartbeat_md.read_text(errors="replace")[:4000])
 
     return "\n\n".join(parts) if parts else ""

@@ -340,15 +340,31 @@ class GatewayProtocol:
             parts.append(f"You are the {name} agent. Mission: {mission}")
 
         if agent_dir:
+            # 8-file onion injection order (fleet-elevation/02):
+            # IDENTITY → SOUL → CLAUDE → TOOLS → AGENTS → context → HEARTBEAT
+            for identity_file in ("IDENTITY.md", "SOUL.md"):
+                path = agent_dir / identity_file
+                if path.exists():
+                    parts.append(path.read_text(errors="replace")[:4000])
+
             claude_md = agent_dir / "CLAUDE.md"
             if claude_md.exists():
-                parts.append(claude_md.read_text(errors="replace")[:2000])
+                parts.append(claude_md.read_text(errors="replace")[:4000])
+
+            for knowledge_file in ("TOOLS.md", "AGENTS.md"):
+                path = agent_dir / knowledge_file
+                if path.exists():
+                    parts.append(path.read_text(errors="replace")[:4000])
 
             context_dir = agent_dir / "context"
             if context_dir.exists():
                 for f in sorted(context_dir.iterdir()):
                     if f.is_file() and f.suffix in (".md", ".txt", ".yaml", ".json"):
-                        parts.append(f"Context ({f.name}):\n{f.read_text(errors='replace')[:1000]}")
+                        parts.append(f"Context ({f.name}):\n{f.read_text(errors='replace')[:8000]}")
+
+            heartbeat_md = agent_dir / "HEARTBEAT.md"
+            if heartbeat_md.exists():
+                parts.append(heartbeat_md.read_text(errors="replace")[:4000])
 
         return "\n\n".join(parts) if parts else ""
 

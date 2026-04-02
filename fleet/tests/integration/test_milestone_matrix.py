@@ -376,8 +376,11 @@ class TestE04_HeartbeatContext:
 
 class TestE06_MCPStageEnforcement:
     def test_check_function_exists(self):
-        from fleet.mcp.tools import _check_stage_allowed, WORK_ONLY_TOOLS
-        assert "fleet_commit" in WORK_ONLY_TOOLS
+        from fleet.mcp.tools import _check_stage_allowed, WORK_ONLY_TOOLS, COMMIT_ALLOWED_STAGES
+        assert "fleet_task_complete" in WORK_ONLY_TOOLS
+        assert "fleet_commit" not in WORK_ONLY_TOOLS
+        assert "conversation" not in COMMIT_ALLOWED_STAGES
+        assert "work" in COMMIT_ALLOWED_STAGES
 
 
 # ═══ F: CONTROL SURFACE ═════════════════════════════════════════════
@@ -401,7 +404,7 @@ class TestF06_FleetStateReader:
         from fleet.core.fleet_mode import WORK_MODES, CYCLE_PHASES, BACKEND_MODES
         assert len(WORK_MODES) == 5
         assert len(CYCLE_PHASES) == 6
-        assert len(BACKEND_MODES) == 3
+        assert len(BACKEND_MODES) == 7
 
 
 class TestF07_ModeAwareOrchestrator:
