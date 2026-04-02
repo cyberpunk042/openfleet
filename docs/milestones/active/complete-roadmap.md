@@ -27,42 +27,42 @@ No feature work, no agent files, no autocomplete — these FIRST.
 
 | # | Milestone | Source | Status |
 |---|-----------|--------|--------|
-| F-001 | fleet_commit stage gating — allow stages 2-5 | §33.1 B-01, tools.py:130 | ✅ DONE |
-| F-002 | Gateway truncation — CLAUDE.md 2000→4000, context 1000→8000 | §33.1 B-02, ws_server.py:345 | ✅ DONE |
-| F-003 | Gateway missing 5 of 8 files — add IDENTITY/SOUL/TOOLS/AGENTS/HEARTBEAT | §33.1 B-03, executor.py:94 | ✅ DONE |
-| F-004 | backend_mode not passed to router — wire orchestrator→dispatch→route_task | §33.1 B-04, orchestrator.py | ✅ DONE |
-| F-005 | budget_mode definitions empty — define turbo/aggressive/standard/economic | §33.1 B-05, budget_modes.py | ✅ DONE |
+| F-001 | fleet_commit stage gating — allow stages 2-5 | §33.1 B-01, tools.py:130 | 🔧 READY TO TEST |
+| F-002 | Gateway truncation — CLAUDE.md 2000→4000, context 1000→8000 | §33.1 B-02, ws_server.py:345 | 🔧 READY TO TEST |
+| F-003 | Gateway missing 5 of 8 files — add IDENTITY/SOUL/TOOLS/AGENTS/HEARTBEAT | §33.1 B-03, executor.py:94 | 🔧 READY TO TEST |
+| F-004 | backend_mode not passed to router — wire orchestrator→dispatch→route_task | §33.1 B-04, orchestrator.py | 🔧 READY TO TEST |
+| F-005 | budget_mode definitions empty — define turbo/aggressive/standard/economic | §33.1 B-05, budget_modes.py | 🔧 READY TO TEST |
 
 ### 1.2 Settings Wiring (done this session)
 
 | # | Milestone | Source | Status |
 |---|-----------|--------|--------|
-| F-006 | budget_mode field on FleetControlState | §22, fleet_mode.py | ✅ DONE |
-| F-007 | budget_mode tempo_multiplier applied to orchestrator cycle | §29, orchestrator.py daemon | ✅ DONE |
-| F-008 | budget_mode CRON sync — update gateway heartbeat intervals | §29, gateway_client.py | ✅ DONE |
-| F-009 | LocalAI health check before routing (GET /v1/models) | §23.4, dispatch.py | ✅ DONE |
-| F-010 | budget_mode change detection + event emission | §22.1, orchestrator.py | ✅ DONE |
+| F-006 | budget_mode field on FleetControlState | §22, fleet_mode.py | 🔧 READY TO TEST |
+| F-007 | budget_mode tempo_multiplier applied to orchestrator cycle | §29, orchestrator.py daemon | 🔧 READY TO TEST |
+| F-008 | budget_mode CRON sync — update gateway heartbeat intervals | §29, gateway_client.py | 🔧 READY TO TEST |
+| F-009 | LocalAI health check before routing (GET /v1/models) | §23.4, dispatch.py | 🔧 READY TO TEST |
+| F-010 | budget_mode change detection + event emission | §22.1, orchestrator.py | 🔧 READY TO TEST |
 
 ### 1.3 IaC Scripts (done this session)
 
 | # | Milestone | Source | Status |
 |---|-----------|--------|--------|
-| F-011 | scripts/validate-agents.sh — standards validation | iac-mcp-standard §2.6 | ✅ DONE |
-| F-012 | scripts/setup-agent-tools.sh — per-agent mcp.json from config | iac-mcp-standard §2.2 | ✅ DONE |
-| F-013 | scripts/provision-agent-files.sh — template→workspace | iac-mcp-standard §2.1 | ✅ DONE |
-| F-014 | scripts/generate-tools-md.sh — TOOLS.md from code | iac-mcp-standard §2.4 | ✅ DONE |
-| F-015 | scripts/generate-agents-md.sh — AGENTS.md from synergy | iac-mcp-standard §2.5 | ✅ DONE |
-| F-016 | scripts/install-plugins.sh — claude-mem + context7 per role | iac-mcp-standard §2.3 | ✅ DONE |
-| F-017 | Makefile targets: setup-tools, validate-agents, provision-files, etc. | iac-mcp-standard | ✅ DONE |
+| F-011 | scripts/validate-agents.sh — standards validation | iac-mcp-standard §2.6 | 🔧 READY TO TEST |
+| F-012 | scripts/setup-agent-tools.sh — per-agent mcp.json from config | iac-mcp-standard §2.2 | 🔧 READY TO TEST |
+| F-013 | scripts/provision-agent-files.sh — template→workspace | iac-mcp-standard §2.1 | 🔧 READY TO TEST |
+| F-014 | scripts/generate-tools-md.sh — TOOLS.md from code | iac-mcp-standard §2.4 | 🔧 READY TO TEST |
+| F-015 | scripts/generate-agents-md.sh — AGENTS.md from synergy | iac-mcp-standard §2.5 | 🔧 READY TO TEST |
+| F-016 | scripts/install-plugins.sh — claude-mem + context7 per role | iac-mcp-standard §2.3 | 🔧 READY TO TEST |
+| F-017 | Makefile targets: setup-tools, validate-agents, provision-files, etc. | iac-mcp-standard | 🔧 READY TO TEST |
 
 ### 1.4 Data Model Fixes (partially done)
 
 | # | Milestone | Source | Status |
 |---|-----------|--------|--------|
-| F-018 | task_progress field on TaskCustomFields (0-100 post-dispatch) | §45, §33.24, models.py | ✅ DONE |
-| F-019 | delivery_phase in preembed format_task_full() | §33.6, §37, preembed.py | ✅ DONE |
-| F-020 | delivery_phase Plane label sync (phase:{value}) | §33.6, plane_methodology.py | ✅ DONE |
-| F-021 | Readiness vs progress: fleet_task_progress sets task_progress not readiness | §45.4, tools.py | ✅ DONE |
+| F-018 | task_progress field on TaskCustomFields (0-100 post-dispatch) | §45, §33.24, models.py | 🔧 READY TO TEST |
+| F-019 | delivery_phase in preembed format_task_full() | §33.6, §37, preembed.py | 🔧 READY TO TEST |
+| F-020 | delivery_phase Plane label sync (phase:{value}) | §33.6, plane_methodology.py | 🔧 READY TO TEST |
+| F-021 | Readiness vs progress: fleet_task_progress sets task_progress not readiness | §45.4, tools.py | 🔧 READY TO TEST |
 | F-022 | fleet_task_complete sets task_progress=70 (WORK_COMPLETE) | §45.3, tools.py | PENDING |
 | F-023 | Challenge system uses task_progress (80) not task_readiness | §45.5, challenge.py | PENDING |
 | F-024 | fleet_approve uses task_progress (90) not task_readiness | §45.5, tools.py | PENDING |
@@ -74,10 +74,10 @@ No feature work, no agent files, no autocomplete — these FIRST.
 
 | # | Milestone | Source | Status |
 |---|-----------|--------|--------|
-| F-028 | trail_recorder.py — TrailRecorder class | §33.7, §38 | ✅ DONE |
-| F-029 | 33 TrailEventType enum values | §38.1 | ✅ DONE |
-| F-030 | TrailEvent with tags, content, mini-signature | §38.2, §44.1 | ✅ DONE |
-| F-031 | check_trail_completeness() — required events per task type | §38.4 | ✅ DONE |
+| F-028 | trail_recorder.py — TrailRecorder class | §33.7, §38 | 🔧 READY TO TEST |
+| F-029 | 33 TrailEventType enum values | §38.1 | 🔧 READY TO TEST |
+| F-030 | TrailEvent with tags, content, mini-signature | §38.2, §44.1 | 🔧 READY TO TEST |
+| F-031 | check_trail_completeness() — required events per task type | §38.4 | 🔧 READY TO TEST |
 | F-032 | Wire trail recording into fleet_task_complete | §38.4, tools.py | PENDING |
 | F-033 | Wire trail recording into fleet_commit | §38.4, tools.py | PENDING |
 | F-034 | Wire trail recording into fleet_task_accept | §38.4, tools.py | PENDING |
@@ -93,10 +93,10 @@ No feature work, no agent files, no autocomplete — these FIRST.
 
 | # | Milestone | Source | Status |
 |---|-----------|--------|--------|
-| F-042 | fleet_contribute MCP tool | §33.2, fleet-elevation/24 | ✅ DONE |
-| F-043 | fleet_request_input MCP tool | §33.2, fleet-elevation/24 | ✅ DONE |
-| F-044 | fleet_gate_request MCP tool | §33.2, fleet-elevation/24 | ✅ DONE |
-| F-045 | fleet_transfer MCP tool | §33.2, fleet-elevation/24 | ✅ DONE |
+| F-042 | fleet_contribute MCP tool | §33.2, fleet-elevation/24 | 🔧 READY TO TEST |
+| F-043 | fleet_request_input MCP tool | §33.2, fleet-elevation/24 | 🔧 READY TO TEST |
+| F-044 | fleet_gate_request MCP tool | §33.2, fleet-elevation/24 | 🔧 READY TO TEST |
+| F-045 | fleet_transfer MCP tool | §33.2, fleet-elevation/24 | 🔧 READY TO TEST |
 | F-046 | fleet_task_accept: add methodology check (plan references verbatim?) | §33.3, fleet-elevation/24 | PENDING |
 | F-047 | fleet_task_accept: add Plane sync on acceptance | §33.3, fleet-elevation/24 | PENDING |
 | F-048 | fleet_task_accept: add trail event recording | §33.3, fleet-elevation/24 | PENDING |
@@ -118,8 +118,8 @@ No feature work, no agent files, no autocomplete — these FIRST.
 
 | # | Milestone | Source | Status |
 |---|-----------|--------|--------|
-| F-062 | contributions.py brain module | §33.5, fleet-elevation/15 | ✅ DONE |
-| F-063 | config/synergy-matrix.yaml | §33.5, fleet-elevation/15 | ✅ DONE |
+| F-062 | contributions.py brain module | §33.5, fleet-elevation/15 | 🔧 READY TO TEST |
+| F-063 | config/synergy-matrix.yaml | §33.5, fleet-elevation/15 | 🔧 READY TO TEST |
 | F-064 | Contribution pre-embed section in preembed.py | §33.5 item 5, preembed.py | PENDING |
 | F-065 | build_contribution_chain() wired in event_chain.py | §33.5 item 6, event_chain.py | PENDING |
 | F-066 | Contribution completeness as dispatch gate in orchestrator | §33.5 item 9, orchestrator.py | PENDING |
@@ -146,9 +146,9 @@ No feature work, no agent files, no autocomplete — these FIRST.
 
 | # | Milestone | Source | Status |
 |---|-----------|--------|--------|
-| F-080 | heartbeat_gate.py — brain evaluation for idle agents | §33.21, fleet-elevation/23 | ✅ DONE |
-| F-081 | session_manager.py — context + rate limit awareness | §33.11, fleet-elevation/23 | ✅ DONE |
-| F-082 | trail_recorder.py — audit trail recording | §33.7, §38 | ✅ DONE |
+| F-080 | heartbeat_gate.py — brain evaluation for idle agents | §33.21, fleet-elevation/23 | 🔧 READY TO TEST |
+| F-081 | session_manager.py — context + rate limit awareness | §33.11, fleet-elevation/23 | 🔧 READY TO TEST |
+| F-082 | trail_recorder.py — audit trail recording | §33.7, §38 | 🔧 READY TO TEST |
 | F-083 | chain_registry.py — event→handler registration (Layer 2) | §33.4, fleet-elevation/04 | PENDING |
 | F-084 | logic_engine.py — configurable dispatch gates (Layer 3) | §33.4, fleet-elevation/04 | PENDING |
 | F-085 | autocomplete.py — chain assembly from real sources | §33.15, §36 | NEEDS REWORK |
@@ -342,7 +342,7 @@ without these. Built on top of the foundation.
 
 | # | Milestone | Source | Status |
 |---|-----------|--------|--------|
-| I-084 | M-BM01: BudgetMode data model (4 modes defined) | Wave 1 | ✅ DONE |
+| I-084 | M-BM01: BudgetMode data model (4 modes defined) | Wave 1 | 🔧 READY TO TEST |
 | I-085 | M-BM02: Mode-constrained model selection | Wave 1 | PENDING |
 | I-086 | M-BM03: Automatic mode transitions on pressure | Wave 2 | PENDING |
 | I-087 | M-BM04: Budget mode in fleet CLI | Wave 2 | PENDING |
@@ -1046,7 +1046,7 @@ Each tool needs its full chain implemented per fleet-elevation/24.
 | FT-141 | CW-02: Document cost dynamics per context size | §35.2 | PARTIAL |
 | FT-142 | CW-03: Strategic compaction protocol per role | §35.1, §33.11 | PENDING |
 | FT-143 | CW-04: Efficient regathering protocol per role | §35.1 | PENDING |
-| FT-144 | CW-05: .claudeignore per project (prevent bloat) | §35.1 | ✅ DONE |
+| FT-144 | CW-05: .claudeignore per project (prevent bloat) | §35.1 | 🔧 READY TO TEST |
 | FT-145 | CW-06: Document settings and awareness proof | §35.1 | PARTIAL |
 | FT-146 | CW-07: Rate limit rollover awareness in brain | §35.1, §35.3 | PENDING |
 | FT-147 | CW-08: Pre-rollover preparation (force compact at 85%) | §35.1, §35.4 | PENDING |
@@ -1123,14 +1123,26 @@ Each tool needs its full chain implemented per fleet-elevation/24.
 
 ## STATUS SUMMARY (EXPANDED)
 
-| Phase | Total | Done | Pending |
-|-------|-------|------|---------|
-| 1: Foundation (F-001 to F-120) | 120 | 43 | 77 |
-| 2: Infrastructure (I-001 to I-369) | 369 | 1 | 368 |
-| 3: Features (FT-001 to FT-167) | 167 | 1 | 166 |
-| 4: Testing & Tuning (T-001 to T-094) | 94 | 0 | 94 |
-| **TOTAL** | **750** | **45** | **705** |
+| Phase | Total | Ready to Test | Pending | Not Explored |
+|-------|-------|--------------|---------|-------------|
+| 1: Foundation (F-001 to F-120) | 120 | 36 | 77 | 7 |
+| 2: Infrastructure (I-001 to I-369) | 369 | 1 | 368 | ~50 |
+| 3: Features (FT-001 to FT-167) | 167 | 1 | 166 | ~30 |
+| 4: Testing & Tuning (T-001 to T-094) | 94 | 0 | 94 | 0 |
+| **TOTAL** | **750** | **38** | **705** | **~87** |
+
+**Status definitions:**
+- **READY TO TEST** = code exists, unit tests pass, NOT live tested with real agents
+- **PENDING** = requirements known, code not written
+- **NOT EXPLORED** = requirements referenced but not fully researched (e.g., codex-plugin-cc, claude-mem, 1000+ skills/plugins classification)
+
+**"Not Explored" items need the research workflow FIRST:**
+1. Research the actual tool/plugin/capability (read repos, docs)
+2. Classify per agent role (specialized vs general)
+3. Document requirements, directives, usage instructions
+4. THEN build
 
 Every item references its source document.
 Every item is SRP — one thing per milestone.
 PO drives priority and sequencing. No shortcuts.
+Nothing is DONE until live tested and verified.
