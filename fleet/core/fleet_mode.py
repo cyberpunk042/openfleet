@@ -37,16 +37,21 @@ CYCLE_PHASES = [
 BACKEND_MODES = [
     "claude",
     "localai",
-    "hybrid",
+    "openrouter",
+    "claude+localai",
+    "claude+openrouter",
+    "localai+openrouter",
+    "claude+localai+openrouter",
 ]
 
 
 @dataclass
 class FleetControlState:
     """Current fleet control state from the board's fleet_config."""
-    work_mode: str = "full-autonomous"
+    work_mode: str = "work-paused"
     cycle_phase: str = "execution"
     backend_mode: str = "claude"
+    budget_mode: str = "standard"
     updated_at: Optional[str] = None
     updated_by: Optional[str] = None
 
@@ -65,6 +70,7 @@ def read_fleet_control(board_data: dict) -> FleetControlState:
         work_mode=config.get("work_mode", "full-autonomous"),
         cycle_phase=config.get("cycle_phase", "execution"),
         backend_mode=config.get("backend_mode", "claude"),
+        budget_mode=config.get("budget_mode", "standard"),
         updated_at=config.get("updated_at"),
         updated_by=config.get("updated_by"),
     )

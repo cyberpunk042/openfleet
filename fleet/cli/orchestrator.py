@@ -159,6 +159,8 @@ async def run_orchestrator_cycle(
             changes_detected.append(f"cycle_phase: {_previous_fleet_state.cycle_phase} → {fleet_state.cycle_phase}")
         if fleet_state.backend_mode != _previous_fleet_state.backend_mode:
             changes_detected.append(f"backend_mode: {_previous_fleet_state.backend_mode} → {fleet_state.backend_mode}")
+        if fleet_state.budget_mode != _previous_fleet_state.budget_mode:
+            changes_detected.append(f"budget_mode: {_previous_fleet_state.budget_mode} → {fleet_state.budget_mode}")
         if changes_detected:
             state.notes.append(f"Fleet mode CHANGED: {'; '.join(changes_detected)}")
             try:
@@ -173,10 +175,28 @@ async def run_orchestrator_cycle(
                     new_cycle_phase=fleet_state.cycle_phase,
                     old_backend_mode=_previous_fleet_state.backend_mode,
                     new_backend_mode=fleet_state.backend_mode,
+                    old_budget_mode=_previous_fleet_state.budget_mode,
+                    new_budget_mode=fleet_state.budget_mode,
                     set_by=fleet_state.updated_by or "unknown",
                 ))
             except Exception:
                 pass  # Event emission must not break orchestrator
+
+            # Sync gateway CRON intervals when budget_mode changes
+            if _previous_fleet_state.budget_mode != fleet_state.budget_mode:
+                try:
+                    from fleet.core.budget_modes import get_mode
+                    from fleet.infra.gateway_client import update_cron_tempo
+                    mode = get_mode(fleet_state.budget_mode)
+                    if mode:
+                        updated = update_cron_tempo(mode.tempo_multiplier)
+                        if updated:
+                            state.notes.append(
+                                f"CRON tempo updated: {updated} jobs "
+                                f"(multiplier={mode.tempo_multiplier:.2f})"
+                            )
+                except Exception:
+                    pass  # CRON sync must not break orchestrator
     _previous_fleet_state = fleet_state
 
     # Fleet mode gate — check if dispatch is allowed
@@ -276,6 +296,7 @@ async def _refresh_agent_contexts(
             "work_mode": fleet_state.work_mode if fleet_state else "",
             "cycle_phase": fleet_state.cycle_phase if fleet_state else "",
             "backend_mode": fleet_state.backend_mode if fleet_state else "",
+            "budget_mode": fleet_state.budget_mode if fleet_state else "standard",
         }
 
         online_count = sum(1 for a in agents if a.status == "online" and "Gateway" not in a.name)
@@ -1365,3 +1386,15 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
             # Note: _agents_provisioned is NOT reset. Agents stay
             # provisioned across MC restarts. Only cron enable/disable
             # changes. Reprovisioning causes gateway restart storms.
+
+        # Budget-mode-aware sleep — tempo_multiplier scales the base interval
+        # turbo=5s, aggressive=15s, standard=30s, economic=60s
+        effective_interval = interval
+        try:
+            from fleet.core.budget_modes import get_mode
+            mode = get_mode(_previous_fleet_state.budget_mode if _previous_fleet_state else "standard")
+            if mode:
+                effective_interval = max(5, min(120, int(interval * mode.tempo_multiplier)))
+        except Exception:
+            pass  # Tempo calculation must not break daemon loop
+        await asyncio.sleep(effective_interval)

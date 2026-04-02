@@ -296,6 +296,50 @@ def check_cron_circuit_breaker(max_consecutive_errors: int = 5) -> int:
         return 0
 
 
+def update_cron_tempo(tempo_multiplier: float) -> int:
+    """Update gateway CRON intervals based on budget_mode tempo.
+
+    Applies tempo_multiplier to each job's base interval (stored in
+    schedule.baseEveryMs, falling back to current everyMs as base).
+
+    Returns number of jobs updated.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    MIN_INTERVAL_MS = 300_000    # 5 minutes floor
+    MAX_INTERVAL_MS = 7_200_000  # 2 hours ceiling
+
+    cron_path = _Path.home() / ".openclaw" / "cron" / "jobs.json"
+    if not cron_path.exists():
+        return 0
+    try:
+        with open(cron_path) as f:
+            data = _json.load(f)
+        updated = 0
+        for job in data.get("jobs", []):
+            schedule = job.get("schedule", {})
+            if schedule.get("kind") != "every":
+                continue
+            # Store original interval as base on first tempo change
+            base_ms = schedule.get("baseEveryMs") or schedule.get("everyMs", 0)
+            if not base_ms:
+                continue
+            if "baseEveryMs" not in schedule:
+                schedule["baseEveryMs"] = base_ms
+            new_ms = int(base_ms * tempo_multiplier)
+            new_ms = max(MIN_INTERVAL_MS, min(MAX_INTERVAL_MS, new_ms))
+            if schedule.get("everyMs") != new_ms:
+                schedule["everyMs"] = new_ms
+                updated += 1
+        if updated > 0:
+            with open(cron_path, "w") as f:
+                _json.dump(data, f, indent=2)
+        return updated
+    except Exception:
+        return 0
+
+
 async def create_fresh_session(session_key: str, label: str = "") -> bool:
     """Create a fresh session for an agent — regrowth after pruning.
 

@@ -92,7 +92,22 @@ async def _run_dispatch(
     from fleet.core.model_selection import select_model_for_task
     from fleet.core.labor_stamp import DispatchRecord
 
-    routing = route_task(task, agent_name, backend_mode=backend_mode)
+    # Check LocalAI availability before routing
+    localai_available = False
+    if "localai" in backend_mode:
+        try:
+            import urllib.request
+            req = urllib.request.Request("http://localhost:8090/v1/models", method="GET")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                localai_available = resp.status == 200
+        except Exception:
+            localai_available = False
+
+    routing = route_task(
+        task, agent_name,
+        backend_mode=backend_mode,
+        localai_available=localai_available,
+    )
     print(f"Backend:  {routing.backend} (tier={routing.confidence_tier})")
     print(f"Model:    {routing.model} (effort={routing.effort})")
     print(f"          {routing.reason}")
