@@ -325,20 +325,34 @@ class LightRAGClient:
         return name.upper().replace("/", "::").replace(".", ":")
 
     def create_entity(self, entity: Entity) -> tuple[bool, str]:
+        name = self._sanitize_name(entity.name)
         payload = {
-            "entity_name": self._sanitize_name(entity.name),
+            "entity_name": name,
             "entity_data": {
                 "entity_type": entity.entity_type,
                 "description": entity.description,
                 "source_id": entity.source_file,
             },
         }
-        return self._post("/graph/entity/create", payload)
+        ok, msg = self._post("/graph/entity/create", payload)
+        if ok and msg == "exists":
+            # Update description on existing entity
+            update_payload = {
+                "entity_name": name,
+                "updated_data": {
+                    "entity_type": entity.entity_type,
+                    "description": entity.description,
+                },
+            }
+            return self._post("/graph/entity/edit", update_payload)
+        return ok, msg
 
     def create_relationship(self, rel: Relationship) -> tuple[bool, str]:
+        src = self._sanitize_name(rel.src)
+        tgt = self._sanitize_name(rel.tgt)
         payload = {
-            "source_entity": self._sanitize_name(rel.src),
-            "target_entity": self._sanitize_name(rel.tgt),
+            "source_entity": src,
+            "target_entity": tgt,
             "relation_data": {
                 "description": rel.description,
                 "keywords": rel.rel_type,
@@ -346,7 +360,20 @@ class LightRAGClient:
                 "source_id": rel.source_file,
             },
         }
-        return self._post("/graph/relation/create", payload)
+        ok, msg = self._post("/graph/relation/create", payload)
+        if ok and msg == "exists":
+            # Update weight/description on existing relationship
+            update_payload = {
+                "source_id": src,
+                "target_id": tgt,
+                "updated_data": {
+                    "description": rel.description,
+                    "keywords": rel.rel_type,
+                    "weight": rel.weight,
+                },
+            }
+            return self._post("/graph/relation/edit", update_payload)
+        return ok, msg
 
     def _post(self, endpoint: str, payload: dict, retries: int = 2) -> tuple[bool, str]:
         data = json.dumps(payload).encode()
