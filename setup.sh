@@ -337,34 +337,37 @@ if [[ -n "${LIGHTRAG_PID:-}" ]] && kill -0 "$LIGHTRAG_PID" 2>/dev/null; then
     # Progress loop: show sync progress, check for user input
     DETACHED=false
     NOTIFY=false
+    LAST_LINE=""
     while kill -0 "$LIGHTRAG_PID" 2>/dev/null; do
-        # Parse progress from log
         if [[ -f "$LIGHTRAG_LOG" ]]; then
-            # Count entities/relationships done so far
-            ENTITIES_DONE=$(grep -c '    [0-9]*/[0-9]* (' "$LIGHTRAG_LOG" 2>/dev/null || echo 0)
-            ENTITIES_TOTAL=$(grep -oP '\d+(?= entities)' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || echo "?")
-            RELS_DONE=$(grep -c 'relationship' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || echo 0)
-            PHASE=$(grep -oP '(Installing|Waiting|Syncing|Inserting|Verifying|Source entities|Source relationships).*' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || echo "starting...")
-            # Get last progress line like "    5/219 (5 ok, 0 fail)"
-            PROGRESS_LINE=$(grep -oP '    \d+/\d+ \(\d+ ok' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || true)
-            if [[ -n "$PROGRESS_LINE" ]]; then
-                CURRENT=$(echo "$PROGRESS_LINE" | grep -oP '^\s*\K\d+')
-                TOTAL=$(echo "$PROGRESS_LINE" | grep -oP '/\K\d+')
-                if [[ -n "$TOTAL" && "$TOTAL" -gt 0 ]]; then
-                    PCT=$(( CURRENT * 100 / TOTAL ))
-                    printf "\r  [%3d%%] %d/%d — %s" "$PCT" "$CURRENT" "$TOTAL" "${PHASE:0:50}"
+            # Get the last meaningful line from the log
+            LINE=$(tail -1 "$LIGHTRAG_LOG" 2>/dev/null || true)
+            if [[ "$LINE" != "$LAST_LINE" && -n "$LINE" ]]; then
+                LAST_LINE="$LINE"
+                # Parse "    N/M (X ok, Y fail)" format
+                if [[ "$LINE" =~ ([0-9]+)/([0-9]+)\ \(([0-9]+)\ ok ]]; then
+                    CURRENT="${BASH_REMATCH[1]}"
+                    TOTAL="${BASH_REMATCH[2]}"
+                    OK="${BASH_REMATCH[3]}"
+                    if [[ "$TOTAL" -gt 0 ]]; then
+                        PCT=$(( CURRENT * 100 / TOTAL ))
+                        # Progress bar
+                        BAR_LEN=20
+                        FILLED=$(( PCT * BAR_LEN / 100 ))
+                        BAR=$(printf '%*s' "$FILLED" '' | tr ' ' '#')
+                        EMPTY=$(printf '%*s' $((BAR_LEN - FILLED)) '' | tr ' ' '-')
+                        printf "\r  [%s%s] %3d%% (%d/%d, %d ok)  " "$BAR" "$EMPTY" "$PCT" "$CURRENT" "$TOTAL" "$OK"
+                    fi
                 else
-                    printf "\r  %s" "${PHASE:0:60}"
+                    # Show phase text (Installing, Syncing, etc)
+                    CLEAN=$(echo "$LINE" | sed 's/\x1b\[[0-9;]*m//g' | sed 's/^[[:space:]]*//')
+                    printf "\r  %-70s" "${CLEAN:0:70}"
                 fi
-            else
-                printf "\r  %s" "${PHASE:0:60}"
             fi
-            # Clear rest of line
-            printf "%-20s" ""
         fi
 
-        # Check for user input (non-blocking, 2s timeout)
-        if read -t 2 -r USER_INPUT 2>/dev/null; then
+        # Check for user input (non-blocking, 1s timeout)
+        if read -t 1 -r USER_INPUT 2>/dev/null; then
             if [[ "$USER_INPUT" == "w" || "$USER_INPUT" == "W" ]]; then
                 NOTIFY=true
                 DETACHED=true

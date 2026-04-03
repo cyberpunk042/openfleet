@@ -323,6 +323,9 @@ class LightRAGClient:
                 return (resp.status < 300, body)
         except urllib.error.HTTPError as e:
             body = e.read().decode()[:200] if e.fp else str(e)
+            # "already exists" is not a failure — data is already in the graph
+            if e.code == 400 and "already exists" in body:
+                return (True, "exists")
             return (False, f"HTTP {e.code}: {body}")
         except Exception as e:
             return (False, str(e))
@@ -459,7 +462,7 @@ class KBGraphSync:
                 result.entities_fail += 1
                 print(f"    FAIL entity [{ent.name}]: {msg}", flush=True)
 
-            if (i + 1) % 50 == 0:
+            if (i + 1) % 25 == 0 or i + 1 == len(entities):
                 print(f"    {i+1}/{len(entities)} ({result.entities_ok} ok, "
                       f"{result.entities_fail} fail)", flush=True)
 
@@ -477,7 +480,7 @@ class KBGraphSync:
                 if result.relationships_fail <= 20:
                     print(f"    FAIL rel [{rel.src} -> {rel.tgt}]: {msg}", flush=True)
 
-            if (i + 1) % 100 == 0:
+            if (i + 1) % 25 == 0 or i + 1 == len(relationships):
                 print(f"    {i+1}/{len(relationships)} ({result.relationships_ok} ok, "
                       f"{result.relationships_fail} fail)", flush=True)
 
@@ -651,7 +654,7 @@ class KBGraphSync:
                 result.entities_fail += 1
                 if result.entities_fail <= 5:
                     print(f"    FAIL entity [{ent.name}]: {msg[:100]}", flush=True)
-            if (i + 1) % 100 == 0:
+            if (i + 1) % 25 == 0 or i + 1 == len(all_entities):
                 print(f"    {i+1}/{len(all_entities)} ({result.entities_ok} ok, "
                       f"{result.entities_fail} fail)", flush=True)
         print(f"  Source entities done: {result.entities_ok} ok, "
@@ -666,7 +669,7 @@ class KBGraphSync:
                 result.relationships_fail += 1
                 if result.relationships_fail <= 10:
                     print(f"    FAIL rel [{rel.src} → {rel.tgt}]: {msg[:100]}", flush=True)
-            if (i + 1) % 200 == 0:
+            if (i + 1) % 25 == 0 or i + 1 == len(all_relationships):
                 print(f"    {i+1}/{len(all_relationships)} ({result.relationships_ok} ok, "
                       f"{result.relationships_fail} fail)", flush=True)
         print(f"  Source relationships done: {result.relationships_ok} ok, "
