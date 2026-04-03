@@ -306,38 +306,192 @@ def print_stats(kg: dict) -> None:
 
 
 def insert_to_lightrag(kg: dict, url: str) -> None:
-    """Insert custom_kg into LightRAG via REST API."""
+    """Insert entities and relationships into LightRAG via graph API."""
     import urllib.request
 
-    data = json.dumps({"custom_kg": kg}).encode()
-    req = urllib.request.Request(
-        f"{url}/documents/insert_custom_kg",
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=300) as resp:
-            result = resp.read().decode()
-            print(f"\n  LightRAG insert: {resp.status} — {result[:200]}")
-    except Exception as e:
-        print(f"\n  ERROR inserting: {e}")
+    def _post(endpoint: str, payload: dict) -> bool:
+        data = json.dumps(payload).encode()
+        req = urllib.request.Request(
+            f"{url}{endpoint}",
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                return resp.status < 300
+        except Exception:
+            return False
+
+    # Insert entities via /graph/entity/create
+    print(f"\n  Inserting {len(kg['entities'])} entities...")
+    ok = 0
+    fail = 0
+    for i, ent in enumerate(kg["entities"]):
+        success = _post("/graph/entity/create", {
+            "entity_name": ent["entity_name"],
+            "entity_data": {
+                "entity_type": ent["entity_type"],
+                "description": ent["description"],
+                "source_id": ent.get("source_id", ""),
+            },
+        })
+        if success:
+            ok += 1
+        else:
+            fail += 1
+        if (i + 1) % 100 == 0:
+            print(f"    {i+1}/{len(kg['entities'])} entities ({ok} ok, {fail} fail)")
+    print(f"    Entities: {ok} ok, {fail} fail")
+
+    # Insert relationships via /graph/relation/create
+    print(f"\n  Inserting {len(kg['relationships'])} relationships...")
+    ok = 0
+    fail = 0
+    for i, rel in enumerate(kg["relationships"]):
+        success = _post("/graph/relation/create", {
+            "source_entity": rel["src_id"],
+            "target_entity": rel["tgt_id"],
+            "relation_data": {
+                "description": rel["description"],
+                "keywords": rel["keywords"],
+                "weight": rel.get("weight", 1.0),
+                "source_id": rel.get("source_id", ""),
+            },
+        })
+        if success:
+            ok += 1
+        else:
+            fail += 1
+        if (i + 1) % 200 == 0:
+            print(f"    {i+1}/{len(kg['relationships'])} relationships ({ok} ok, {fail} fail)")
+    print(f"    Relationships: {ok} ok, {fail} fail")
+
+
+# ── Sync — detect changes and sync incrementally ──────────────────
+
+SYNC_STATE_FILE = FLEET_DIR / ".kb-graph-sync.json"
+
+
+def load_sync_state() -> dict:
+    """Load previous sync state (file mtimes)."""
+    if SYNC_STATE_FILE.exists():
+        return json.loads(SYNC_STATE_FILE.read_text())
+    return {}
+
+
+def save_sync_state(state: dict) -> None:
+    """Save sync state."""
+    SYNC_STATE_FILE.write_text(json.dumps(state, indent=2))
+
+
+def find_changed_files(kb_dir: Path) -> tuple[list[Path], dict]:
+    """Find KB files changed since last sync."""
+    state = load_sync_state()
+    changed = []
+    new_state = {}
+
+    for md_file in sorted(kb_dir.rglob("*.md")):
+        key = str(md_file.relative_to(FLEET_DIR))
+        mtime = md_file.stat().st_mtime
+        new_state[key] = mtime
+
+        old_mtime = state.get(key, 0)
+        if mtime > old_mtime:
+            changed.append(md_file)
+
+    return changed, new_state
+
+
+def sync_to_lightrag(url: str, full: bool = False) -> None:
+    """Sync KB changes to LightRAG. Incremental by default."""
+    if full:
+        changed = sorted(KB_DIR.rglob("*.md"))
+        print(f"Full sync: {len(changed)} files")
+    else:
+        changed, new_state = find_changed_files(KB_DIR)
+        if not changed:
+            print("No KB changes since last sync.")
+            return
+        print(f"Incremental sync: {len(changed)} changed files")
+
+    # Parse only changed files
+    entities = []
+    relationships = []
+    seen_entities = set()
+    seen_rels = set()
+
+    for filepath in changed:
+        try:
+            entry = parse_kb_file(filepath)
+
+            name = entry["entity_name"]
+            if name.upper() not in seen_entities:
+                entities.append({
+                    "entity_name": name,
+                    "entity_type": entry["entity_type"],
+                    "description": entry["description"],
+                    "source_id": entry["source_file"],
+                })
+                seen_entities.add(name.upper())
+
+            for rel in entry["relationships"]:
+                key = (rel["src_id"].upper(), rel["keywords"], rel["tgt_id"].upper())
+                if key not in seen_rels:
+                    relationships.append(rel)
+                    seen_rels.add(key)
+
+                    tgt_upper = rel["tgt_id"].upper()
+                    if tgt_upper not in seen_entities:
+                        entities.append({
+                            "entity_name": rel["tgt_id"],
+                            "entity_type": "reference",
+                            "description": f"Referenced by {rel['src_id']}",
+                            "source_id": entry["source_file"],
+                        })
+                        seen_entities.add(tgt_upper)
+        except Exception as e:
+            print(f"  SKIP {filepath.name}: {e}")
+
+    print(f"  Parsed: {len(entities)} entities, {len(relationships)} relationships")
+
+    # Insert
+    kg = {"entities": entities, "relationships": relationships, "chunks": []}
+    insert_to_lightrag(kg, url)
+
+    # Save sync state (only on full sync or after success)
+    if not full:
+        save_sync_state(new_state)
+    else:
+        _, new_state = find_changed_files(KB_DIR)
+        save_sync_state(new_state)
+
+    print("  Sync complete.")
 
 
 # ── Main ───────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Parse KB ## Relationships into LightRAG custom_kg"
+        description="Parse KB ## Relationships into LightRAG knowledge graph"
     )
-    parser.add_argument("--stats", action="store_true", help="Print graph statistics")
+    parser.add_argument("--stats", action="store_true", help="Print graph statistics (dry run)")
     parser.add_argument("--output", "-o", help="Export custom_kg to JSON file")
-    parser.add_argument("--insert", action="store_true", help="Insert into LightRAG")
+    parser.add_argument("--insert", action="store_true", help="Full insert into LightRAG")
+    parser.add_argument("--sync", action="store_true", help="Incremental sync (changed files only)")
     parser.add_argument("--url", default=LIGHTRAG_URL, help="LightRAG API URL")
     args = parser.parse_args()
 
-    if not args.stats and not args.output and not args.insert:
-        args.stats = True  # default to stats
+    if not any([args.stats, args.output, args.insert, args.sync]):
+        args.stats = True
+
+    if args.sync:
+        sync_to_lightrag(args.url)
+        return
+
+    if args.insert:
+        sync_to_lightrag(args.url, full=True)
+        return
 
     kg = build_custom_kg(KB_DIR)
 
@@ -348,9 +502,6 @@ def main():
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
         Path(args.output).write_text(json.dumps(kg, indent=2))
         print(f"\n  Written to {args.output}")
-
-    if args.insert:
-        insert_to_lightrag(kg, args.url)
 
 
 if __name__ == "__main__":

@@ -39,6 +39,8 @@ agents/*/
 .fleet-ocmc-watcher.json
 .fleet-sync-state.json
 .fleet-sync-audit.jsonl
+# KB graph sync state
+.kb-graph-sync.json
 # AICP state
 .aicp/
 # LightRAG runtime data (indexed content, graph storage)
