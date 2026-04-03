@@ -150,14 +150,20 @@ services:
       EMBEDDING_BINDING_API_KEY: ${LIGHTRAG_EMBEDDING_API_KEY:-dummy}
       EMBEDDING_DIM: ${LIGHTRAG_EMBEDDING_DIM:-768}
 
-      # Entity extraction
-      ENTITY_TYPES: '["system","agent","command","hook","skill","plugin","layer","tool","module","workflow"]'
-      # Smaller chunks = simpler extraction for 7B model = better quality
-      CHUNK_SIZE: "600"
+      # ── Entity extraction ──
+      ENTITY_TYPES: '["system","agent","tool","hook","skill","plugin"]'
+      # Chunk size 1000 — big enough for entity pairs to appear together (relationships)
+      # Too small (600) = entities split across chunks = 0 relationships
+      CHUNK_SIZE: "1000"
       CHUNK_OVERLAP_SIZE: "100"
-      # 2 gleaning passes — re-prompts for missed entities/relations
-      ENTITY_EXTRACT_MAX_GLEANING: "2"
-      # Summary language
+      # Gleaning: re-prompt for missed entities/relations (correct env var name)
+      MAX_GLEANING: "1"
+      # LLM output controls — CRITICAL for relationship extraction
+      # Without these, model runs out of output tokens before generating relationships
+      OPENAI_LLM_MAX_TOKENS: "4096"
+      OPENAI_LLM_TEMPERATURE: "0.3"
+      # Guard against context overflow during gleaning
+      MAX_EXTRACT_INPUT_TOKENS: "6000"
       SUMMARY_LANGUAGE: "English"
 
       # Storage — NetworkX default (single machine)
@@ -167,7 +173,7 @@ services:
 
       # Query defaults
       TOP_K: ${LIGHTRAG_TOP_K:-10}
-      # Serialize LLM calls — LocalAI single GPU handles one at a time
+      # Serialize LLM calls — single GPU
       MAX_ASYNC: "1"
       MAX_PARALLEL_INSERT: "2"
 
