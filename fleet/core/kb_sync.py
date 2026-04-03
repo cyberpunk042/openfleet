@@ -385,41 +385,39 @@ class KBGraphSync:
                      len(entities), len(relationships), result.files_processed)
 
         # Insert entities
+        print(f"  Inserting {len(entities)} entities...", flush=True)
         for i, ent in enumerate(entities):
             ok, msg = self.client.create_entity(ent)
             if ok:
                 result.entities_ok += 1
             else:
                 result.entities_fail += 1
-                if result.entities_fail <= 5:  # log first 5 errors
-                    logger.warning("Entity fail [%s]: %s", ent.name, msg)
+                print(f"    FAIL entity [{ent.name}]: {msg}", flush=True)
 
-            if (i + 1) % 100 == 0:
-                sys.stdout.write(f"\r  Entities: {i+1}/{len(entities)} "
-                                 f"({result.entities_ok} ok, {result.entities_fail} fail)")
-                sys.stdout.flush()
+            if (i + 1) % 50 == 0:
+                print(f"    {i+1}/{len(entities)} ({result.entities_ok} ok, "
+                      f"{result.entities_fail} fail)", flush=True)
 
-        print(f"\r  Entities: {len(entities)}/{len(entities)} "
-              f"({result.entities_ok} ok, {result.entities_fail} fail)")
+        print(f"  Entities done: {result.entities_ok} ok, "
+              f"{result.entities_fail} fail", flush=True)
 
         # Insert relationships
+        print(f"  Inserting {len(relationships)} relationships...", flush=True)
         for i, rel in enumerate(relationships):
             ok, msg = self.client.create_relationship(rel)
             if ok:
                 result.relationships_ok += 1
             else:
                 result.relationships_fail += 1
-                if result.relationships_fail <= 5:
-                    logger.warning("Relationship fail [%s -> %s]: %s",
-                                   rel.src, rel.tgt, msg)
+                if result.relationships_fail <= 20:
+                    print(f"    FAIL rel [{rel.src} -> {rel.tgt}]: {msg}", flush=True)
 
             if (i + 1) % 100 == 0:
-                sys.stdout.write(f"\r  Relationships: {i+1}/{len(relationships)} "
-                                 f"({result.relationships_ok} ok, {result.relationships_fail} fail)")
-                sys.stdout.flush()
+                print(f"    {i+1}/{len(relationships)} ({result.relationships_ok} ok, "
+                      f"{result.relationships_fail} fail)", flush=True)
 
-        print(f"\r  Relationships: {len(relationships)}/{len(relationships)} "
-              f"({result.relationships_ok} ok, {result.relationships_fail} fail)")
+        print(f"  Relationships done: {result.relationships_ok} ok, "
+              f"{result.relationships_fail} fail", flush=True)
 
         result.duration_seconds = time.time() - t0
         logger.info("Sync complete in %.1fs", result.duration_seconds)

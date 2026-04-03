@@ -16,7 +16,7 @@
 #   - LocalAI running on port 8090
 #   - Fleet venv with uv
 
-set -euo pipefail
+set -uo pipefail
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENV="${FLEET_DIR}/.venv"
@@ -74,16 +74,16 @@ clean() {
     echo "Cleaning LightRAG storage..."
 
     # Stop LightRAG
-    docker compose -f "$COMPOSE" stop lightrag 2>/dev/null || true
-    docker compose -f "$COMPOSE" rm -f lightrag 2>/dev/null || true
+    docker compose -f "$COMPOSE" stop lightrag || true
+    docker compose -f "$COMPOSE" rm -f lightrag || true
 
     # Remove graph volume
-    docker volume rm openclaw-fleet_lightrag_storage 2>/dev/null || true
+    docker volume rm openclaw-fleet_lightrag_storage || true
     echo -e "  ${GREEN}[ok]${NC} LightRAG storage wiped"
 
     # Flush Redis DB 1 (LightRAG KV)
     if docker compose -f "$COMPOSE" ps redis 2>/dev/null | grep -q "running"; then
-        docker exec openclaw-fleet-redis-1 redis-cli -n 1 FLUSHDB 2>/dev/null || true
+        docker exec openclaw-fleet-redis-1 redis-cli -n 1 FLUSHDB || true
         echo -e "  ${GREEN}[ok]${NC} Redis DB 1 flushed"
     fi
 
@@ -98,8 +98,7 @@ start_services() {
     echo "Starting services..."
 
     # Ensure Redis is up (LightRAG depends on it)
-    docker compose -f "$COMPOSE" up -d redis 2>/dev/null
-    sleep 2
+    docker compose -f "$COMPOSE" up -d redis     sleep 2
 
     # Start LightRAG
     docker compose -f "$COMPOSE" up -d lightrag
@@ -154,7 +153,7 @@ verify() {
         fi
     }
 
-    activate_venv 2>/dev/null || true
+    activate_venv || true
 
     uv pip show daniel-lightrag-mcp &>/dev/null 2>&1 && check "daniel-lightrag-mcp" "ok" || check "daniel-lightrag-mcp" "fail"
     curl -s -o /dev/null "$LIGHTRAG_URL/health" 2>/dev/null && check "LightRAG API" "ok" || check "LightRAG API" "fail"
