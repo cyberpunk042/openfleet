@@ -218,7 +218,7 @@ systems:
     connected_systems: [S04 (event source), S07 (orchestrator triggers)]
     agent_roles:
       po: [ntfy consumer]
-      all: [IRC #fleet visibility]
+      all: ["IRC #fleet visibility"]
     channels: ["#fleet", "#alerts", "#reviews", "#sprint", "#gates", "#contributions"]
 
   session:

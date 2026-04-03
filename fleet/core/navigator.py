@@ -211,21 +211,49 @@ class Navigator:
         """Assemble context from an intent's injection recipe."""
         for item in intent.inject:
             if isinstance(item, str):
-                # Simple reference like "- agent_manual: architect"
+                # Simple string reference — try to parse as "branch: ref"
+                if ":" in item:
+                    branch, ref = item.split(":", 1)
+                    branch = branch.strip()
+                    ref = self._strip_annotation(ref.strip())
+                else:
+                    continue
+            elif isinstance(item, dict):
+                # Dict item — normal case
+                for branch, ref in item.items():
+                    branch = branch.strip()
+                    break
+                else:
+                    continue
+            else:
                 continue
 
-            for branch, ref in item.items():
-                if branch == "note":
-                    ctx.sections.append(f"**Note:** {ref}")
-                    continue
+            if branch == "note":
+                ctx.sections.append(f"**Note:** {ref}")
+                continue
 
-                level = profile.levels.get(branch, "none")
-                if level == "none":
-                    continue
+            # Strip parenthetical annotations from ref
+            if isinstance(ref, str):
+                ref = self._strip_annotation(ref)
 
-                content = self._load_branch_content(branch, ref, level)
-                if content:
-                    ctx.sections.append(content)
+            level = profile.levels.get(branch, "none")
+            if level == "none":
+                continue
+
+            content = self._load_branch_content(branch, ref, level)
+            if content:
+                ctx.sections.append(content)
+
+    def _strip_annotation(self, ref: str) -> str:
+        """Strip parenthetical annotation from a ref value.
+
+        'pm (mission + tools + rules)' → 'pm'
+        'conversation (MUST/MUST NOT)' → 'conversation'
+        'none (PM doesn't receive contributions)' → 'none'
+        """
+        if "(" in ref:
+            return ref[:ref.index("(")].strip()
+        return ref
 
     def _assemble_defaults(
         self,
