@@ -102,7 +102,7 @@ start_services() {
     echo "Starting services..."
 
     # Ensure Redis is up (LightRAG depends on it)
-    docker compose -f "$COMPOSE" up -d redis     sleep 2
+    docker compose -f "$COMPOSE" up -d redis && sleep 2
 
     # Start LightRAG
     docker compose -f "$COMPOSE" up -d lightrag

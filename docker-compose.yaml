@@ -149,6 +149,7 @@ services:
     volumes:
       - lightrag_storage:/app/data/rag_storage
       - ./data/lightrag/inputs:/app/data/inputs
+      - ./patches/lightrag/shared_storage.py:/app/lightrag/kg/shared_storage.py:ro
     environment:
       # Server
       WORKING_DIR: "/app/data/rag_storage"

@@ -217,8 +217,6 @@ bash scripts/setup-mc.sh --containers-only
 echo ""
 
 # Step 7a: Start LightRAG KB sync in background (independent of gateway/MC registration)
-# Uses --all: installs deps, waits for LightRAG health, full KB sync.
-# On fresh setup there's no sync state, so incremental (--sync) would find nothing.
 echo "=== Starting LightRAG KB Sync (background) ==="
 LIGHTRAG_LOG="$FLEET_DIR/.lightrag-sync.log"
 bash scripts/setup-lightrag.sh --all > "$LIGHTRAG_LOG" 2>&1 &
@@ -303,7 +301,9 @@ echo ""
 # Must be the LAST thing before the completion message — any delay >10min
 # causes MC to compute status as "offline".
 echo "=== Final Agent Sync ==="
+set -a
 source "$FLEET_DIR/.env" 2>/dev/null || true
+set +a
 if [[ -n "${LOCAL_AUTH_TOKEN:-}" ]]; then
     GW_ID=$(curl -sf -m 5 -H "Authorization: Bearer $LOCAL_AUTH_TOKEN" \
         http://localhost:8000/api/v1/gateways \
@@ -335,48 +335,63 @@ if [[ -n "${LIGHTRAG_PID:-}" ]] && kill -0 "$LIGHTRAG_PID" 2>/dev/null; then
     echo ""
 
     # Progress loop: show sync progress, check for user input
+    # Background: watch for user input, write to a temp file when received
     DETACHED=false
     NOTIFY=false
-    LAST_LINE=""
+    LAST_DISPLAY=""
+    INPUT_FLAG=$(mktemp)
+    rm -f "$INPUT_FLAG"
+    ( read -r line < /dev/tty 2>/dev/null; echo "$line" > "$INPUT_FLAG" ) &
+    INPUT_PID=$!
+
     while kill -0 "$LIGHTRAG_PID" 2>/dev/null; do
+        # Check for user input (non-blocking — just check if file appeared)
+        if [[ -f "$INPUT_FLAG" ]]; then
+            USER_INPUT=$(cat "$INPUT_FLAG" 2>/dev/null || true)
+            if [[ "$USER_INPUT" == "w" || "$USER_INPUT" == "W" ]]; then
+                NOTIFY=true
+            fi
+            DETACHED=true
+            break
+        fi
+
         if [[ -f "$LIGHTRAG_LOG" ]]; then
-            # Get the last meaningful line from the log
-            LINE=$(tail -1 "$LIGHTRAG_LOG" 2>/dev/null || true)
-            if [[ "$LINE" != "$LAST_LINE" && -n "$LINE" ]]; then
-                LAST_LINE="$LINE"
-                # Parse "    N/M (X ok, Y fail)" format
-                if [[ "$LINE" =~ ([0-9]+)/([0-9]+)\ \(([0-9]+)\ ok ]]; then
-                    CURRENT="${BASH_REMATCH[1]}"
-                    TOTAL="${BASH_REMATCH[2]}"
-                    OK="${BASH_REMATCH[3]}"
-                    if [[ "$TOTAL" -gt 0 ]]; then
-                        PCT=$(( CURRENT * 100 / TOTAL ))
-                        # Progress bar
-                        BAR_LEN=20
-                        FILLED=$(( PCT * BAR_LEN / 100 ))
-                        BAR=$(printf '%*s' "$FILLED" '' | tr ' ' '#')
-                        EMPTY=$(printf '%*s' $((BAR_LEN - FILLED)) '' | tr ' ' '-')
-                        printf "\r  [%s%s] %3d%% (%d/%d, %d ok)  " "$BAR" "$EMPTY" "$PCT" "$CURRENT" "$TOTAL" "$OK"
-                    fi
-                else
-                    # Show phase text (Installing, Syncing, etc)
-                    CLEAN=$(echo "$LINE" | sed 's/\x1b\[[0-9;]*m//g' | sed 's/^[[:space:]]*//')
-                    printf "\r  %-70s" "${CLEAN:0:70}"
+            # Find the last progress line "    N/M (X ok, Y fail)"
+            PROGRESS=$(grep -oP '\s+\d+/\d+ \(\d+ ok, \d+ fail\)' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || true)
+            # Find the current phase
+            PHASE=$(grep -oP '(Installing|Waiting|Syncing|Inserting|Verifying|Source entities|Source relationships|Entities done|Relationships done|Result:).*' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || true)
+
+            DISPLAY=""
+            if [[ "$PROGRESS" =~ ([0-9]+)/([0-9]+)\ \(([0-9]+)\ ok,\ ([0-9]+)\ fail ]]; then
+                CURRENT="${BASH_REMATCH[1]}"
+                TOTAL="${BASH_REMATCH[2]}"
+                OK="${BASH_REMATCH[3]}"
+                FAIL="${BASH_REMATCH[4]}"
+                if [[ "$TOTAL" -gt 0 ]]; then
+                    PCT=$(( CURRENT * 100 / TOTAL ))
+                    BAR_LEN=20
+                    FILLED=$(( PCT * BAR_LEN / 100 ))
+                    BAR=$(printf '%*s' "$FILLED" '' | tr ' ' '#')
+                    EMPTY=$(printf '%*s' $((BAR_LEN - FILLED)) '' | tr ' ' '-')
+                    DISPLAY=$(printf "[%s%s] %3d%% (%d/%d, %d ok, %d fail)" "$BAR" "$EMPTY" "$PCT" "$CURRENT" "$TOTAL" "$OK" "$FAIL")
                 fi
+            elif [[ -n "$PHASE" ]]; then
+                DISPLAY=$(echo "$PHASE" | sed 's/\x1b\[[0-9;]*m//g')
+                DISPLAY="${DISPLAY:0:60}"
+            fi
+
+            if [[ -n "$DISPLAY" && "$DISPLAY" != "$LAST_DISPLAY" ]]; then
+                LAST_DISPLAY="$DISPLAY"
+                printf "\r  %-72s" "$DISPLAY"
             fi
         fi
 
-        # Check for user input (non-blocking, 1s timeout)
-        if read -t 1 -r USER_INPUT 2>/dev/null; then
-            if [[ "$USER_INPUT" == "w" || "$USER_INPUT" == "W" ]]; then
-                NOTIFY=true
-                DETACHED=true
-            else
-                DETACHED=true
-            fi
-            break
-        fi
+        sleep 1
     done
+
+    # Cleanup
+    kill "$INPUT_PID" 2>/dev/null; wait "$INPUT_PID" 2>/dev/null || true
+    rm -f "$INPUT_FLAG"
     printf "\n"
 
     if [[ "$DETACHED" == true ]]; then

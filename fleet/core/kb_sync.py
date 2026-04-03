@@ -285,9 +285,48 @@ class LightRAGClient:
         except Exception:
             return False
 
+    def wait_healthy(self, max_wait: int = 60) -> bool:
+        """Wait for LightRAG to be healthy, with backoff."""
+        for i in range(max_wait // 3):
+            if self.health():
+                return True
+            time.sleep(3)
+        return False
+
+    def pending_locks(self) -> int:
+        """Check how many async locks are pending cleanup."""
+        try:
+            req = urllib.request.Request(f"{self.base_url}/health")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+                return data.get("keyed_locks", {}).get(
+                    "current_status", {}).get("pending_async_cleanup", 0)
+        except Exception:
+            return -1
+
+    def wait_locks_clear(self, threshold: int = 100, max_wait: int = 120) -> bool:
+        """Wait until pending locks drop below threshold."""
+        for i in range(max_wait // 5):
+            pending = self.pending_locks()
+            if 0 <= pending < threshold:
+                return True
+            logger.info("Waiting for locks to clear: %d pending", pending)
+            time.sleep(5)
+        return False
+
+    @staticmethod
+    def _sanitize_name(name: str) -> str:
+        """Sanitize entity names for LightRAG.
+
+        LightRAG hangs on entity names containing '/' or '.' — these
+        characters interfere with its internal keyed lock lookup.
+        Replace with '::' and ':' to preserve readability.
+        """
+        return name.upper().replace("/", "::").replace(".", ":")
+
     def create_entity(self, entity: Entity) -> tuple[bool, str]:
         payload = {
-            "entity_name": entity.name.upper(),
+            "entity_name": self._sanitize_name(entity.name),
             "entity_data": {
                 "entity_type": entity.entity_type,
                 "description": entity.description,
@@ -298,8 +337,8 @@ class LightRAGClient:
 
     def create_relationship(self, rel: Relationship) -> tuple[bool, str]:
         payload = {
-            "source_entity": rel.src.upper(),
-            "target_entity": rel.tgt.upper(),
+            "source_entity": self._sanitize_name(rel.src),
+            "target_entity": self._sanitize_name(rel.tgt),
             "relation_data": {
                 "description": rel.description,
                 "keywords": rel.rel_type,
@@ -309,26 +348,32 @@ class LightRAGClient:
         }
         return self._post("/graph/relation/create", payload)
 
-    def _post(self, endpoint: str, payload: dict) -> tuple[bool, str]:
+    def _post(self, endpoint: str, payload: dict, retries: int = 2) -> tuple[bool, str]:
         data = json.dumps(payload).encode()
-        req = urllib.request.Request(
-            f"{self.base_url}{endpoint}",
-            data=data,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                body = resp.read().decode()
-                return (resp.status < 300, body)
-        except urllib.error.HTTPError as e:
-            body = e.read().decode()[:200] if e.fp else str(e)
-            # "already exists" is not a failure — data is already in the graph
-            if e.code == 400 and "already exists" in body:
-                return (True, "exists")
-            return (False, f"HTTP {e.code}: {body}")
-        except Exception as e:
-            return (False, str(e))
+        for attempt in range(retries + 1):
+            req = urllib.request.Request(
+                f"{self.base_url}{endpoint}",
+                data=data,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    body = resp.read().decode()
+                    return (resp.status < 300, body)
+            except urllib.error.HTTPError as e:
+                body = e.read().decode()[:200] if e.fp else str(e)
+                if e.code == 400 and "already exists" in body:
+                    return (True, "exists")
+                if attempt < retries:
+                    continue
+                return (False, f"HTTP {e.code}: {body}")
+            except Exception as e:
+                if attempt < retries:
+                    # Timeout or connection error — wait for LightRAG to recover
+                    self.wait_healthy(max_wait=30)
+                    continue
+                return (False, str(e))
 
 
 # ── Sync engine ────────────────────────────────────────────────────
@@ -340,6 +385,27 @@ class KBGraphSync:
                  kb_dir: Path = KB_DIR):
         self.client = LightRAGClient(lightrag_url)
         self.kb_dir = kb_dir
+
+    def _restart_lightrag(self) -> None:
+        """Restart LightRAG container to clear accumulated async locks.
+
+        LightRAG leaks keyed async locks — each entity/relation create acquires
+        a lock that's never released. After ~1000 requests, response time degrades
+        from <1s to 5s+, eventually timing out. Restarting clears the lock table.
+        """
+        import subprocess
+        compose_file = FLEET_DIR / "docker-compose.yaml"
+        print("  Restarting LightRAG (clearing lock table)...", flush=True)
+        subprocess.run(
+            ["docker", "compose", "-f", str(compose_file), "restart", "lightrag"],
+            capture_output=True, timeout=30,
+        )
+        # Wait for it to be healthy
+        for _ in range(20):
+            if self.client.health():
+                return
+            time.sleep(2)
+        print("  WARN: LightRAG did not recover after restart", flush=True)
 
     def full_sync(self, include_sources: bool = True) -> SyncResult:
         """Sync all KB files + additional sources to graph."""
@@ -465,6 +531,7 @@ class KBGraphSync:
             if (i + 1) % 25 == 0 or i + 1 == len(entities):
                 print(f"    {i+1}/{len(entities)} ({result.entities_ok} ok, "
                       f"{result.entities_fail} fail)", flush=True)
+            time.sleep(0.1)
 
         print(f"  Entities done: {result.entities_ok} ok, "
               f"{result.entities_fail} fail", flush=True)
@@ -483,6 +550,7 @@ class KBGraphSync:
             if (i + 1) % 25 == 0 or i + 1 == len(relationships):
                 print(f"    {i+1}/{len(relationships)} ({result.relationships_ok} ok, "
                       f"{result.relationships_fail} fail)", flush=True)
+            time.sleep(0.1)
 
         print(f"  Relationships done: {result.relationships_ok} ok, "
               f"{result.relationships_fail} fail", flush=True)
@@ -657,6 +725,7 @@ class KBGraphSync:
             if (i + 1) % 25 == 0 or i + 1 == len(all_entities):
                 print(f"    {i+1}/{len(all_entities)} ({result.entities_ok} ok, "
                       f"{result.entities_fail} fail)", flush=True)
+            time.sleep(0.1)
         print(f"  Source entities done: {result.entities_ok} ok, "
               f"{result.entities_fail} fail", flush=True)
 
@@ -672,6 +741,7 @@ class KBGraphSync:
             if (i + 1) % 25 == 0 or i + 1 == len(all_relationships):
                 print(f"    {i+1}/{len(all_relationships)} ({result.relationships_ok} ok, "
                       f"{result.relationships_fail} fail)", flush=True)
+            time.sleep(0.1)
         print(f"  Source relationships done: {result.relationships_ok} ok, "
               f"{result.relationships_fail} fail", flush=True)
 
