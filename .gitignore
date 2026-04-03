@@ -41,3 +41,8 @@ agents/*/
 .fleet-sync-audit.jsonl
 # AICP state
 .aicp/
+# LightRAG runtime data (indexed content, graph storage)
+data/lightrag/*
+!data/lightrag/inputs/
+data/lightrag/inputs/*
+!data/lightrag/inputs/.gitkeep
