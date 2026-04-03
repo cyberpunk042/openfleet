@@ -63,7 +63,7 @@ verify_all() {
 
     # Pip packages
     source "$FLEET_DIR/.venv/bin/activate" 2>/dev/null || true
-    pip show daniel-lightrag-mcp &>/dev/null && check "daniel-lightrag-mcp" "ok" || check "daniel-lightrag-mcp" "fail"
+    uv pip show daniel-lightrag-mcp &>/dev/null && check "daniel-lightrag-mcp" "ok" || check "daniel-lightrag-mcp" "fail"
 
     # Docker
     command -v docker &>/dev/null && check "Docker installed" "ok" || check "Docker installed" "fail"

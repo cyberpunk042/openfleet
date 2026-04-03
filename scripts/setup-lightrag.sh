@@ -34,11 +34,11 @@ install_mcp_dependency() {
     fi
 
     # Install daniel-lightrag-mcp in fleet venv
-    if pip show daniel-lightrag-mcp &>/dev/null; then
+    if uv pip show daniel-lightrag-mcp &>/dev/null; then
         echo -e "  ${YELLOW}[skip]${NC} daniel-lightrag-mcp already installed"
     else
-        echo -e "  ${GREEN}[install]${NC} daniel-lightrag-mcp"
-        pip install daniel-lightrag-mcp 2>&1 | tail -1
+        echo -e "  ${GREEN}[install]${NC} daniel-lightrag-mcp (from GitHub)"
+        uv pip install --no-deps "git+https://github.com/desimpkins/daniel-lightrag-mcp.git" 2>&1 | tail -1
     fi
 }
 
@@ -93,7 +93,7 @@ verify() {
     echo "Verifying setup..."
 
     # Check MCP package
-    if pip show daniel-lightrag-mcp &>/dev/null; then
+    if uv pip show daniel-lightrag-mcp &>/dev/null; then
         echo -e "  ${GREEN}[✓]${NC} daniel-lightrag-mcp installed"
     else
         echo -e "  ${RED}[✗]${NC} daniel-lightrag-mcp NOT installed"

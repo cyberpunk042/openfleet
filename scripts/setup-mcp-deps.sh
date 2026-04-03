@@ -39,18 +39,26 @@ pip_install_if_missing() {
     local pkg="$1"
     local desc="$2"
 
-    if pip show "$pkg" &>/dev/null 2>&1; then
+    if uv pip show "$pkg" &>/dev/null 2>&1; then
         echo -e "  ${YELLOW}[skip]${NC} $pkg ($desc) — already installed"
     else
         echo -e "  ${GREEN}[install]${NC} $pkg ($desc)"
-        pip install "$pkg" 2>&1 | tail -1
+        uv pip install "$pkg" 2>&1 | tail -1
     fi
 }
 
 echo ""
 echo "MCP server pip packages:"
-pip_install_if_missing "daniel-lightrag-mcp" "LightRAG knowledge graph — 22 tools"
-pip_install_if_missing "pytest-mcp-server"   "Pytest test analysis — failures, coverage, traces"
+
+# daniel-lightrag-mcp is not on PyPI — install from GitHub
+if uv pip show daniel-lightrag-mcp &>/dev/null 2>&1; then
+    echo -e "  ${YELLOW}[skip]${NC} daniel-lightrag-mcp (LightRAG MCP) — already installed"
+else
+    echo -e "  ${GREEN}[install]${NC} daniel-lightrag-mcp (LightRAG MCP — from GitHub)"
+    uv pip install --no-deps "git+https://github.com/desimpkins/daniel-lightrag-mcp.git" 2>&1 | tail -1
+fi
+
+pip_install_if_missing "pytest-mcp"   "Pytest test analysis — failures, coverage, traces"
 
 # ── System packages (check only, don't install) ───────────────────
 
