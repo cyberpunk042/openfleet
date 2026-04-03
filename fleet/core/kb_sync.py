@@ -338,11 +338,20 @@ class KBGraphSync:
         self.client = LightRAGClient(lightrag_url)
         self.kb_dir = kb_dir
 
-    def full_sync(self) -> SyncResult:
-        """Sync all KB files to graph."""
+    def full_sync(self, include_sources: bool = True) -> SyncResult:
+        """Sync all KB files + additional sources to graph."""
         files = sorted(self.kb_dir.rglob("*.md"))
         logger.info("Full sync: %d KB files", len(files))
         result = self._sync_files(files)
+
+        if include_sources:
+            source_result = self._sync_sources()
+            result.entities_ok += source_result.entities_ok
+            result.entities_fail += source_result.entities_fail
+            result.relationships_ok += source_result.relationships_ok
+            result.relationships_fail += source_result.relationships_fail
+            result.files_processed += source_result.files_processed
+
         self._save_state()
         return result
 
@@ -477,6 +486,162 @@ class KBGraphSync:
 
         result.duration_seconds = time.time() - t0
         logger.info("Sync complete in %.1fs", result.duration_seconds)
+        return result
+
+    def _sync_sources(self) -> SyncResult:
+        """Parse and sync additional fleet sources (Python, YAML, Markdown, Agent templates)."""
+        from fleet.core.source_parsers import (
+            parse_python, parse_yaml_config, parse_markdown_doc, parse_agent_claude_md,
+        )
+
+        result = SyncResult()
+        all_entities = []
+        all_relationships = []
+        seen_entities = set()
+        seen_rels = set()
+
+        def _collect(ents, rels, source_type):
+            for e in ents:
+                if e.name.upper() not in seen_entities:
+                    all_entities.append(e)
+                    seen_entities.add(e.name.upper())
+            for r in rels:
+                key = (r.src.upper(), r.rel_type, r.tgt.upper())
+                if key not in seen_rels:
+                    all_relationships.append(r)
+                    seen_rels.add(key)
+                    if r.tgt.upper() not in seen_entities:
+                        all_entities.append(Entity(
+                            name=r.tgt, entity_type="reference",
+                            description=f"Referenced by {r.src}",
+                            source_file=source_type,
+                        ))
+                        seen_entities.add(r.tgt.upper())
+            result.files_processed += 1
+
+        # Python source files
+        python_files = [
+            "fleet/cli/orchestrator.py", "fleet/cli/dispatch.py",
+            "fleet/core/navigator.py", "fleet/core/kb_sync.py",
+            "fleet/core/preembed.py", "fleet/core/context_writer.py",
+            "fleet/core/role_providers.py", "fleet/core/doctor.py",
+            "fleet/core/storm_monitor.py", "fleet/core/methodology.py",
+            "fleet/core/models.py", "fleet/core/contributions.py",
+            "fleet/core/trail_recorder.py", "fleet/core/heartbeat_gate.py",
+            "fleet/core/session_manager.py", "fleet/core/backend_router.py",
+            "fleet/core/agent_lifecycle.py", "fleet/core/fleet_mode.py",
+            "fleet/mcp/tools.py", "fleet/mcp/server.py", "fleet/mcp/context.py",
+            "gateway/executor.py", "gateway/ws_server.py", "gateway/setup.py",
+        ]
+        print("  Parsing Python sources...", flush=True)
+        for rel_path in python_files:
+            filepath = FLEET_DIR / rel_path
+            if filepath.exists():
+                try:
+                    ents, rels = parse_python(filepath)
+                    _collect(ents, rels, "python")
+                except Exception as e:
+                    logger.warning("Skip %s: %s", rel_path, e)
+
+        # Config YAMLs
+        config_files = [
+            "config/agent-tooling.yaml", "config/agent-identities.yaml",
+            "config/agent-autonomy.yaml", "config/synergy-matrix.yaml",
+            "config/phases.yaml", "config/fleet.yaml",
+            "config/skill-assignments.yaml",
+        ]
+        print("  Parsing config YAMLs...", flush=True)
+        for rel_path in config_files:
+            filepath = FLEET_DIR / rel_path
+            if filepath.exists():
+                try:
+                    ents, rels = parse_yaml_config(filepath)
+                    _collect(ents, rels, "config")
+                except Exception as e:
+                    logger.warning("Skip %s: %s", rel_path, e)
+
+        # Manuals + system docs + research + design docs
+        doc_dirs = [
+            ("docs/knowledge-map", "*.md"),
+            ("docs/systems", "*.md"),
+            ("docs/milestones/active/research", "*.md"),
+        ]
+        print("  Parsing documentation...", flush=True)
+        for dir_path, pattern in doc_dirs:
+            full_dir = FLEET_DIR / dir_path
+            if full_dir.exists():
+                for filepath in sorted(full_dir.glob(pattern)):
+                    try:
+                        ents, rels = parse_markdown_doc(filepath)
+                        _collect(ents, rels, "docs")
+                    except Exception as e:
+                        logger.warning("Skip %s: %s", filepath.name, e)
+
+        # Key design docs
+        design_files = [
+            "docs/milestones/active/fleet-vision-architecture.md",
+            "docs/milestones/active/complete-roadmap.md",
+            "docs/milestones/active/ecosystem-deployment-plan.md",
+            "docs/milestones/active/budget-mode-system.md",
+        ]
+        for rel_path in design_files:
+            filepath = FLEET_DIR / rel_path
+            if filepath.exists():
+                try:
+                    ents, rels = parse_markdown_doc(filepath)
+                    _collect(ents, rels, "design")
+                except Exception as e:
+                    logger.warning("Skip %s: %s", rel_path, e)
+
+        # Agent CLAUDE.md templates
+        agent_dir = FLEET_DIR / "agents" / "_template" / "CLAUDE.md"
+        if agent_dir.exists():
+            print("  Parsing agent templates...", flush=True)
+            for filepath in sorted(agent_dir.glob("*.md")):
+                try:
+                    ents, rels = parse_agent_claude_md(filepath)
+                    _collect(ents, rels, "agent_template")
+                except Exception as e:
+                    logger.warning("Skip %s: %s", filepath.name, e)
+
+        logger.info("Sources parsed: %d entities, %d relationships from %d files",
+                     len(all_entities), len(all_relationships), result.files_processed)
+
+        # Insert
+        if not self.client.health():
+            logger.error("LightRAG not reachable")
+            return result
+
+        print(f"  Inserting {len(all_entities)} source entities...", flush=True)
+        for i, ent in enumerate(all_entities):
+            ok, msg = self.client.create_entity(ent)
+            if ok:
+                result.entities_ok += 1
+            else:
+                result.entities_fail += 1
+                if result.entities_fail <= 5:
+                    print(f"    FAIL entity [{ent.name}]: {msg[:100]}", flush=True)
+            if (i + 1) % 100 == 0:
+                print(f"    {i+1}/{len(all_entities)} ({result.entities_ok} ok, "
+                      f"{result.entities_fail} fail)", flush=True)
+        print(f"  Source entities done: {result.entities_ok} ok, "
+              f"{result.entities_fail} fail", flush=True)
+
+        print(f"  Inserting {len(all_relationships)} source relationships...", flush=True)
+        for i, rel in enumerate(all_relationships):
+            ok, msg = self.client.create_relationship(rel)
+            if ok:
+                result.relationships_ok += 1
+            else:
+                result.relationships_fail += 1
+                if result.relationships_fail <= 10:
+                    print(f"    FAIL rel [{rel.src} → {rel.tgt}]: {msg[:100]}", flush=True)
+            if (i + 1) % 200 == 0:
+                print(f"    {i+1}/{len(all_relationships)} ({result.relationships_ok} ok, "
+                      f"{result.relationships_fail} fail)", flush=True)
+        print(f"  Source relationships done: {result.relationships_ok} ok, "
+              f"{result.relationships_fail} fail", flush=True)
+
         return result
 
     def _find_changed(self) -> list[Path]:
