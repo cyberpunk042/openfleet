@@ -273,9 +273,12 @@ async def _refresh_agent_contexts(
     """
     try:
         from fleet.core.preembed import build_heartbeat_preembed, build_task_preembed
-        from fleet.core.context_writer import write_heartbeat_context, write_task_context
+        from fleet.core.context_writer import (
+            write_heartbeat_context, write_task_context, write_knowledge_context,
+        )
         from fleet.core.role_providers import get_role_provider
         from fleet.core.directives import parse_directives
+        from fleet.core.navigator import Navigator
 
         # Get messages and directives
         try:
@@ -367,6 +370,34 @@ async def _refresh_agent_contexts(
             if in_progress:
                 task_text = build_task_preembed(in_progress[0])
                 write_task_context(agent_name, task_text)
+
+            # Write knowledge context from navigator (autocomplete web)
+            try:
+                nav = Navigator()
+                current_task = in_progress[0] if in_progress else None
+                stage = (
+                    current_task.custom_fields.task_stage
+                    if current_task and current_task.custom_fields.task_stage
+                    else "heartbeat"
+                )
+                task_desc = (
+                    current_task.title
+                    if current_task
+                    else None
+                )
+                # Use backend_mode to determine model for profile selection
+                model = fleet_state_dict.get("backend_mode", "opus")
+                nav_ctx = nav.assemble(
+                    role=agent_name,
+                    stage=stage,
+                    model=model,
+                    task_context=task_desc,
+                )
+                rendered = nav_ctx.render()
+                if rendered.strip():
+                    write_knowledge_context(agent_name, rendered)
+            except Exception:
+                pass  # Navigator must not break context refresh
 
     except Exception:
         pass  # Context refresh must not break orchestrator cycle
