@@ -178,12 +178,14 @@ services:
       # Too small (600) = entities split across chunks = 0 relationships
       CHUNK_SIZE: "1000"
       CHUNK_OVERLAP_SIZE: "100"
-      # Gleaning: re-prompt for missed entities/relations (correct env var name)
-      MAX_GLEANING: "1"
-      # LLM output controls — CRITICAL for relationship extraction
-      # Without these, model runs out of output tokens before generating relationships
+      # Gleaning: 2 extra passes for missed entities/relations
+      MAX_GLEANING: "2"
+      # LLM output controls — CRITICAL for extraction quality
       OPENAI_LLM_MAX_TOKENS: "4096"
-      OPENAI_LLM_TEMPERATURE: "0.3"
+      # Temperature 0.0 = greedy decoding (deterministic). Was 0.3 which caused
+      # random output — same doc gave 32/0, 15/7, 21/21, 10/3 across runs.
+      # LightRAG sends this in API request, OVERRIDES model YAML temperature.
+      OPENAI_LLM_TEMPERATURE: "0.0"
       # Guard against context overflow during gleaning
       MAX_EXTRACT_INPUT_TOKENS: "6000"
       SUMMARY_LANGUAGE: "English"
