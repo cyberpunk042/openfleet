@@ -390,7 +390,8 @@ if [[ -n "${LIGHTRAG_PID:-}" ]] && kill -0 "$LIGHTRAG_PID" 2>/dev/null; then
     done
 
     # Cleanup
-    kill "$INPUT_PID" 2>/dev/null; wait "$INPUT_PID" 2>/dev/null || true
+    kill "$INPUT_PID" 2>/dev/null || true
+    wait "$INPUT_PID" 2>/dev/null || true
     rm -f "$INPUT_FLAG"
     printf "\n"
 
