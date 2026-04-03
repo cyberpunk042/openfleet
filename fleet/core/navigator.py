@@ -137,7 +137,7 @@ class Navigator:
 
         # 3. Assemble content per branch at the profile's depth
         if intent:
-            self._assemble_from_intent(ctx, intent, profile)
+            self._assemble_from_intent(ctx, intent, profile, role)
         else:
             # No specific intent — use profile defaults
             self._assemble_defaults(ctx, role, profile)
@@ -239,8 +239,21 @@ class Navigator:
         ctx: NavigatorContext,
         intent: Intent,
         profile: InjectionProfile,
+        role: str = "",
     ) -> None:
         """Assemble context from an intent's injection recipe."""
+        # Always inject agent manual if profile allows — even if intent doesn't list it
+        has_agent_manual = any(
+            isinstance(item, dict) and "agent_manual" in item
+            for item in intent.inject
+        )
+        if not has_agent_manual:
+            level = profile.levels.get("agent_manual", "none")
+            if level != "none":
+                content = self._load_agent_manual(role, level)
+                if content:
+                    ctx.sections.append(content)
+
         for item in intent.inject:
             if isinstance(item, str):
                 # Simple string reference — try to parse as "branch: ref"
@@ -334,6 +347,12 @@ class Navigator:
             return self._load_context_awareness(ref, level)
         elif branch == "trail":
             return self._load_trail(ref, level)
+        elif branch == "target_task":
+            return self._load_target_task(ref, level)
+        elif branch in ("fleet_state", "role_data", "directives", "messages",
+                         "tasks", "health", "challenge", "predefined_criteria"):
+            # Dynamic data — comes from fleet-context.md/task-context.md, not navigator
+            return None
 
         return None
 
@@ -713,6 +732,15 @@ class Navigator:
 
         # Default: hybrid
         return "hybrid"
+
+    def _load_target_task(self, ref, level: str) -> Optional[str]:
+        """Inject target task guidance for contribution intents."""
+        if level == "none":
+            return None
+        if isinstance(ref, str) and ref != "none":
+            return (f"**Target task:** Read the target task's full context with fleet_read_context "
+                    f"before contributing. Your contribution must address the task's specific needs.")
+        return None
 
     # ── Local graph traversal (cross-references.yaml) ───────────────
 
