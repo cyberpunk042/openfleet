@@ -171,16 +171,17 @@ class Navigator:
         """Find the intent for a role+stage combination."""
         intents = self._intent_map.get("intents", {})
 
-        # Try exact match: "architect-reasoning", "engineer-work"
         role_short = self._role_short(role)
+
+        # Try exact match: "architect-reasoning", "engineer-work"
         key = f"{role_short}-{stage}"
         if key in intents:
             return Intent(name=key, inject=intents[key].get("inject", []))
 
-        # Try role-only heartbeat: "fleet-ops-heartbeat"
-        key = f"{role_short}-heartbeat"
-        if stage == "heartbeat" and key in intents:
-            return Intent(name=key, inject=intents[key].get("inject", []))
+        # Try compound stages: "writer-heartbeat-autonomous"
+        for intent_key in intents:
+            if intent_key.startswith(f"{role_short}-") and stage in intent_key:
+                return Intent(name=intent_key, inject=intents[intent_key].get("inject", []))
 
         return None
 
@@ -381,30 +382,45 @@ class Navigator:
             return content
         return None
 
-    def _load_standards(self, ref: str, level: str) -> Optional[str]:
-        """Load standards manual section."""
+    def _load_standards(self, ref, level: str) -> Optional[str]:
+        """Load standards manual section — specific standards, not entire manual."""
         path = KNOWLEDGE_MAP_DIR / "standards-manual.md"
         if not path.exists():
             return None
         if level == "none":
             return None
+
         content = path.read_text()
-        if level == "full":
-            return content
-        # For required_fields level, extract just field lists
-        if level == "required_fields" and isinstance(ref, list):
-            sections = content.split("\n## ")
+        sections = content.split("\n## ")
+
+        # If ref is a list of specific standards, load only those
+        if isinstance(ref, list):
             results = []
             for standard in ref:
+                standard_clean = self._strip_annotation(str(standard)) if isinstance(standard, str) else str(standard)
                 for section in sections:
-                    if standard.lower() in section.lower().split("\n")[0].lower():
-                        results.append(f"## {section.split(chr(10))[0]}")
-                        # Extract just "- field:" lines
-                        for line in section.split("\n"):
-                            if line.strip().startswith("- ") and ":" in line:
-                                results.append(line)
+                    header = section.split("\n")[0].lower()
+                    if standard_clean.lower().replace("_", " ") in header or standard_clean.lower() in header:
+                        if level == "full":
+                            results.append(f"## {section.strip()}")
+                        elif level == "required_fields":
+                            results.append(f"## {section.split(chr(10))[0]}")
+                            for line in section.split("\n"):
+                                if line.strip().startswith("- ") and ":" in line:
+                                    results.append(line)
                         break
-            return "\n".join(results) if results else None
+            return "\n\n".join(results) if results else None
+
+        # If ref is a string (single standard or "full")
+        if isinstance(ref, str):
+            ref_clean = self._strip_annotation(ref)
+            if ref_clean == "full" or level == "full":
+                # Still don't load entire manual — load methodology-relevant sections
+                return None
+            for section in sections:
+                if ref_clean.lower() in section.lower().split("\n")[0].lower():
+                    return f"## {section.strip()}"
+
         return None
 
     def _load_skills(self, ref, level: str) -> Optional[str]:
