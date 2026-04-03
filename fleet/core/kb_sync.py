@@ -231,7 +231,7 @@ class LightRAGClient:
 
     def create_entity(self, entity: Entity) -> tuple[bool, str]:
         payload = {
-            "entity_name": entity.name,
+            "entity_name": entity.name.upper(),
             "entity_data": {
                 "entity_type": entity.entity_type,
                 "description": entity.description,
@@ -242,8 +242,8 @@ class LightRAGClient:
 
     def create_relationship(self, rel: Relationship) -> tuple[bool, str]:
         payload = {
-            "source_entity": rel.src,
-            "target_entity": rel.tgt,
+            "source_entity": rel.src.upper(),
+            "target_entity": rel.tgt.upper(),
             "relation_data": {
                 "description": rel.description,
                 "keywords": rel.rel_type,
