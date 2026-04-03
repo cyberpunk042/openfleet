@@ -4,9 +4,10 @@ The gateway reads files from agents/{name}/context/ and includes them
 in the agent's system prompt. This module writes pre-embed data to
 those files so agents have context before making any MCP call.
 
-Two context files:
+Three context files:
 - fleet-context.md: heartbeat pre-embed (fleet state, messages, role data)
 - task-context.md: task pre-embed (task details, stage, requirement)
+- knowledge-context.md: navigator output (knowledge map, graph, memory)
 """
 
 from __future__ import annotations
@@ -51,6 +52,23 @@ def write_task_context(agent_name: str, content: str) -> bool:
         True if written successfully.
     """
     return _write_context_file(agent_name, "task-context.md", content)
+
+
+def write_knowledge_context(agent_name: str, content: str) -> bool:
+    """Write navigator knowledge context to agent's context directory.
+
+    The navigator assembles this from the knowledge map, LightRAG graph,
+    and injection profiles. Contains role-specific, stage-specific,
+    model-appropriate knowledge for the agent's current work.
+
+    Args:
+        agent_name: The agent's directory name.
+        content: Navigator-assembled context.
+
+    Returns:
+        True if written successfully.
+    """
+    return _write_context_file(agent_name, "knowledge-context.md", content)
 
 
 def clear_task_context(agent_name: str) -> bool:
