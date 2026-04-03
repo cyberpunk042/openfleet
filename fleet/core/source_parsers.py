@@ -228,21 +228,82 @@ def parse_python(filepath: Path) -> tuple[list[Entity], list[Relationship]]:
             source_file=rel_path,
         ))
 
-    # Imports → IMPORTS relationships
+    # Imports → weighted relationships based on WHAT is imported
+    imported_names = {}  # track what names are imported from where
     for line in lines:
-        imp = _parse_import(line)
-        if imp and imp.startswith("fleet.") or (imp and imp.startswith("gateway.")):
-            imp_path = imp.replace(".", "/") + ".py"
+        line_stripped = line.strip()
+        imp_module = _parse_import(line_stripped)
+        if not imp_module:
+            continue
+        if not (imp_module.startswith("fleet.") or imp_module.startswith("gateway.")):
+            continue
+
+        imp_path = imp_module.replace(".", "/") + ".py"
+        imp_system = MODULE_SYSTEM_MAP.get(imp_path.replace(".py", ""), "")
+
+        # Extract what is imported: "from fleet.core.doctor import DoctorReport, run_doctor_cycle"
+        names = []
+        m = re.match(r"from [\w.]+ import (.+)", line_stripped)
+        if m:
+            names = [n.strip().split(" as ")[0] for n in m.group(1).split(",")]
+            for name in names:
+                imported_names[name.strip()] = imp_module
+
+        # Smart description based on what's imported
+        if names:
+            desc = f"{rel_path} imports {', '.join(names[:3])} from {imp_path}"
+        else:
+            desc = f"{rel_path} imports {imp_path}"
+        if imp_system:
+            desc += f" ({imp_system})"
+
+        # Weight: same-system imports = 0.5, cross-system = 1.0, orchestrator imports = 1.5
+        weight = 1.0
+        if system and imp_system and system == imp_system:
+            weight = 0.5  # internal dependency
+        elif "orchestrator" in rel_path.lower():
+            weight = 1.5  # orchestrator dependencies are critical
+
+        relationships.append(Relationship(
+            src=rel_path, tgt=imp_path,
+            rel_type="imports",
+            description=desc,
+            source_file=rel_path,
+            weight=weight,
+        ))
+
+    # Detect CALL PATTERNS — known orchestrator step functions, tool dispatches, etc.
+    call_patterns = {
+        r"run_doctor_cycle\(": ("runs", "fleet/core/doctor.py", "executes immune system check"),
+        r"StormMonitor\(\)\.evaluate": ("evaluates", "fleet/core/storm_monitor.py", "checks storm severity"),
+        r"write_heartbeat_context\(": ("writes", "fleet/core/context_writer.py", "writes heartbeat pre-embed"),
+        r"write_task_context\(": ("writes", "fleet/core/context_writer.py", "writes task pre-embed"),
+        r"write_knowledge_context\(": ("writes", "fleet/core/context_writer.py", "writes navigator output"),
+        r"Navigator\(\)": ("uses", "fleet/core/navigator.py", "assembles knowledge context"),
+        r"parse_directives\(": ("parses", "fleet/core/directives.py", "reads PO directives"),
+        r"check_gateway_duplication\(": ("checks", "fleet/core/gateway_guard.py", "detects gateway duplication"),
+        r"adapt_lesson\(": ("adapts", "fleet/core/teaching.py", "creates teaching lesson"),
+        r"FleetLifecycle\(": ("manages", "fleet/core/agent_lifecycle.py", "manages agent lifecycle"),
+        r"BudgetMonitor\(": ("monitors", "fleet/core/budget_monitor.py", "tracks budget"),
+        r"fleet_should_dispatch\(": ("gates", "fleet/core/fleet_mode.py", "checks dispatch eligibility"),
+        r"get_role_provider\(": ("loads", "fleet/core/role_providers.py", "loads role-specific data"),
+        r"build_heartbeat_preembed\(": ("builds", "fleet/core/preembed.py", "builds heartbeat context"),
+        r"build_task_preembed\(": ("builds", "fleet/core/preembed.py", "builds task context"),
+    }
+    for pattern, (verb, target, context) in call_patterns.items():
+        if re.search(pattern, text):
             relationships.append(Relationship(
-                src=rel_path, tgt=imp_path,
-                rel_type="imports",
-                description=f"{rel_path} imports {imp_path}",
+                src=rel_path, tgt=target,
+                rel_type=verb,
+                description=f"{rel_path} {verb} {target} — {context}",
                 source_file=rel_path,
+                weight=1.5,  # runtime call = high-value relationship
             ))
 
-    # Classes → DEFINES relationships
-    for match in re.finditer(r"^class (\w+)", text, re.MULTILINE):
+    # Classes → DEFINES with inheritance detection
+    for match in re.finditer(r"^class (\w+)(?:\(([^)]+)\))?:", text, re.MULTILINE):
         class_name = match.group(1)
+        bases = match.group(2)
         class_doc = _extract_class_doc(text, match.start())
         entities.append(Entity(
             name=f"{module_name}.{class_name}",
@@ -256,17 +317,42 @@ def parse_python(filepath: Path) -> tuple[list[Entity], list[Relationship]]:
             description=f"{rel_path} defines class {class_name}",
             source_file=rel_path,
         ))
+        # Inheritance
+        if bases:
+            for base in bases.split(","):
+                base = base.strip()
+                if base and base not in ("object",) and not base.startswith("("):
+                    # Resolve base class to full path if imported
+                    full_base = imported_names.get(base, base)
+                    relationships.append(Relationship(
+                        src=f"{module_name}.{class_name}", tgt=full_base,
+                        rel_type="extends",
+                        description=f"{class_name} extends {base}",
+                        source_file=rel_path,
+                        weight=1.2,
+                    ))
 
-    # Functions → DEFINES relationships (top-level and async)
-    for match in re.finditer(r"^(?:async )?def (\w+)\(", text, re.MULTILINE):
-        func_name = match.group(1)
-        if func_name.startswith("_") and func_name != "__init__":
-            continue  # skip private functions
+    # Public functions only — with meaningful descriptions
+    for match in re.finditer(r"^(async )?def (\w+)\(([^)]*)\)", text, re.MULTILINE):
+        is_async = bool(match.group(1))
+        func_name = match.group(2)
+        params = match.group(3)
+        if func_name.startswith("_"):
+            continue
         func_doc = _extract_func_doc(text, match.start())
+
+        desc = func_doc[:200] if func_doc else ""
+        if not desc:
+            # Build description from signature
+            param_names = [p.strip().split(":")[0].split("=")[0].strip()
+                          for p in params.split(",") if p.strip() and p.strip() != "self"]
+            prefix = "async " if is_async else ""
+            desc = f"{prefix}{func_name}({', '.join(param_names[:4])})"
+
         entities.append(Entity(
             name=f"{module_name}.{func_name}",
             entity_type="function",
-            description=func_doc[:200] if func_doc else f"Function {func_name} in {module_name}",
+            description=desc,
             source_file=rel_path,
         ))
         relationships.append(Relationship(
@@ -274,6 +360,86 @@ def parse_python(filepath: Path) -> tuple[list[Entity], list[Relationship]]:
             rel_type="defines",
             description=f"{rel_path} defines {func_name}",
             source_file=rel_path,
+        ))
+
+    return entities, relationships
+
+
+# ── SKILL.md Parser (AICP repo) ────────────────────────────────────
+
+AICP_SKILLS_DIR = FLEET_DIR.parent / "devops-expert-local-ai" / ".claude" / "skills"
+
+
+def parse_skill_md(filepath: Path) -> tuple[list[Entity], list[Relationship]]:
+    """Parse an AICP SKILL.md file for skill metadata and relationships."""
+    text = filepath.read_text(encoding="utf-8")
+    lines = text.split("\n")
+    skill_name = filepath.parent.name
+    rel_path = f"aicp:skills/{skill_name}/SKILL.md"
+
+    entities = []
+    relationships = []
+
+    # Extract frontmatter
+    description = ""
+    effort = ""
+    allowed_tools = []
+
+    in_frontmatter = False
+    for line in lines:
+        if line.strip() == "---":
+            in_frontmatter = not in_frontmatter
+            continue
+        if in_frontmatter:
+            if line.startswith("description:"):
+                description = line.split(":", 1)[1].strip()
+            elif line.startswith("effort:"):
+                effort = line.split(":", 1)[1].strip()
+            elif line.startswith("allowed-tools:"):
+                allowed_tools = [t.strip() for t in line.split(":", 1)[1].split(",")]
+
+    # Extract process steps for richer description
+    process = ""
+    in_process = False
+    for line in lines:
+        if re.match(r"^#{1,3}\s+Process", line):
+            in_process = True
+            continue
+        elif in_process and re.match(r"^#{1,3}\s+", line):
+            break
+        elif in_process and line.strip():
+            process += line.strip() + " "
+    if process:
+        description += " " + process[:200]
+
+    entities.append(Entity(
+        name=skill_name,
+        entity_type="skill",
+        description=f"{description.strip()[:400]} Effort: {effort}.",
+        source_file=rel_path,
+    ))
+
+    # Allowed tools → USES relationships
+    for tool in allowed_tools:
+        tool = tool.strip()
+        if tool and len(tool) > 1:
+            relationships.append(Relationship(
+                src=skill_name, tgt=tool,
+                rel_type="uses tool",
+                description=f"Skill {skill_name} uses {tool}",
+                source_file=rel_path,
+                weight=0.8,
+            ))
+
+    # Detect fleet tool references in the process
+    for m in re.finditer(r"\bfleet_(\w+)\b", text):
+        tool = f"fleet_{m.group(1)}"
+        relationships.append(Relationship(
+            src=skill_name, tgt=tool,
+            rel_type="calls",
+            description=f"Skill {skill_name} calls {tool}",
+            source_file=rel_path,
+            weight=1.0,
         ))
 
     return entities, relationships
@@ -452,60 +618,62 @@ def parse_markdown_doc(filepath: Path) -> tuple[list[Entity], list[Relationship]
         source_file=rel_path,
     ))
 
-    # Find references to known fleet entities in the text
-    # Systems: S01-S22, System XX
-    for m in re.finditer(r"S(\d{2})\b|System (\d{1,2})", text):
-        sys_num = m.group(1) or m.group(2)
-        relationships.append(Relationship(
-            src=title, tgt=f"S{sys_num.zfill(2)}",
-            rel_type="references",
-            description=f"{title} references system S{sys_num.zfill(2)}",
-            source_file=rel_path,
-        ))
+    # Systems: S01-S22 — high value references (weight 1.5)
+    seen_systems = set()
+    for m in re.finditer(r"S(\d{2})\b|System (\d{1,2})\b", text):
+        sys_num = (m.group(1) or m.group(2)).zfill(2)
+        if sys_num not in seen_systems:
+            seen_systems.add(sys_num)
+            relationships.append(Relationship(
+                src=title, tgt=f"S{sys_num}",
+                rel_type="references system",
+                description=f"{title} references system S{sys_num}",
+                source_file=rel_path,
+                weight=1.5,
+            ))
 
-    # Tools: fleet_xxx
+    # Tools: fleet_xxx — medium value (weight 1.0)
+    seen_tools = set()
     for m in re.finditer(r"\bfleet_(\w+)\b", text):
         tool_name = f"fleet_{m.group(1)}"
-        relationships.append(Relationship(
-            src=title, tgt=tool_name,
-            rel_type="references",
-            description=f"{title} references tool {tool_name}",
-            source_file=rel_path,
-        ))
+        if tool_name not in seen_tools:
+            seen_tools.add(tool_name)
+            relationships.append(Relationship(
+                src=title, tgt=tool_name,
+                rel_type="references tool",
+                description=f"{title} references tool {tool_name}",
+                source_file=rel_path,
+                weight=1.0,
+            ))
 
-    # Agents
+    # Agents — medium value (weight 1.0), only if mentioned substantively (3+ times)
     for agent in ["architect", "software-engineer", "qa-engineer", "devops",
                    "devsecops-expert", "fleet-ops", "project-manager",
                    "technical-writer", "ux-designer", "accountability-generator"]:
-        if agent in text.lower():
+        count = text.lower().count(agent)
+        if count >= 3:  # substantive mention, not just passing
             relationships.append(Relationship(
                 src=title, tgt=agent,
-                rel_type="references",
-                description=f"{title} references agent {agent}",
+                rel_type="discusses",
+                description=f"{title} discusses agent {agent} ({count} mentions)",
                 source_file=rel_path,
+                weight=min(1.0 + count * 0.1, 2.0),
             ))
 
-    # Commands: /xxx
-    for m in re.finditer(r"\B/(\w[\w-]+)\b", text):
-        cmd = f"/{m.group(1)}"
-        if len(cmd) > 3 and cmd not in ("/dev", "/var", "/tmp", "/usr", "/etc",
-                                         "/app", "/home", "/bin"):
-            relationships.append(Relationship(
-                src=title, tgt=cmd,
-                rel_type="references",
-                description=f"{title} references command {cmd}",
-                source_file=rel_path,
-            ))
-
-    # Modules: xxx.py
+    # Modules: xxx.py — low value (weight 0.5), skip common names
+    skip_modules = {"setup.py", "__init__.py", "conftest.py", "test.py",
+                    "main.py", "run.py", "manage.py", "wsgi.py"}
+    seen_modules = set()
     for m in re.finditer(r"\b(\w+\.py)\b", text):
         module = m.group(1)
-        if module not in ("setup.py", "__init__.py"):
+        if module not in skip_modules and module not in seen_modules:
+            seen_modules.add(module)
             relationships.append(Relationship(
                 src=title, tgt=module,
-                rel_type="references",
+                rel_type="references module",
                 description=f"{title} references module {module}",
                 source_file=rel_path,
+                weight=0.5,
             ))
 
     # Deduplicate relationships

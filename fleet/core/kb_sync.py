@@ -492,6 +492,7 @@ class KBGraphSync:
         """Parse and sync additional fleet sources (Python, YAML, Markdown, Agent templates)."""
         from fleet.core.source_parsers import (
             parse_python, parse_yaml_config, parse_markdown_doc, parse_agent_claude_md,
+            parse_skill_md, AICP_SKILLS_DIR,
         )
 
         result = SyncResult()
@@ -620,6 +621,18 @@ class KBGraphSync:
                     _collect(ents, rels, "agent_template")
                 except Exception as e:
                     logger.warning("Skip %s: %s", filepath.name, e)
+
+        # AICP SKILL.md files (78 skills from devops-expert-local-ai repo)
+        if AICP_SKILLS_DIR.exists():
+            print("  Parsing AICP skills...", flush=True)
+            for skill_dir in sorted(AICP_SKILLS_DIR.iterdir()):
+                skill_file = skill_dir / "SKILL.md"
+                if skill_file.exists():
+                    try:
+                        ents, rels = parse_skill_md(skill_file)
+                        _collect(ents, rels, "skill")
+                    except Exception as e:
+                        logger.warning("Skip %s: %s", skill_dir.name, e)
 
         logger.info("Sources parsed: %d entities, %d relationships from %d files",
                      len(all_entities), len(all_relationships), result.files_processed)
