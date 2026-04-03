@@ -2,74 +2,114 @@
 
 **Type:** Infrastructure Component (Fleet Module)
 **Source:** fleet/core/navigator.py
-**Status:** Initial implementation
+**Tests:** 22 passing (tests/test_navigator.py)
+**Status:** Production-ready — wired into orchestrator, all 26 intents working
 
 ## What the Navigator Is
 
-The navigator is the brain of the autocomplete web. It reads the knowledge map metadata (intent-map.yaml, injection-profiles.yaml) and assembles focused context for each agent based on their role, current stage, task, and model capacity.
+The brain of the autocomplete web. Reads the knowledge map metadata (intent-map.yaml, injection-profiles.yaml), selects content at the right depth for the model, queries the LightRAG graph for task-relevant context, and assembles focused output that fits within the gateway's 8000 char limit.
 
 It answers one question: **"What does THIS agent need to know RIGHT NOW?"**
 
 ## How It Works
 
 ```
-Navigator.assemble(role, stage, task, model)
+Navigator.assemble(role, stage, model, task_context)
 │
 ├── 1. Select injection profile (model → depth tier)
-│   opus-1m: full (50K tokens)
-│   sonnet-200k: condensed (15K tokens)
-│   localai-8k: minimal (2K tokens)
-│   heartbeat: none (1K tokens, from fleet-context.md)
+│   opus-1m:    full (50K budget, ~7.5K actual)
+│   sonnet-200k: condensed (15K budget, ~3K actual)
+│   localai-8k:  minimal (2K budget, ~500 actual)
+│   heartbeat:   none (content from fleet-context.md only)
 │
 ├── 2. Find intent (role × stage → injection recipe)
-│   intent-map.yaml: "architect-reasoning" →
-│     inject: agent_manual, methodology, skills, commands, tools, mcp
+│   26 intents defined in intent-map.yaml
+│   e.g. "architect-reasoning" → agent_manual, methodology,
+│        skills [architecture-propose, writing-plans, brainstorming],
+│        commands [/plan, /branch, /effort], tools [fleet_task_accept]
 │
 ├── 3. Load content per branch at profile depth
-│   full: read KB entries, complete manual sections
-│   condensed: key concepts, first paragraphs
-│   minimal: names only, one-line summaries
-│   none: skip
+│   agent_manual:     full section / 10 lines / 1 line
+│   methodology:      full stage (ALWAYS full — never compressed)
+│   skills:           purpose descriptions / names only
+│   commands:         what-it-does + guidance / key list
+│   tools:            purpose line / names
+│   standards:        specific standards only (not entire manual)
+│   contributions:    status pointer
+│   trail:            verification reminder
+│   context_awareness: compact/usage guidance
+│   mcp:              server descriptions
 │
 ├── 4. Query LightRAG graph (if task context provided)
-│   hybrid mode: entities + relationships relevant to task
-│   budget: ~25% of profile's total budget
+│   Mode selection per context:
+│     review/audit → mix (comprehensive, all sources)
+│     security → mix
+│     design/architecture → global (relationship-focused)
+│     specific systems/tools → local (entity-focused)
+│     default → hybrid (entities + relationships)
+│   Budget: ~25% of profile total
 │
-└── Output: NavigatorContext → render() → context string
-    Written to: agents/{name}/context/knowledge-context.md
-    Gateway reads it alongside fleet-context.md and task-context.md
+├── 5. Enforce gateway limit (7500 chars → fits in 8000 per file)
+│   Trims from end (lowest priority) preserving:
+│     agent manual + methodology (highest) over
+│     graph context + notes (lowest)
+│
+└── Output: NavigatorContext → render() → knowledge-context.md
+    Written via context_writer.write_knowledge_context()
+    Gateway reads alongside fleet-context.md and task-context.md
 ```
 
-## Three Context Files (After Navigator)
+## Performance
 
-| File | Written By | Contains |
-|------|-----------|----------|
-| fleet-context.md | orchestrator (Step 0) | Fleet state, messages, role data, events |
-| task-context.md | orchestrator (dispatch) | Task details, stage, requirement, contributions |
-| knowledge-context.md | navigator | Knowledge map content, graph context, skill/command guidance |
+- **File caching:** _read_file() caches all KB/manual reads across cycles
+- **Singleton:** One Navigator instance per orchestrator lifetime
+- **reload():** Clears cache on demand (e.g., after KB update)
+- **26 intents tested:** All produce correct content at all depth tiers
+
+## Verified Output
+
+| Role / Stage | Opus | Sonnet | LocalAI |
+|-------------|------|--------|---------|
+| architect / reasoning | 5,615 chars (5 sections) | 3,069 chars (5 sections) | ~500 chars |
+| engineer / work | 7,521 chars (4 sections) | ~3,500 chars | 514 chars |
+| fleet-ops / review | 3,484 chars (6 sections) | ~2,000 chars | ~50 chars |
+| PM / reasoning | 5,942 chars (5 sections) | ~3,000 chars | ~500 chars |
+| devsecops / investigation | 5,252 chars (4 sections) | ~2,500 chars | ~50 chars |
+
+## Three Context Files
+
+| File | Written By | Contains | Limit |
+|------|-----------|----------|-------|
+| fleet-context.md | orchestrator Step 0 | Fleet state, messages, role data, events | 8000 chars |
+| knowledge-context.md | navigator | Knowledge map, skills, commands, methodology, graph | 8000 chars |
+| task-context.md | orchestrator dispatch | Task details, stage, requirement, contributions | 8000 chars |
+
+Gateway reads ALL three in sorted order, injected into agent's system prompt as layers 6-7 of the 8-layer onion.
 
 ## The Autocomplete Effect
 
 The navigator structures context so the agent's natural continuation IS correct behavior:
 
-- Architect in REASONING stage → sees architecture-propose skill, /plan command, brainstorming skill, "do NOT implement yet" note
-- Engineer in WORK stage → sees feature-implement skill, /debug command, contribution inputs from architect/QA/devsecops, test requirements
-- Fleet-ops in REVIEW → sees 7-step review protocol, /diff and /pr-comments commands, trail verification instructions
+- Architect in REASONING → sees /plan command, brainstorming skill, "do NOT implement yet"
+- Engineer in WORK → sees /debug command, TDD skill, contribution inputs, test requirements
+- Fleet-ops in REVIEW → sees 7-step protocol, trail verification, contribution checking
+- DevOps in WORK → sees IaC note, /loop command, Docker foundation skill
+- Writer in WORK → sees "documentation is a LIVING SYSTEM" note
 
-The agent doesn't choose to follow the methodology — the methodology IS the context. The right answer is the obvious continuation.
+The agent doesn't choose to follow the methodology — the methodology IS the context.
 
 ## Relationships
 
-- READS: intent-map.yaml (role × stage → injection recipe)
-- READS: injection-profiles.yaml (model → depth tier)
-- READS: cross-references.yaml (system → module → tool → agent mappings)
-- READS: KB entries (docs/knowledge-map/kb/ — all branches)
-- READS: manuals (agent-manuals.md, methodology-manual.md, standards-manual.md, module-manuals.md)
-- QUERIES: LightRAG (port 9621 — hybrid graph queries for task context)
-- WRITES TO: context_writer.py → knowledge-context.md
-- CALLED BY: orchestrator Step 0 (context refresh cycle)
-- CONNECTS TO: preembed.py (navigator augments pre-embed with knowledge content)
-- CONNECTS TO: InstructionsLoaded hook (future — navigator could inject via hook)
-- CONNECTS TO: gateway (reads context files → injects into agent session)
-- CONNECTS TO: 8-layer onion (knowledge-context.md adds to fleet-context layer)
-- IS: the autocomplete web — the module that turns static knowledge into dynamic context
+- READS: intent-map.yaml (26 intents: role × stage → injection recipe)
+- READS: injection-profiles.yaml (4 tiers: opus-1m, sonnet-200k, localai-8k, heartbeat)
+- READS: KB entries (198 entries across 11 branches)
+- READS: manuals (agent-manuals.md, methodology-manual.md, standards-manual.md)
+- QUERIES: LightRAG (port 9621 — context-aware mode selection)
+- WRITES: knowledge-context.md via context_writer.write_knowledge_context()
+- CALLED BY: orchestrator Step 0 (_refresh_agent_contexts, every cycle)
+- ENFORCES: 8000 char gateway limit (trims from lowest priority)
+- CACHES: all file reads across orchestrator cycles
+- CONNECTS TO: gateway executor.py + ws_server.py (reads context/ files)
+- CONNECTS TO: 8-layer onion (knowledge-context.md is part of layer 6-7)
+- CONNECTS TO: preembed.py (navigator augments pre-embed with knowledge)
+- IS: the autocomplete web — static knowledge → dynamic, focused, adaptive context
