@@ -326,15 +326,100 @@ print(next(g['id'] for g in items if 'OCF' in g.get('name','') or 'OpenClaw' in 
 fi
 echo ""
 
-# Step 17: Wait for background LightRAG sync
-if [[ -n "${LIGHTRAG_PID:-}" ]]; then
-    echo "=== Waiting for LightRAG Sync ==="
-    if wait "$LIGHTRAG_PID" 2>/dev/null; then
-        echo "  LightRAG sync complete"
+# Step 17: Wait for background LightRAG sync with progress
+if [[ -n "${LIGHTRAG_PID:-}" ]] && kill -0 "$LIGHTRAG_PID" 2>/dev/null; then
+    echo "=== LightRAG KB Sync ==="
+    echo ""
+    echo "  Press ENTER to detach (sync continues in background)"
+    echo "  Type 'w' + ENTER to detach and get notified when done"
+    echo ""
+
+    # Progress loop: show sync progress, check for user input
+    DETACHED=false
+    NOTIFY=false
+    while kill -0 "$LIGHTRAG_PID" 2>/dev/null; do
+        # Parse progress from log
+        if [[ -f "$LIGHTRAG_LOG" ]]; then
+            # Count entities/relationships done so far
+            ENTITIES_DONE=$(grep -c '    [0-9]*/[0-9]* (' "$LIGHTRAG_LOG" 2>/dev/null || echo 0)
+            ENTITIES_TOTAL=$(grep -oP '\d+(?= entities)' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || echo "?")
+            RELS_DONE=$(grep -c 'relationship' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || echo 0)
+            PHASE=$(grep -oP '(Installing|Waiting|Syncing|Inserting|Verifying|Source entities|Source relationships).*' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || echo "starting...")
+            # Get last progress line like "    5/219 (5 ok, 0 fail)"
+            PROGRESS_LINE=$(grep -oP '    \d+/\d+ \(\d+ ok' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || true)
+            if [[ -n "$PROGRESS_LINE" ]]; then
+                CURRENT=$(echo "$PROGRESS_LINE" | grep -oP '^\s*\K\d+')
+                TOTAL=$(echo "$PROGRESS_LINE" | grep -oP '/\K\d+')
+                if [[ -n "$TOTAL" && "$TOTAL" -gt 0 ]]; then
+                    PCT=$(( CURRENT * 100 / TOTAL ))
+                    printf "\r  [%3d%%] %d/%d — %s" "$PCT" "$CURRENT" "$TOTAL" "${PHASE:0:50}"
+                else
+                    printf "\r  %s" "${PHASE:0:60}"
+                fi
+            else
+                printf "\r  %s" "${PHASE:0:60}"
+            fi
+            # Clear rest of line
+            printf "%-20s" ""
+        fi
+
+        # Check for user input (non-blocking, 2s timeout)
+        if read -t 2 -r USER_INPUT 2>/dev/null; then
+            if [[ "$USER_INPUT" == "w" || "$USER_INPUT" == "W" ]]; then
+                NOTIFY=true
+                DETACHED=true
+            else
+                DETACHED=true
+            fi
+            break
+        fi
+    done
+    printf "\n"
+
+    if [[ "$DETACHED" == true ]]; then
+        echo "  Detached — sync continues in background (PID: $LIGHTRAG_PID)"
+        echo "  Log: tail -f $LIGHTRAG_LOG"
+        if [[ "$NOTIFY" == true ]]; then
+            # Spawn a notifier that waits for the sync and pings the user
+            (
+                wait "$LIGHTRAG_PID" 2>/dev/null
+                EXIT_CODE=$?
+                RESULT=$(grep 'Result:' "$LIGHTRAG_LOG" 2>/dev/null | tail -1 || echo "check .lightrag-sync.log")
+                if [[ "$EXIT_CODE" -eq 0 ]]; then
+                    MSG="LightRAG sync complete: $RESULT"
+                else
+                    MSG="LightRAG sync FAILED (exit $EXIT_CODE). Check .lightrag-sync.log"
+                fi
+                # Bell + message to terminal
+                printf '\a\n\033[1;32m>>> %s\033[0m\n' "$MSG" > /dev/tty 2>/dev/null || true
+                # ntfy notification if available
+                curl -sf -d "$MSG" "http://localhost:8091/fleet" >/dev/null 2>&1 || true
+            ) &
+            disown
+            echo "  You'll be notified when it's done"
+        fi
     else
-        echo "  WARN: LightRAG sync failed (check .lightrag-sync.log)"
+        # Sync finished while we were watching
+        wait "$LIGHTRAG_PID" 2>/dev/null
+        EXIT_CODE=$?
+        if [[ "$EXIT_CODE" -eq 0 ]]; then
+            echo "  LightRAG sync complete"
+        else
+            echo "  WARN: LightRAG sync failed (exit $EXIT_CODE, check .lightrag-sync.log)"
+        fi
+        tail -3 "$LIGHTRAG_LOG" 2>/dev/null | sed 's/^/  /'
     fi
-    # Show summary
+    echo ""
+elif [[ -n "${LIGHTRAG_PID:-}" ]]; then
+    # Already finished before we got here
+    wait "$LIGHTRAG_PID" 2>/dev/null
+    EXIT_CODE=$?
+    echo "=== LightRAG KB Sync ==="
+    if [[ "$EXIT_CODE" -eq 0 ]]; then
+        echo "  Complete"
+    else
+        echo "  WARN: Failed (exit $EXIT_CODE)"
+    fi
     tail -3 "$LIGHTRAG_LOG" 2>/dev/null | sed 's/^/  /'
     echo ""
 fi
