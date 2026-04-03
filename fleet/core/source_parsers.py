@@ -48,42 +48,149 @@ FLEET_DIR = Path(__file__).parent.parent.parent
 
 # Map module paths to known systems
 MODULE_SYSTEM_MAP = {
-    "fleet/cli/orchestrator": "System 07: Orchestrator",
-    "fleet/cli/dispatch": "System 07: Orchestrator",
+    # S01 Methodology
     "fleet/core/methodology": "System 01: Methodology",
+    "fleet/core/stage_context": "System 01: Methodology",
+    "fleet/core/phases": "System 01: Methodology",
+    "fleet/core/plane_methodology": "System 01: Methodology",
+    # S02 Immune System
     "fleet/core/doctor": "System 02: Immune System",
+    "fleet/core/behavioral_security": "System 02: Immune System",
+    "fleet/core/self_healing": "System 02: Immune System",
+    # S03 Teaching
     "fleet/core/teaching": "System 03: Teaching",
+    # S04 Event Bus
     "fleet/core/events": "System 04: Event Bus",
     "fleet/core/event_chain": "System 04: Event Bus",
+    "fleet/core/event_router": "System 04: Event Bus",
+    "fleet/core/event_display": "System 04: Event Bus",
+    # S05 Control Surface
     "fleet/core/fleet_mode": "System 05: Control Surface",
     "fleet/core/directives": "System 05: Control Surface",
+    "fleet/core/config_watcher": "System 05: Control Surface",
+    "fleet/core/config_sync": "System 05: Control Surface",
+    # S06 Agent Lifecycle
     "fleet/core/agent_lifecycle": "System 06: Agent Lifecycle",
     "fleet/core/agent_roles": "System 06: Agent Lifecycle",
     "fleet/core/heartbeat_gate": "System 06: Agent Lifecycle",
+    "fleet/core/heartbeat_stamp": "System 06: Agent Lifecycle",
+    "fleet/core/heartbeat_context": "System 06: Agent Lifecycle",
+    "fleet/core/memory_structure": "System 06: Agent Lifecycle",
+    # S07 Orchestrator
+    "fleet/cli/orchestrator": "System 07: Orchestrator",
+    "fleet/cli/dispatch": "System 07: Orchestrator",
+    "fleet/core/driver": "System 07: Orchestrator",
+    "fleet/core/change_detector": "System 07: Orchestrator",
+    "fleet/core/gateway_guard": "System 07: Orchestrator",
+    "fleet/core/task_lifecycle": "System 07: Orchestrator",
+    "fleet/core/task_scoring": "System 07: Orchestrator",
+    "fleet/core/review_gates": "System 07: Orchestrator",
+    # S08 MCP Tools
     "fleet/mcp/tools": "System 08: MCP Tools",
     "fleet/mcp/server": "System 08: MCP Tools",
+    "fleet/mcp/context": "System 08: MCP Tools",
+    # S09 Standards
     "fleet/core/standards": "System 09: Standards",
+    "fleet/core/plan_quality": "System 09: Standards",
+    "fleet/core/pr_hygiene": "System 09: Standards",
+    # S10 Transpose
     "fleet/core/transpose": "System 10: Transpose",
+    "fleet/core/artifact_tracker": "System 10: Transpose",
+    # S11 Storm Prevention
     "fleet/core/storm_monitor": "System 11: Storm Prevention",
+    "fleet/core/storm_integration": "System 11: Storm Prevention",
+    "fleet/core/storm_analytics": "System 11: Storm Prevention",
+    "fleet/core/incident_report": "System 11: Storm Prevention",
+    "fleet/core/outage_detector": "System 11: Storm Prevention",
+    # S12 Budget
     "fleet/core/budget_monitor": "System 12: Budget",
     "fleet/core/budget_modes": "System 12: Budget",
+    "fleet/core/budget_analytics": "System 12: Budget",
+    "fleet/core/budget_ui": "System 12: Budget",
+    # S13 Labor Attribution
     "fleet/core/labor": "System 13: Labor Attribution",
+    "fleet/core/labor_stamp": "System 13: Labor Attribution",
+    "fleet/core/labor_analytics": "System 13: Labor Attribution",
     "fleet/core/trail_recorder": "System 13: Labor Attribution",
+    # S14 Multi-Backend Router
     "fleet/core/backend_router": "System 14: Multi-Backend Router",
+    "fleet/core/backend_health": "System 14: Multi-Backend Router",
+    "fleet/core/model_swap": "System 14: Multi-Backend Router",
+    "fleet/core/model_selection": "System 14: Multi-Backend Router",
+    "fleet/core/model_configs": "System 14: Multi-Backend Router",
+    "fleet/core/model_promotion": "System 14: Multi-Backend Router",
+    "fleet/core/model_benchmark": "System 14: Multi-Backend Router",
+    "fleet/core/routing": "System 14: Multi-Backend Router",
+    "fleet/core/shadow_routing": "System 14: Multi-Backend Router",
+    "fleet/core/router_unification": "System 14: Multi-Backend Router",
+    "fleet/core/openai_client": "System 14: Multi-Backend Router",
+    "fleet/core/turboquant": "System 14: Multi-Backend Router",
+    # S15 Challenge
     "fleet/core/challenge": "System 15: Challenge",
     "fleet/core/challenge_protocol": "System 15: Challenge",
+    "fleet/core/challenge_automated": "System 15: Challenge",
+    "fleet/core/challenge_cross_model": "System 15: Challenge",
+    "fleet/core/challenge_scenario": "System 15: Challenge",
+    "fleet/core/challenge_analytics": "System 15: Challenge",
+    "fleet/core/challenge_deferred": "System 15: Challenge",
+    "fleet/core/challenge_readiness": "System 15: Challenge",
+    "fleet/core/codex_review": "System 15: Challenge",
+    # S16 Models
     "fleet/core/models": "System 16: Models",
+    # S17 Plane Integration
     "fleet/core/plane_sync": "System 17: Plane Integration",
+    "fleet/core/plane_watcher": "System 17: Plane Integration",
+    # S18 Notifications
     "fleet/core/notification_router": "System 18: Notifications",
+    "fleet/core/cross_refs": "System 18: Notifications",
+    "fleet/core/urls": "System 18: Notifications",
+    # S19 Session & Context
     "fleet/core/session_manager": "System 19: Session & Context",
+    "fleet/core/session_telemetry": "System 19: Session & Context",
+    "fleet/core/session_metrics": "System 19: Session & Context",
     "fleet/core/preembed": "System 19: Session & Context",
     "fleet/core/context_writer": "System 19: Session & Context",
+    "fleet/core/context_assembly": "System 19: Session & Context",
+    # S20 Infrastructure
+    "fleet/core/auth": "System 20: Infrastructure",
+    "fleet/core/cache": "System 20: Infrastructure",
+    "fleet/core/federation": "System 20: Infrastructure",
+    "fleet/core/interfaces": "System 20: Infrastructure",
+    "fleet/core/cluster_peering": "System 20: Infrastructure",
+    "fleet/core/dual_gpu": "System 20: Infrastructure",
+    "fleet/core/health": "System 20: Infrastructure",
+    "fleet/core/error_reporter": "System 20: Infrastructure",
+    "fleet/infra/config_loader": "System 20: Infrastructure",
+    "fleet/infra/mc_client": "System 20: Infrastructure",
+    "fleet/infra/irc_client": "System 20: Infrastructure",
+    # S21 Agent Tooling
+    "fleet/core/skill_enforcement": "System 21: Agent Tooling",
+    # S22 Agent Intelligence
     "fleet/core/navigator": "System 22: Agent Intelligence",
+    "fleet/core/autocomplete": "System 22: Agent Intelligence",
+    "fleet/core/smart_chains": "System 22: Agent Intelligence",
+    "fleet/core/chain_runner": "System 22: Agent Intelligence",
+    # Knowledge Map Infrastructure
     "fleet/core/kb_sync": "Knowledge Map Infrastructure",
+    "fleet/core/source_parsers": "Knowledge Map Infrastructure",
+    "fleet/core/graph_enrichment": "Knowledge Map Infrastructure",
+    # Contribution System
     "fleet/core/contributions": "Contribution System",
+    # Gateway
     "gateway/executor": "Gateway",
     "gateway/ws_server": "Gateway",
     "gateway/setup": "Gateway",
+    "gateway/server": "Gateway",
+    "gateway/operations": "Gateway",
+    "gateway/models": "Gateway",
+    # Watchers
+    "fleet/core/remote_watcher": "System 07: Orchestrator",
+    "fleet/core/ocmc_watcher": "System 07: Orchestrator",
+    "fleet/core/board_cleanup": "System 07: Orchestrator",
+    # Velocity / Progression
+    "fleet/core/velocity": "System 07: Orchestrator",
+    "fleet/core/tier_progression": "System 06: Agent Lifecycle",
+    "fleet/core/role_providers": "System 19: Session & Context",
 }
 
 

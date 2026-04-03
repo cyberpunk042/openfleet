@@ -519,87 +519,104 @@ class KBGraphSync:
                         seen_entities.add(r.tgt.upper())
             result.files_processed += 1
 
-        # Python source files
-        python_files = [
-            "fleet/cli/orchestrator.py", "fleet/cli/dispatch.py",
-            "fleet/core/navigator.py", "fleet/core/kb_sync.py",
-            "fleet/core/preembed.py", "fleet/core/context_writer.py",
-            "fleet/core/role_providers.py", "fleet/core/doctor.py",
-            "fleet/core/storm_monitor.py", "fleet/core/methodology.py",
-            "fleet/core/models.py", "fleet/core/contributions.py",
-            "fleet/core/trail_recorder.py", "fleet/core/heartbeat_gate.py",
-            "fleet/core/session_manager.py", "fleet/core/backend_router.py",
-            "fleet/core/agent_lifecycle.py", "fleet/core/fleet_mode.py",
-            "fleet/mcp/tools.py", "fleet/mcp/server.py", "fleet/mcp/context.py",
-            "gateway/executor.py", "gateway/ws_server.py", "gateway/setup.py",
-        ]
-        print("  Parsing Python sources...", flush=True)
-        for rel_path in python_files:
-            filepath = FLEET_DIR / rel_path
-            if filepath.exists():
-                try:
-                    ents, rels = parse_python(filepath)
-                    _collect(ents, rels, "python")
-                except Exception as e:
-                    logger.warning("Skip %s: %s", rel_path, e)
+        # ALL Python source files (fleet/, gateway/)
+        print("  Parsing ALL Python sources...", flush=True)
+        for py_dir in ["fleet/core", "fleet/cli", "fleet/mcp", "fleet/infra", "gateway"]:
+            full_dir = FLEET_DIR / py_dir
+            if full_dir.exists():
+                for filepath in sorted(full_dir.glob("*.py")):
+                    if filepath.name == "__init__.py":
+                        continue
+                    try:
+                        ents, rels = parse_python(filepath)
+                        _collect(ents, rels, "python")
+                    except Exception as e:
+                        logger.warning("Skip %s: %s", filepath.name, e)
 
-        # Config YAMLs
-        config_files = [
-            "config/agent-tooling.yaml", "config/agent-identities.yaml",
-            "config/agent-autonomy.yaml", "config/synergy-matrix.yaml",
-            "config/phases.yaml", "config/fleet.yaml",
-            "config/skill-assignments.yaml",
-        ]
-        print("  Parsing config YAMLs...", flush=True)
-        for rel_path in config_files:
-            filepath = FLEET_DIR / rel_path
-            if filepath.exists():
+        # ALL config YAMLs
+        print("  Parsing ALL config YAMLs...", flush=True)
+        config_dir = FLEET_DIR / "config"
+        if config_dir.exists():
+            for filepath in sorted(config_dir.glob("*.yaml")):
                 try:
                     ents, rels = parse_yaml_config(filepath)
                     _collect(ents, rels, "config")
                 except Exception as e:
-                    logger.warning("Skip %s: %s", rel_path, e)
+                    logger.warning("Skip %s: %s", filepath.name, e)
 
-        # Manuals + system docs + research + design docs
+        # ALL documentation: manuals, system docs, research, cross-refs
         doc_dirs = [
-            ("docs/knowledge-map", "*.md"),
-            ("docs/systems", "*.md"),
-            ("docs/milestones/active/research", "*.md"),
+            "docs/knowledge-map",
+            "docs/systems",
+            "docs/milestones/active/research",
         ]
         print("  Parsing documentation...", flush=True)
-        for dir_path, pattern in doc_dirs:
+        for dir_path in doc_dirs:
             full_dir = FLEET_DIR / dir_path
             if full_dir.exists():
-                for filepath in sorted(full_dir.glob(pattern)):
+                for filepath in sorted(full_dir.glob("*.md")):
                     try:
                         ents, rels = parse_markdown_doc(filepath)
                         _collect(ents, rels, "docs")
                     except Exception as e:
                         logger.warning("Skip %s: %s", filepath.name, e)
+        # cross-references.yaml
+        crossref = FLEET_DIR / "docs" / "knowledge-map" / "cross-references.yaml"
+        if crossref.exists():
+            try:
+                ents, rels = parse_markdown_doc(crossref)
+                _collect(ents, rels, "docs")
+            except Exception:
+                pass
 
-        # Key design docs
-        design_files = [
-            "docs/milestones/active/fleet-vision-architecture.md",
-            "docs/milestones/active/complete-roadmap.md",
-            "docs/milestones/active/ecosystem-deployment-plan.md",
-            "docs/milestones/active/budget-mode-system.md",
-        ]
-        for rel_path in design_files:
-            filepath = FLEET_DIR / rel_path
-            if filepath.exists():
+        # ALL design docs
+        print("  Parsing ALL design docs...", flush=True)
+        design_dir = FLEET_DIR / "docs" / "milestones" / "active"
+        if design_dir.exists():
+            for filepath in sorted(design_dir.glob("*.md")):
                 try:
                     ents, rels = parse_markdown_doc(filepath)
                     _collect(ents, rels, "design")
                 except Exception as e:
-                    logger.warning("Skip %s: %s", rel_path, e)
+                    logger.warning("Skip %s: %s", filepath.name, e)
 
-        # Agent CLAUDE.md templates
-        agent_dir = FLEET_DIR / "agents" / "_template" / "CLAUDE.md"
-        if agent_dir.exists():
+        # ALL fleet-elevation design docs
+        print("  Parsing fleet-elevation docs...", flush=True)
+        for elev_dir in sorted((FLEET_DIR / "docs").rglob("fleet-elevation*")):
+            if elev_dir.is_dir():
+                for filepath in sorted(elev_dir.glob("*.md")):
+                    try:
+                        ents, rels = parse_markdown_doc(filepath)
+                        _collect(ents, rels, "design")
+                    except Exception as e:
+                        logger.warning("Skip %s: %s", filepath.name, e)
+
+        # ALL plans
+        plans_dir = FLEET_DIR / "docs" / "milestones" / "active" / "plans"
+        if plans_dir.exists():
+            for filepath in sorted(plans_dir.glob("*.md")):
+                try:
+                    ents, rels = parse_markdown_doc(filepath)
+                    _collect(ents, rels, "design")
+                except Exception as e:
+                    logger.warning("Skip %s: %s", filepath.name, e)
+
+        # ALL agent CLAUDE.md templates
+        agent_template_dir = FLEET_DIR / "agents" / "_template" / "CLAUDE.md"
+        if agent_template_dir.exists():
             print("  Parsing agent templates...", flush=True)
-            for filepath in sorted(agent_dir.glob("*.md")):
+            for filepath in sorted(agent_template_dir.glob("*.md")):
                 try:
                     ents, rels = parse_agent_claude_md(filepath)
+                    _collect(ents, rels, "agent_template")
+                except Exception as e:
+                    logger.warning("Skip %s: %s", filepath.name, e)
+        # Other agent template files
+        agent_tmpl = FLEET_DIR / "agents" / "_template"
+        if agent_tmpl.exists():
+            for filepath in sorted(agent_tmpl.glob("*.md")):
+                try:
+                    ents, rels = parse_markdown_doc(filepath)
                     _collect(ents, rels, "agent_template")
                 except Exception as e:
                     logger.warning("Skip %s: %s", filepath.name, e)
