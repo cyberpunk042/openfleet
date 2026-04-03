@@ -217,17 +217,13 @@ bash scripts/setup-mc.sh --containers-only
 echo ""
 
 # Step 7a: Start LightRAG KB sync in background (independent of gateway/MC registration)
-# Requires: LightRAG container (started in step 7), LocalAI (external)
+# Uses --all: installs deps, waits for LightRAG health, full KB sync.
+# On fresh setup there's no sync state, so incremental (--sync) would find nothing.
 echo "=== Starting LightRAG KB Sync (background) ==="
 LIGHTRAG_LOG="$FLEET_DIR/.lightrag-sync.log"
-if curl -sf http://localhost:9621/health >/dev/null 2>&1; then
-    bash scripts/setup-lightrag.sh --sync > "$LIGHTRAG_LOG" 2>&1 &
-    LIGHTRAG_PID=$!
-    echo "  LightRAG sync started (PID: $LIGHTRAG_PID, log: .lightrag-sync.log)"
-else
-    echo "  SKIP: LightRAG not healthy (run manually: bash scripts/setup-lightrag.sh)"
-    LIGHTRAG_PID=""
-fi
+bash scripts/setup-lightrag.sh --all > "$LIGHTRAG_LOG" 2>&1 &
+LIGHTRAG_PID=$!
+echo "  LightRAG sync started (PID: $LIGHTRAG_PID, log: .lightrag-sync.log)"
 echo ""
 
 # Step 7b: Start the fleet gateway (MC containers are up, health check passes)
