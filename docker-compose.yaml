@@ -135,6 +135,9 @@ services:
     image: ghcr.io/hkuds/lightrag:latest
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      - tei
+      - redis
     ports:
       - "127.0.0.1:${LIGHTRAG_PORT:-9621}:9621"
     volumes:
