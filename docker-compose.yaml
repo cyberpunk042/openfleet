@@ -120,14 +120,20 @@ services:
 
   tei:
     image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.9
-    command: --model-id nomic-ai/nomic-embed-text-v1.5 --port 8080
+    command: --model-id nomic-ai/nomic-embed-text-v1.5 --port 8085
     ports:
-      - "127.0.0.1:${TEI_PORT:-8085}:8080"
+      - "127.0.0.1:${TEI_PORT:-8085}:8085"
     volumes:
       - tei_models:/data
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "cat < /dev/tcp/localhost/8085 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
 
   # --- Knowledge Graph (LightRAG) ---
 
@@ -136,8 +142,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - tei
-      - redis
+      tei:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "127.0.0.1:${LIGHTRAG_PORT:-9621}:9621"
     volumes:
@@ -162,7 +170,7 @@ services:
       # Embeddings — TEI dedicated embedding server (faster, no contention with LLM)
       EMBEDDING_BINDING: openai
       EMBEDDING_MODEL: ${LIGHTRAG_EMBEDDING_MODEL:-nomic-ai/nomic-embed-text-v1.5}
-      EMBEDDING_BINDING_HOST: ${LIGHTRAG_EMBEDDING_HOST:-http://tei:8080/v1}
+      EMBEDDING_BINDING_HOST: ${LIGHTRAG_EMBEDDING_HOST:-http://tei:8085/v1}
       EMBEDDING_BINDING_API_KEY: ${LIGHTRAG_EMBEDDING_API_KEY:-dummy}
       EMBEDDING_DIM: ${LIGHTRAG_EMBEDDING_DIM:-768}
 
