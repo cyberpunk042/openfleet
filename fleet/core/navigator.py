@@ -154,7 +154,13 @@ class Navigator:
             if graph_context:
                 ctx.sections.append(graph_context)
 
-        # 6. Enforce gateway character limit (8000 chars per context file)
+        # 6. Query claude-mem for agent-specific memory
+        if profile.name in ("opus-1m", "sonnet-200k") and stage != "heartbeat":
+            mem_context = self._query_agent_memory(role, task_context, profile)
+            if mem_context:
+                ctx.sections.append(mem_context)
+
+        # 7. Enforce gateway character limit (8000 chars per context file)
         self._enforce_limit(ctx, max_chars=7500)  # margin for separators + gateway overhead
 
         return ctx
@@ -732,6 +738,87 @@ class Navigator:
 
         # Default: hybrid
         return "hybrid"
+
+    # ── Claude-mem agent memory ─────────────────────────────────────
+
+    # Agent → claude-mem port mapping (must match setup-claude-mem.sh)
+    _AGENT_MEM_PORTS = {
+        "architect": 37771,
+        "software-engineer": 37772,
+        "qa-engineer": 37773,
+        "devops": 37774,
+        "devsecops-expert": 37775,
+        "fleet-ops": 37776,
+        "project-manager": 37777,
+        "technical-writer": 37778,
+        "ux-designer": 37779,
+        "accountability-generator": 37780,
+    }
+
+    def _query_agent_memory(
+        self,
+        role: str,
+        task_context: Optional[str],
+        profile: InjectionProfile,
+    ) -> Optional[str]:
+        """Query claude-mem for agent-specific past observations.
+
+        Each agent has a claude-mem worker on a unique port. The navigator
+        queries for recent relevant observations — patterns learned,
+        decisions made, gotchas encountered in past sessions.
+
+        This is Layer 3 of the three-layer knowledge pipeline:
+        Layer 1: Knowledge map (static)
+        Layer 2: LightRAG (graph)
+        Layer 3: Claude-mem (per-agent memory) ← this
+        """
+        port = self._AGENT_MEM_PORTS.get(role)
+        if not port:
+            return None
+
+        try:
+            import urllib.request
+            import json
+
+            # Query recent observations for this agent
+            params = f"limit=5&project=openclaw-fleet"
+            if task_context:
+                # Search by task keywords
+                keywords = "+".join(
+                    w for w in task_context.split()[:5]
+                    if len(w) > 3
+                )
+                if keywords:
+                    params += f"&query={keywords}"
+
+            url = f"http://127.0.0.1:{port}/api/observations?{params}"
+            req = urllib.request.Request(url, method="GET")
+
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode())
+
+                observations = data if isinstance(data, list) else data.get("observations", [])
+                if not observations:
+                    return None
+
+                lines = ["## Agent Memory (past sessions)"]
+                for obs in observations[:5]:
+                    title = obs.get("title", "")
+                    obs_type = obs.get("type", "")
+                    narrative = obs.get("narrative", "")
+                    if title:
+                        entry = f"- **[{obs_type}]** {title}"
+                        if narrative and profile.name == "opus-1m":
+                            entry += f": {narrative[:150]}"
+                        lines.append(entry)
+
+                if len(lines) > 1:
+                    return "\n".join(lines)
+
+        except Exception as e:
+            logger.debug("Claude-mem query skipped for %s (not running): %s", role, e)
+
+        return None
 
     def _load_target_task(self, ref, level: str) -> Optional[str]:
         """Inject target task guidance for contribution intents."""
