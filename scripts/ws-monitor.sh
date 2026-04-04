@@ -12,6 +12,7 @@ set -euo pipefail
 # Ctrl+C to stop.
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
 
 AGENT_FILTER=""
 LIST_ONLY=false
@@ -51,7 +52,7 @@ def now():
     return datetime.now().strftime('%H:%M:%S')
 
 async def monitor():
-    with open('$HOME/.openclaw/openclaw.json') as f:
+    with open('$VENDOR_CONFIG_FILE') as f:
         cfg = json.load(f)
     oc_token = cfg.get('gateway', {}).get('auth', {}).get('token', '')
 
@@ -63,7 +64,7 @@ async def monitor():
             'params': {
                 'minProtocol': 3, 'maxProtocol': 3, 'role': 'operator',
                 'scopes': ['operator.read', 'operator.admin'],
-                'client': {'id': 'openclaw-control-ui', 'version': '1.0.0', 'platform': 'python', 'mode': 'ui'},
+                'client': {'id': '${VENDOR_CLI}-control-ui', 'version': '1.0.0', 'platform': 'python', 'mode': 'ui'},
                 'auth': {'token': oc_token},
             },
         }))

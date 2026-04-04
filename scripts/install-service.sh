@@ -10,6 +10,7 @@ set -euo pipefail
 # To use as a system service, run with sudo and adjust paths.
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
 TEMPLATE="$FLEET_DIR/systemd/openclaw-fleet-gateway.service.template"
 
 if [[ ! -f "$TEMPLATE" ]]; then
@@ -18,16 +19,16 @@ if [[ ! -f "$TEMPLATE" ]]; then
 fi
 
 # Resolve paths for this machine
-OPENCLAW_BIN=$(command -v openclaw 2>/dev/null || echo "")
-if [[ -z "$OPENCLAW_BIN" ]]; then
-    echo "ERROR: openclaw not found in PATH" >&2
+VENDOR_BIN=$(command -v "$VENDOR_CLI" 2>/dev/null || echo "")
+if [[ -z "$VENDOR_BIN" ]]; then
+    echo "ERROR: $VENDOR_NAME not found in PATH" >&2
     exit 1
 fi
-OPENCLAW_BIN_DIR=$(dirname "$OPENCLAW_BIN")
+VENDOR_BIN_DIR=$(dirname "$VENDOR_BIN")
 
 echo "=== Installing OpenClaw Fleet Service ==="
 echo "  Fleet dir:    $FLEET_DIR"
-echo "  OpenClaw bin: $OPENCLAW_BIN"
+echo "  $VENDOR_NAME bin: $VENDOR_BIN"
 echo "  User:         $USER"
 echo "  Home:         $HOME"
 
@@ -38,8 +39,8 @@ SERVICE_FILE="$SERVICE_DIR/openclaw-fleet-gateway.service"
 
 sed \
     -e "s|{{FLEET_DIR}}|$FLEET_DIR|g" \
-    -e "s|{{OPENCLAW_BIN_DIR}}|$OPENCLAW_BIN_DIR|g" \
-    -e "s|{{OPENCLAW_BIN}}|$OPENCLAW_BIN|g" \
+    -e "s|{{VENDOR_BIN_DIR}}|$VENDOR_BIN_DIR|g" \
+    -e "s|{{VENDOR_BIN}}|$VENDOR_BIN|g" \
     -e "s|{{HOME}}|$HOME|g" \
     "$TEMPLATE" > "$SERVICE_FILE"
 

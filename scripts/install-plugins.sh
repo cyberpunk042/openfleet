@@ -10,6 +10,7 @@
 set -euo pipefail
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
 AGENTS_DIR="$FLEET_DIR/agents"
 CONFIG="$FLEET_DIR/config/agent-tooling.yaml"
 
@@ -59,12 +60,12 @@ for mp in "${MARKETPLACES[@]}"; do
             echo -e "  ${GREEN}[added]${NC} $mp (claude)" || \
             echo -e "  ${RED}[error]${NC} $mp (claude): failed to add"
     fi
-    # Register in OpenClaw
-    if command -v openclaw &>/dev/null; then
-        openclaw plugins marketplace list "$mp" --json >/dev/null 2>&1 && \
-            echo -e "  ${YELLOW}[skip]${NC} $mp (openclaw)" || {
-            openclaw plugins install "marketplace:$mp" 2>/dev/null && \
-                echo -e "  ${GREEN}[added]${NC} $mp (openclaw)" || true
+    # Register in gateway vendor
+    if [[ -n "$VENDOR_CLI" ]]; then
+        $VENDOR_CLI plugins marketplace list "$mp" --json >/dev/null 2>&1 && \
+            echo -e "  ${YELLOW}[skip]${NC} $mp ($VENDOR_CLI)" || {
+        $VENDOR_CLI plugins install "marketplace:$mp" 2>/dev/null && \
+            echo -e "  ${GREEN}[added]${NC} $mp ($VENDOR_CLI)" || true
         }
     fi
 done
