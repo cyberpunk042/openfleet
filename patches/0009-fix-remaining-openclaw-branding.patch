@@ -1,0 +1,36 @@
+diff --git a/frontend/src/app/layout.tsx b/frontend/src/app/layout.tsx
+--- a/frontend/src/app/layout.tsx
++++ b/frontend/src/app/layout.tsx
+@@ -10,7 +10,7 @@
+ import { GlobalLoader } from "@/components/ui/global-loader";
+
+ export const metadata: Metadata = {
+-  title: "OpenClaw Mission Control",
++  title: "Mission Control",
+   description: "A calm command center for every task.",
+ };
+
+diff --git a/frontend/src/components/molecules/HeroCopy.tsx b/frontend/src/components/molecules/HeroCopy.tsx
+--- a/frontend/src/components/molecules/HeroCopy.tsx
++++ b/frontend/src/components/molecules/HeroCopy.tsx
+@@ -3,7 +3,7 @@
+ export function HeroCopy() {
+   return (
+     <div className="space-y-6">
+-      <HeroKicker>OpenClaw Mission Control</HeroKicker>
++      <HeroKicker>Mission Control</HeroKicker>
+       <div className="space-y-4">
+         <h1 className="font-heading text-4xl font-semibold leading-tight text-strong sm:text-5xl lg:text-6xl">
+           Command autonomous work.
+diff --git a/frontend/src/components/organisms/LandingHero.tsx b/frontend/src/components/organisms/LandingHero.tsx
+--- a/frontend/src/components/organisms/LandingHero.tsx
++++ b/frontend/src/components/organisms/LandingHero.tsx
+@@ -34,7 +34,7 @@
+     <>
+       <section className="hero">
+         <div className="hero-content">
+-          <div className="hero-label">OpenClaw Mission Control</div>
++          <div className="hero-label">Mission Control</div>
+           <h1>
+             Command <span className="hero-highlight">autonomous work.</span>
+             <br />
