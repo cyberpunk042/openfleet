@@ -12,6 +12,23 @@ from typing import Optional
 
 import yaml
 
+
+def resolve_vendor_config() -> str:
+    """Resolve vendor config path (~/.openarms or ~/.openclaw)."""
+    openarms = os.path.expanduser("~/.openarms/openarms.json")
+    if os.path.exists(openarms):
+        return openarms
+    return os.path.expanduser("~/.openclaw/openclaw.json")
+
+
+def resolve_vendor_env() -> str:
+    """Resolve vendor env path (~/.openarms/.env or ~/.openclaw/.env)."""
+    openarms = os.path.expanduser("~/.openarms/.env")
+    if os.path.exists(openarms):
+        return openarms
+    return os.path.expanduser("~/.openclaw/.env")
+
+
 from fleet.core.interfaces import ConfigLoader as ConfigLoaderInterface
 from fleet.core.models import Project
 

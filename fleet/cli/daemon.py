@@ -16,6 +16,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from fleet.infra.config_loader import resolve_vendor_config, resolve_vendor_env
 from fleet.cli.sync import _run_sync
 from fleet.cli.quality import _run_quality
 from fleet.cli.orchestrator import run_orchestrator_daemon
@@ -46,7 +47,7 @@ async def _run_monitor_daemon(interval: int = 300) -> None:
     env = loader.load_env()
     token = env.get("LOCAL_AUTH_TOKEN", "")
 
-    oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    oc_path = resolve_vendor_config()
     gateway_token = ""
     if os.path.exists(oc_path):
         with open(oc_path) as f:
@@ -211,7 +212,8 @@ async def _run_auth_daemon(interval: int = 120) -> None:
                 updated = refresh_token()
                 if updated:
                     ts = datetime.now().strftime("%H:%M:%S")
-                    print(f"[{ts}] [auth] Token rotated — refreshed in ~/.openclaw/.env")
+                    env_path = resolve_vendor_env()
+                    print(f"[{ts}] [auth] Token rotated — refreshed in {env_path}")
 
                     # Only restart gateway if MC is UP.
                     # If MC is down, fleet is OFF — don't restart gateway

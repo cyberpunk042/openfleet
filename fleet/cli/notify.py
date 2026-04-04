@@ -12,6 +12,7 @@ import json
 import os
 import sys
 
+from fleet.infra.config_loader import resolve_vendor_config
 from fleet.infra.irc_client import IRCClient
 from fleet.templates.irc import format_event
 
@@ -19,7 +20,7 @@ from fleet.templates.irc import format_event
 async def _run_notify(args: list[str]) -> int:
     """Send an IRC notification."""
     # Load gateway token
-    oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    oc_path = resolve_vendor_config()
     gateway_token = ""
     if os.path.exists(oc_path):
         with open(oc_path) as f:

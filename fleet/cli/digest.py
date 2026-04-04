@@ -11,7 +11,7 @@ import os
 import sys
 from datetime import datetime, timezone, timedelta
 
-from fleet.infra.config_loader import ConfigLoader
+from fleet.infra.config_loader import ConfigLoader, resolve_vendor_config
 from fleet.infra.irc_client import IRCClient
 from fleet.infra.mc_client import MCClient
 from fleet.templates.irc import format_digest_summary
@@ -109,7 +109,7 @@ async def _run_digest(dry_run: bool = False) -> int:
 
     # Post summary to IRC
     import json
-    oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    oc_path = resolve_vendor_config()
     gateway_token = ""
     if os.path.exists(oc_path):
         with open(oc_path) as f:

@@ -12,7 +12,7 @@ from typing import Optional
 
 from fleet.core.models import Project
 from fleet.core.urls import UrlResolver
-from fleet.infra.config_loader import ConfigLoader
+from fleet.infra.config_loader import ConfigLoader, resolve_vendor_config
 from fleet.infra.gh_client import GHClient
 from fleet.infra.irc_client import IRCClient
 from fleet.infra.mc_client import MCClient
@@ -117,7 +117,7 @@ class FleetMCPContext:
             url_templates = self.config.load_url_templates()
             # Read gateway token from openclaw.json
             import json
-            oc_config_path = os.path.expanduser("~/.openclaw/openclaw.json")
+            oc_config_path = resolve_vendor_config()
             gateway_token = ""
             if os.path.exists(oc_config_path):
                 with open(oc_config_path) as f:

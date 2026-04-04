@@ -15,7 +15,7 @@ from pathlib import Path
 
 import websockets
 
-from fleet.infra.config_loader import ConfigLoader
+from fleet.infra.config_loader import ConfigLoader, resolve_vendor_config
 from fleet.infra.irc_client import IRCClient
 from fleet.infra.mc_client import MCClient
 from fleet.templates.irc import format_event
@@ -147,9 +147,7 @@ async def _run_dispatch(
         return 1
 
     # Notify IRC
-    oc_path = os.path.expanduser("~/.openarms/openarms.json")
-    if not os.path.exists(oc_path):
-        oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    oc_path = resolve_vendor_config()
     gateway_token = ""
     if os.path.exists(oc_path):
         with open(oc_path) as f:
@@ -366,7 +364,7 @@ def _build_message(task, task_id, board_id, project, work_dir, agent_name) -> st
 
 async def _send_chat(session_key: str, message: str) -> tuple[bool, str]:
     """Send message via gateway chat.send."""
-    oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    oc_path = resolve_vendor_config()
     with open(oc_path) as f:
         cfg = json.load(f)
     oc_token = cfg.get("gateway", {}).get("auth", {}).get("token", "")

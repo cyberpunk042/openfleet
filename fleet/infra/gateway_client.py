@@ -16,6 +16,8 @@ import os
 import uuid
 from typing import Optional
 
+from fleet.infra.config_loader import resolve_vendor_config
+
 logger = logging.getLogger(__name__)
 
 # Default gateway WebSocket URL
@@ -43,7 +45,7 @@ async def _gateway_rpc(
         logger.error("websockets package not installed")
         return False, {"error": "websockets not installed"}
 
-    oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    oc_path = resolve_vendor_config()
     try:
         with open(oc_path) as f:
             cfg = json.load(f)

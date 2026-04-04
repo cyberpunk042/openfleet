@@ -2,7 +2,7 @@
 
 Handles Claude Code OAuth token rotation automatically.
 The token rotates periodically and must be updated in
-~/.openclaw/.env for the gateway to authenticate with Anthropic.
+the vendor env file for the gateway to authenticate with Anthropic.
 """
 
 from __future__ import annotations
@@ -11,6 +11,8 @@ import json
 import os
 from pathlib import Path
 from typing import Optional
+
+from fleet.infra.config_loader import resolve_vendor_env
 
 
 def get_current_claude_token() -> Optional[str]:
@@ -27,8 +29,8 @@ def get_current_claude_token() -> Optional[str]:
 
 
 def get_stored_token() -> Optional[str]:
-    """Get the token currently stored in ~/.openclaw/.env."""
-    env_path = Path.home() / ".openclaw" / ".env"
+    """Get the token currently stored in the vendor env file."""
+    env_path = Path(resolve_vendor_env())
     if not env_path.exists():
         return None
     try:
@@ -62,7 +64,7 @@ def refresh_token() -> bool:
     if current == stored:
         return False
 
-    env_path = Path.home() / ".openclaw" / ".env"
+    env_path = Path(resolve_vendor_env())
     env_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Preserve other env vars

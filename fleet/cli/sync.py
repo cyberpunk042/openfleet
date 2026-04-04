@@ -11,7 +11,7 @@ import os
 import shutil
 import sys
 
-from fleet.infra.config_loader import ConfigLoader
+from fleet.infra.config_loader import ConfigLoader, resolve_vendor_config
 from fleet.infra.gh_client import GHClient
 from fleet.infra.irc_client import IRCClient
 from fleet.infra.mc_client import MCClient
@@ -44,7 +44,7 @@ async def _run_sync() -> int:
     # Load IRC client
     import json
     gateway_token = ""
-    oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    oc_path = resolve_vendor_config()
     if os.path.exists(oc_path):
         with open(oc_path) as f:
             oc_cfg = json.load(f)

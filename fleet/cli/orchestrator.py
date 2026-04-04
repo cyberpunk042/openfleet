@@ -25,7 +25,7 @@ from fleet.core.agent_lifecycle import AgentStatus, FleetLifecycle
 from fleet.core.change_detector import ChangeDetector
 from fleet.core.models import Approval, Task, TaskStatus
 from fleet.core.notification_router import NotificationRouter
-from fleet.infra.config_loader import ConfigLoader
+from fleet.infra.config_loader import ConfigLoader, resolve_vendor_config
 from fleet.infra.irc_client import IRCClient
 from fleet.infra.mc_client import MCClient
 
@@ -1282,7 +1282,7 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
     config = _load_orchestrator_config(loader)
     dry_run = config.get("dry_run", False)
 
-    oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    oc_path = resolve_vendor_config()
     gateway_token = ""
     if os.path.exists(oc_path):
         with open(oc_path) as f:
