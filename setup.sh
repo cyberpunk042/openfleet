@@ -239,12 +239,21 @@ echo "=== Starting Mission Control Containers ==="
 bash scripts/setup-mc.sh --containers-only
 echo ""
 
-# Step 7a: Start LightRAG KB sync in background (independent of gateway/MC registration)
-echo "=== Starting LightRAG KB Sync (background) ==="
+# Step 7a: Start LightRAG KB sync in background (if LocalAI is available)
+# LightRAG needs LocalAI for embeddings (nomic-embed). Every entity/relationship
+# create calls the embedding model. Without LocalAI, all creates fail with HTTP 500.
+echo "=== LightRAG KB Sync ==="
 LIGHTRAG_LOG="$FLEET_DIR/.lightrag-sync.log"
-bash scripts/setup-lightrag.sh --all > "$LIGHTRAG_LOG" 2>&1 &
-LIGHTRAG_PID=$!
-echo "  LightRAG sync started (PID: $LIGHTRAG_PID, log: .lightrag-sync.log)"
+LIGHTRAG_PID=""
+LIGHTRAG_SKIPPED=""
+if curl -sf http://localhost:8090/v1/models >/dev/null 2>&1; then
+    bash scripts/setup-lightrag.sh --all > "$LIGHTRAG_LOG" 2>&1 &
+    LIGHTRAG_PID=$!
+    echo "  Started in background (PID: $LIGHTRAG_PID)"
+else
+    LIGHTRAG_SKIPPED=true
+    echo "  Skipped — LocalAI not running (localhost:8090)"
+fi
 echo ""
 
 # Step 7b: Start the fleet gateway (MC containers are up, health check passes)
@@ -496,3 +505,16 @@ echo "  make sync      — sync tasks ↔ PRs"
 echo "  make mc-up     — start Mission Control"
 echo "  make gateway   — start gateway"
 echo "  make logs      — view gateway logs"
+
+if [[ -n "${LIGHTRAG_SKIPPED:-}" ]]; then
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║  LightRAG KB sync was SKIPPED — LocalAI was not running.   ║"
+    echo "║                                                            ║"
+    echo "║  LightRAG needs LocalAI for embeddings (nomic-embed).      ║"
+    echo "║  Start LocalAI, then run:                                  ║"
+    echo "║                                                            ║"
+    echo "║    bash scripts/setup-lightrag.sh --all                    ║"
+    echo "║                                                            ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+fi
