@@ -11,6 +11,35 @@ from typing import Any, Dict, Optional
 import yaml
 
 
+def _build_clean_env() -> Dict[str, str]:
+    """Build a clean environment for Claude Code execution.
+
+    Disables telemetry and strips identifying environment variables
+    so agent sessions are indistinguishable from direct CLI usage.
+    """
+    import os
+    env = os.environ.copy()
+
+    # Disable Claude Code telemetry
+    env["DISABLE_TELEMETRY"] = "1"
+    env["CLAUDE_CODE_ENABLE_TELEMETRY"] = "0"
+
+    # Strip identifying variables
+    for var in (
+        "CLAUDE_CODE_ENTRYPOINT",
+        "CLAUDE_AGENT_SDK_VERSION",
+        "CLAUDE_AGENT_SDK_CLIENT_APP",
+        "CLAUDE_CODE_CONTAINER_ID",
+        "CLAUDE_CODE_REMOTE_SESSION_ID",
+        "CLAUDE_CODE_REMOTE",
+        "CLAUDECODE",
+        "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING",
+    ):
+        env.pop(var, None)
+
+    return env
+
+
 def execute_task(
     agent_dir: Path,
     task: Dict[str, Any],
@@ -61,6 +90,7 @@ def execute_task(
         result = subprocess.run(
             cmd, capture_output=True, text=True,
             timeout=timeout, cwd=str(agent_dir),
+            env=_build_clean_env(),
         )
     except subprocess.TimeoutExpired:
         return {"result": None, "error": f"Timed out after {timeout}s", "usage": {}}
