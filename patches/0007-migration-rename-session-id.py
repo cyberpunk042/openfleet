@@ -5,7 +5,7 @@ Revision ID: 0007_rename_session
 from alembic import op
 
 revision = "0007_rename_session"
-down_revision = None
+down_revision = "g1a2b3c4d5e6"
 branch_labels = None
 depends_on = None
 
