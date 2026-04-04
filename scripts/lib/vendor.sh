@@ -109,13 +109,13 @@ with open(p, 'w') as f: json.dump(data, f, indent=2)
 _vendor_stop_legacy() {
     [[ -n "$VENDOR_LEGACY_CLI" ]] || return 0
 
-    # Disable and stop legacy systemd service completely
-    if systemctl --user is-active fleet-gateway.service >/dev/null 2>&1 || \
-       systemctl --user is-enabled fleet-gateway.service >/dev/null 2>&1; then
-        echo "  Stopping legacy $VENDOR_LEGACY_CLI systemd service..."
-        systemctl --user stop fleet-gateway.service 2>/dev/null || true
-        systemctl --user disable fleet-gateway.service 2>/dev/null || true
-        systemctl --user reset-failed fleet-gateway.service 2>/dev/null || true
+    # Disable and stop the OLD openclaw-fleet-gateway systemd service
+    if systemctl --user is-active openclaw-fleet-gateway.service >/dev/null 2>&1 || \
+       systemctl --user is-enabled openclaw-fleet-gateway.service >/dev/null 2>&1; then
+        echo "  Disabling legacy openclaw-fleet-gateway systemd service..."
+        systemctl --user stop openclaw-fleet-gateway.service 2>/dev/null || true
+        systemctl --user disable openclaw-fleet-gateway.service 2>/dev/null || true
+        systemctl --user reset-failed openclaw-fleet-gateway.service 2>/dev/null || true
     fi
 
     # Kill ALL legacy vendor processes
