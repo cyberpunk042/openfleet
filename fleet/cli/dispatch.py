@@ -147,7 +147,9 @@ async def _run_dispatch(
         return 1
 
     # Notify IRC
-    oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
+    oc_path = os.path.expanduser("~/.openarms/openarms.json")
+    if not os.path.exists(oc_path):
+        oc_path = os.path.expanduser("~/.openclaw/openclaw.json")
     gateway_token = ""
     if os.path.exists(oc_path):
         with open(oc_path) as f:

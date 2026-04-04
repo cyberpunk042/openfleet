@@ -1,19 +1,4 @@
-"""OCF Gateway WebSocket server — speaks the OpenClaw gateway protocol.
-
-Mission Control connects to gateways via WebSocket using JSON-RPC style messages.
-
-Protocol:
-1. Client connects
-2. Gateway sends connect.challenge event
-3. Client sends connect request
-4. Gateway responds with server metadata (including version)
-5. Client calls methods via JSON-RPC
-
-Key methods for task execution:
-- sessions.patch: create/update a session for an agent
-- chat.send: send a message to a session → execute via Claude Code → return result
-- chat.history: retrieve session history
-"""
+"""Fleet Gateway WebSocket server."""
 
 from __future__ import annotations
 
@@ -30,7 +15,7 @@ import yaml
 
 AGENTS_DIR = Path(__file__).parent.parent / "agents"
 CONFIG_DIR = Path(__file__).parent.parent / "config"
-GATEWAY_VERSION = "2026.3.26"
+GATEWAY_VERSION = "1.0.0"
 
 
 def _load_projects() -> Dict[str, Dict[str, Any]]:
@@ -141,18 +126,18 @@ class GatewayProtocol:
         return {
             "server": {
                 "version": GATEWAY_VERSION,
-                "name": "OCF Gateway",
+                "name": "Fleet Gateway",
                 "capabilities": ["agents", "health", "chat"],
             },
             "session": {"id": str(uuid4())},
         }
 
     async def _handle_health(self, params: Dict) -> Dict:
-        return {"ok": True, "gateway": "ocf", "version": GATEWAY_VERSION}
+        return {"ok": True, "gateway": "fleet", "version": GATEWAY_VERSION}
 
     async def _handle_status(self, params: Dict) -> Dict:
         return {
-            "gateway": "ocf", "version": GATEWAY_VERSION,
+            "gateway": "fleet", "version": GATEWAY_VERSION,
             "agents": len(self.agents), "sessions": len(self.sessions), "ok": True,
         }
 

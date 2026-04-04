@@ -23,6 +23,16 @@ import yaml
 AGENTS_DIR = Path(__file__).parent.parent / "agents"
 
 
+def _resolve_vendor_config() -> str:
+    """Resolve vendor config path (~/.openarms or ~/.openclaw)."""
+    import os
+    openarms = os.path.expanduser("~/.openarms/openarms.json")
+    openclaw = os.path.expanduser("~/.openclaw/openclaw.json")
+    if os.path.exists(openarms):
+        return openarms
+    return openclaw
+
+
 class FleetSetup:
     """Manages first-time setup of the OCF fleet in Mission Control."""
 
@@ -140,7 +150,7 @@ class FleetSetup:
         # Read gateway auth token from openclaw.json for MC verification
         import json as _json
         gw_token = ""
-        oc_config = os.path.expanduser("~/.openclaw/openclaw.json")
+        oc_config = _resolve_vendor_config()
         if os.path.exists(oc_config):
             with open(oc_config) as f:
                 oc_cfg = _json.load(f)
@@ -290,7 +300,7 @@ def run_setup() -> int:
 
     setup = FleetSetup(mc_url, auth_token)
 
-    print("=== OpenClaw Fleet Setup ===\n")
+    print("=== Fleet Setup ===\n")
 
     # Step 1: Check connection
     print("1. Checking Mission Control connection...")
@@ -323,7 +333,7 @@ def run_setup() -> int:
         print(f"   OK: {org.get('name', '?')} (id: {org.get('id', '?')})")
     else:
         print("   No active org, creating...")
-        org = setup.create_organization("OpenClaw Fleet", "openclaw-fleet")
+        org = setup.create_organization("Fleet", "fleet")
         if org:
             setup.set_active_org(org.get("id", ""))
             print(f"   OK: Created and activated")
