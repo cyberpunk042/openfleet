@@ -35,6 +35,40 @@ if [[ ! -f "$CONFIG" ]]; then
     exit 1
 fi
 
+# ─── Ensure plugin marketplaces are registered ─────────────────────────
+
+# Plugin marketplaces — GitHub repos that publish plugin manifests
+# Claude Code and OpenClaw both use `plugin marketplace add <source>`
+MARKETPLACES=(
+    "thedotmack/claude-mem"
+    "kenryu42/claude-code-safety-net"
+    "zscole/adversarial-spec"
+    "b17z/sage"
+    "backnotprop/plannotator"
+    "agenticnotetaking/arscontexta"
+)
+
+echo ""
+echo "Registering plugin marketplaces..."
+for mp in "${MARKETPLACES[@]}"; do
+    # Register in Claude Code
+    if claude plugin marketplace list 2>/dev/null | grep -q "$mp"; then
+        echo -e "  ${YELLOW}[skip]${NC} $mp (claude)"
+    else
+        claude plugin marketplace add "$mp" 2>/dev/null && \
+            echo -e "  ${GREEN}[added]${NC} $mp (claude)" || \
+            echo -e "  ${RED}[error]${NC} $mp (claude): failed to add"
+    fi
+    # Register in OpenClaw
+    if command -v openclaw &>/dev/null; then
+        openclaw plugins marketplace list "$mp" --json >/dev/null 2>&1 && \
+            echo -e "  ${YELLOW}[skip]${NC} $mp (openclaw)" || {
+            openclaw plugins install "marketplace:$mp" 2>/dev/null && \
+                echo -e "  ${GREEN}[added]${NC} $mp (openclaw)" || true
+        }
+    fi
+done
+
 # ─── Install plugins for one agent ───────────────────────────────────
 
 install_for_agent() {
