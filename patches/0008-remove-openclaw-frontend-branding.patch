@@ -1,0 +1,275 @@
+From bb234377da9bf5ed916a8fff9c77ed2451ed2feb Mon Sep 17 00:00:00 2001
+From: Cyberpunk 042 <jfm.devops.expert@gmail.com>
+Date: Fri, 3 Apr 2026 23:06:49 -0400
+Subject: [PATCH] rename: remove openclaw branding from frontend
+
+---
+ compose.yml                                          | 2 +-
+ frontend/src/api/generated/model/agentRead.ts        | 4 ++--
+ frontend/src/app/agents/[agentId]/page.tsx           | 4 ++--
+ frontend/src/app/agents/page.tsx                     | 2 +-
+ frontend/src/app/gateways/[gatewayId]/edit/page.tsx  | 2 +-
+ frontend/src/app/gateways/new/page.tsx               | 2 +-
+ frontend/src/app/gateways/page.tsx                   | 4 ++--
+ frontend/src/app/invite/page.tsx                     | 2 +-
+ frontend/src/components/agents/AgentsTable.test.tsx  | 4 ++--
+ frontend/src/components/agents/AgentsTable.tsx       | 4 ++--
+ frontend/src/components/atoms/BrandMark.tsx          | 2 +-
+ frontend/src/components/organisms/OrgSwitcher.tsx    | 2 +-
+ frontend/src/components/templates/DashboardShell.tsx | 2 +-
+ frontend/src/components/templates/LandingShell.tsx   | 8 ++++----
+ frontend/src/lib/gateway-form.ts                     | 2 +-
+ 15 files changed, 23 insertions(+), 23 deletions(-)
+
+diff --git a/compose.yml b/compose.yml
+index b22ca20..dbcde73 100644
+--- a/compose.yml
++++ b/compose.yml
+@@ -1,4 +1,4 @@
+-name: openclaw-mission-control
++name: mission-control
+ 
+ services:
+   db:
+diff --git a/frontend/src/api/generated/model/agentRead.ts b/frontend/src/api/generated/model/agentRead.ts
+index 99658f7..2623298 100644
+--- a/frontend/src/api/generated/model/agentRead.ts
++++ b/frontend/src/api/generated/model/agentRead.ts
+@@ -36,8 +36,8 @@ export interface AgentRead {
+    * @minLength 1
+    */
+   name: string;
+-  /** Optional openclaw session token. */
+-  openclaw_session_id?: string | null;
++  /** Optional session token. */
++  session_id?: string | null;
+   /** Template representing deeper agent instructions. */
+   soul_template?: string | null;
+   /** Current lifecycle state used by coordinator logic. */
+diff --git a/frontend/src/app/agents/[agentId]/page.tsx b/frontend/src/app/agents/[agentId]/page.tsx
+index cf25d18..d3f8193 100644
+--- a/frontend/src/app/agents/[agentId]/page.tsx
++++ b/frontend/src/app/agents/[agentId]/page.tsx
+@@ -241,7 +241,7 @@ export default function AgentDetailPage() {
+                           Session key
+                         </p>
+                         <p className="mt-1 text-sm text-muted">
+-                          {agent.openclaw_session_id ?? "—"}
++                          {agent.session_id ?? "—"}
+                         </p>
+                       </div>
+                       <div>
+@@ -308,7 +308,7 @@ export default function AgentDetailPage() {
+                       <div className="flex items-center justify-between">
+                         <span>Session binding</span>
+                         <span>
+-                          {agent.openclaw_session_id ? "Bound" : "Unbound"}
++                          {agent.session_id ? "Bound" : "Unbound"}
+                         </span>
+                       </div>
+                       <div className="flex items-center justify-between">
+diff --git a/frontend/src/app/agents/page.tsx b/frontend/src/app/agents/page.tsx
+index fdffc91..e1f6482 100644
+--- a/frontend/src/app/agents/page.tsx
++++ b/frontend/src/app/agents/page.tsx
+@@ -33,7 +33,7 @@ import { useUrlSorting } from "@/lib/use-url-sorting";
+ const AGENT_SORTABLE_COLUMNS = [
+   "name",
+   "status",
+-  "openclaw_session_id",
++  "session_id",
+   "board_id",
+   "last_seen_at",
+   "updated_at",
+diff --git a/frontend/src/app/gateways/[gatewayId]/edit/page.tsx b/frontend/src/app/gateways/[gatewayId]/edit/page.tsx
+index 7b4b124..e02498d 100644
+--- a/frontend/src/app/gateways/[gatewayId]/edit/page.tsx
++++ b/frontend/src/app/gateways/[gatewayId]/edit/page.tsx
+@@ -165,7 +165,7 @@ export default function EditGatewayPage() {
+           ? `Edit gateway — ${resolvedName.trim()}`
+           : "Edit gateway"
+       }
+-      description="Update connection settings for this OpenClaw gateway."
++      description="Update connection settings for this gateway."
+       isAdmin={isAdmin}
+       adminOnlyMessage="Only organization owners and admins can edit gateways."
+     >
+diff --git a/frontend/src/app/gateways/new/page.tsx b/frontend/src/app/gateways/new/page.tsx
+index 7e752c6..2027732 100644
+--- a/frontend/src/app/gateways/new/page.tsx
++++ b/frontend/src/app/gateways/new/page.tsx
+@@ -116,7 +116,7 @@ export default function NewGatewayPage() {
+         forceRedirectUrl: "/gateways/new",
+       }}
+       title="Create gateway"
+-      description="Configure an OpenClaw gateway for mission control."
++      description="Configure a gateway for mission control."
+       isAdmin={isAdmin}
+       adminOnlyMessage="Only organization owners and admins can create gateways."
+     >
+diff --git a/frontend/src/app/gateways/page.tsx b/frontend/src/app/gateways/page.tsx
+index c46789d..b46d0eb 100644
+--- a/frontend/src/app/gateways/page.tsx
++++ b/frontend/src/app/gateways/page.tsx
+@@ -95,7 +95,7 @@ export default function GatewaysPage() {
+           forceRedirectUrl: "/gateways",
+         }}
+         title="Gateways"
+-        description="Manage OpenClaw gateway connections used by boards"
++        description="Manage gateway connections used by boards"
+         headerActions={
+           isAdmin && gateways.length > 0 ? (
+             <Link
+@@ -125,7 +125,7 @@ export default function GatewaysPage() {
+             emptyState={{
+               title: "No gateways yet",
+               description:
+-                "Create your first gateway to connect boards and start managing your OpenClaw connections.",
++                "Create your first gateway to connect boards and start managing your connections.",
+               actionHref: "/gateways/new",
+               actionLabel: "Create your first gateway",
+             }}
+diff --git a/frontend/src/app/invite/page.tsx b/frontend/src/app/invite/page.tsx
+index 28c31aa..3bfd891 100644
+--- a/frontend/src/app/invite/page.tsx
++++ b/frontend/src/app/invite/page.tsx
+@@ -82,7 +82,7 @@ function InviteContent() {
+               Organization Invite
+             </p>
+             <h1 className="text-2xl font-semibold text-strong">
+-              Join your team in OpenClaw
++              Join your team
+             </h1>
+             <p className="text-sm text-muted">{helperText}</p>
+           </div>
+diff --git a/frontend/src/components/agents/AgentsTable.test.tsx b/frontend/src/components/agents/AgentsTable.test.tsx
+index 67011a2..59fedc8 100644
+--- a/frontend/src/components/agents/AgentsTable.test.tsx
++++ b/frontend/src/components/agents/AgentsTable.test.tsx
+@@ -26,7 +26,7 @@ const buildAgent = (overrides: Partial<AgentRead> = {}): AgentRead => ({
+   gateway_id: "gateway-1",
+   board_id: "board-1",
+   status: "online",
+-  openclaw_session_id: "session-1234",
++  session_id: "session-1234",
+   last_seen_at: "2026-01-01T00:00:00Z",
+   created_at: "2026-01-01T00:00:00Z",
+   updated_at: "2026-01-01T00:00:00Z",
+@@ -93,7 +93,7 @@ describe("AgentsTable", () => {
+         agents={[buildAgent()]}
+         boards={[buildBoard()]}
+         showActions={false}
+-        hiddenColumns={["status", "openclaw_session_id"]}
++        hiddenColumns={["status", "session_id"]}
+         columnOrder={["updated_at", "name", "board_id", "last_seen_at"]}
+       />,
+     );
+diff --git a/frontend/src/components/agents/AgentsTable.tsx b/frontend/src/components/agents/AgentsTable.tsx
+index 9123ad8..dc54336 100644
+--- a/frontend/src/components/agents/AgentsTable.tsx
++++ b/frontend/src/components/agents/AgentsTable.tsx
+@@ -117,11 +117,11 @@ export function AgentsTable({
+         cell: ({ row }) => pillCell(row.original.status),
+       },
+       {
+-        accessorKey: "openclaw_session_id",
++        accessorKey: "session_id",
+         header: "Session",
+         cell: ({ row }) => (
+           <span className="text-sm text-slate-700">
+-            {truncate(row.original.openclaw_session_id)}
++            {truncate(row.original.session_id)}
+           </span>
+         ),
+       },
+diff --git a/frontend/src/components/atoms/BrandMark.tsx b/frontend/src/components/atoms/BrandMark.tsx
+index 5487176..0f5b6ac 100644
+--- a/frontend/src/components/atoms/BrandMark.tsx
++++ b/frontend/src/components/atoms/BrandMark.tsx
+@@ -6,7 +6,7 @@ export function BrandMark() {
+       </div>
+       <div className="leading-tight">
+         <div className="font-heading text-sm uppercase tracking-[0.26em] text-strong">
+-          OPENCLAW
++          MC
+         </div>
+         <div className="text-[11px] font-medium text-quiet">
+           Mission Control
+diff --git a/frontend/src/components/organisms/OrgSwitcher.tsx b/frontend/src/components/organisms/OrgSwitcher.tsx
+index 3faae41..a8a852d 100644
+--- a/frontend/src/components/organisms/OrgSwitcher.tsx
++++ b/frontend/src/components/organisms/OrgSwitcher.tsx
+@@ -68,7 +68,7 @@ export function OrgSwitcher() {
+     if (typeof window === "undefined") return;
+     const payload = JSON.stringify({ orgId, ts: Date.now() });
+     try {
+-      window.localStorage.setItem("openclaw_org_switch", payload);
++      window.localStorage.setItem("org_switch", payload);
+     } catch {
+       // Ignore storage failures.
+     }
+diff --git a/frontend/src/components/templates/DashboardShell.tsx b/frontend/src/components/templates/DashboardShell.tsx
+index f88cd60..90796d8 100644
+--- a/frontend/src/components/templates/DashboardShell.tsx
++++ b/frontend/src/components/templates/DashboardShell.tsx
+@@ -57,7 +57,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
+     if (typeof window === "undefined") return;
+ 
+     const handleStorage = (event: StorageEvent) => {
+-      if (event.key !== "openclaw_org_switch" || !event.newValue) return;
++      if (event.key !== "org_switch" || !event.newValue) return;
+       window.location.reload();
+     };
+ 
+diff --git a/frontend/src/components/templates/LandingShell.tsx b/frontend/src/components/templates/LandingShell.tsx
+index 1a76bd4..c549822 100644
+--- a/frontend/src/components/templates/LandingShell.tsx
++++ b/frontend/src/components/templates/LandingShell.tsx
+@@ -19,12 +19,12 @@ export function LandingShell({ children }: { children: ReactNode }) {
+     <div className="landing-enterprise">
+       <nav className="landing-nav" aria-label="Primary navigation">
+         <div className="nav-container">
+-          <Link href="/" className="logo-section" aria-label="OpenClaw home">
++          <Link href="/" className="logo-section" aria-label="home">
+             <div className="logo-icon" aria-hidden="true">
+               OC
+             </div>
+             <div className="logo-text">
+-              <div className="logo-name">OpenClaw</div>
++              <div className="logo-name">Mission Control</div>
+               <div className="logo-tagline">Mission Control</div>
+             </div>
+           </Link>
+@@ -89,7 +89,7 @@ export function LandingShell({ children }: { children: ReactNode }) {
+       <footer className="landing-footer">
+         <div className="footer-content">
+           <div className="footer-brand">
+-            <h3>OpenClaw</h3>
++            <h3>Mission Control</h3>
+             <p>A calm command center for boards, agents, and approvals.</p>
+             <div className="footer-tagline">Realtime Execution Visibility</div>
+           </div>
+@@ -150,7 +150,7 @@ export function LandingShell({ children }: { children: ReactNode }) {
+ 
+         <div className="footer-bottom">
+           <div className="footer-copyright">
+-            © {new Date().getFullYear()} OpenClaw. All rights reserved.
++            © {new Date().getFullYear()} Mission Control. All rights reserved.
+           </div>
+           <div className="footer-bottom-links">
+             <Link href="#capabilities">Capabilities</Link>
+diff --git a/frontend/src/lib/gateway-form.ts b/frontend/src/lib/gateway-form.ts
+index d63f37e..ce3825d 100644
+--- a/frontend/src/lib/gateway-form.ts
++++ b/frontend/src/lib/gateway-form.ts
+@@ -1,6 +1,6 @@
+ import { gatewaysStatusApiV1GatewaysStatusGet } from "@/api/generated/gateways/gateways";
+ 
+-export const DEFAULT_WORKSPACE_ROOT = "~/.openclaw";
++export const DEFAULT_WORKSPACE_ROOT = "~/.openarms";
+ 
+ export type GatewayCheckStatus = "idle" | "checking" | "success" | "error";
+ 
+-- 
+2.50.1
+
