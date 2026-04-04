@@ -11,6 +11,7 @@ set -euo pipefail
 # Idempotent — safe to run multiple times.
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
 
 set -a
 source "$FLEET_DIR/.env" 2>/dev/null || true
@@ -58,7 +59,7 @@ echo "  Stale workspaces removed: $cleaned_ws"
 
 # 2. Clean stale agent dirs in ~/.openclaw/agents/
 cleaned_dirs=0
-OPENCLAW_AGENTS="$HOME/.openclaw/agents"
+OPENCLAW_AGENTS="$VENDOR_CONFIG_DIR/agents"
 if [[ -d "$OPENCLAW_AGENTS" ]]; then
     for agent_dir in "$OPENCLAW_AGENTS"/mc-*; do
         [[ -d "$agent_dir" ]] || continue
@@ -80,7 +81,7 @@ current_ids = set('''$CURRENT_IDS'''.strip().split('\n'))
 # Gateway uses mc-{UUID} format
 current_gw_ids = {f"mc-{uid}" for uid in current_ids if uid}
 
-config_path = os.path.expanduser("~/.openclaw/openclaw.json")
+config_path = os.environ.get("VENDOR_CONFIG_FILE", os.path.expanduser("~/.openclaw/openclaw.json"))
 with open(config_path) as f:
     cfg = json.load(f)
 
@@ -98,7 +99,7 @@ if removed > 0:
     with open(config_path, "w") as f:
         json.dump(cfg, f, indent=2)
     # Reset config health checkpoint
-    health_path = os.path.expanduser("~/.openclaw/logs/config-health.json")
+    health_path = os.path.join(os.environ.get("VENDOR_CONFIG_DIR", os.path.expanduser("~/.openclaw")), "logs", "config-health.json")
     if os.path.exists(health_path):
         os.remove(health_path)
 

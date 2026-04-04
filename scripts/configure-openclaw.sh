@@ -6,11 +6,12 @@ set -euo pipefail
 echo "=== Configuring OpenClaw Fleet Settings ==="
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-OPENCLAW_CONFIG="${HOME}/.openclaw/openclaw.json"
-EXEC_APPROVALS="${HOME}/.openclaw/exec-approvals.json"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
+OPENCLAW_CONFIG="$VENDOR_CONFIG_FILE"
+EXEC_APPROVALS="${VENDOR_CONFIG_DIR}/exec-approvals.json"
 
 if [[ ! -f "$OPENCLAW_CONFIG" ]]; then
-    echo "ERROR: $OPENCLAW_CONFIG not found. Run 'openclaw onboard' first."
+    echo "ERROR: $OPENCLAW_CONFIG not found. Run '$VENDOR_CLI onboard' first."
     exit 1
 fi
 
@@ -72,16 +73,16 @@ else:
 
 # 2. Set exec approvals allowlist (** wildcard for all agents)
 echo "2. Configuring exec approvals allowlist..."
-if command -v openclaw >/dev/null 2>&1; then
+if [[ -n "$VENDOR_CLI" ]]; then
     # Check if ** is already in the allowlist
-    if openclaw approvals get 2>/dev/null | grep -q '\*\*'; then
+    if $VENDOR_CLI approvals get 2>/dev/null | grep -q '\*\*'; then
         echo "   Allowlist already has ** wildcard"
     else
-        openclaw approvals allowlist add --agent "*" "**" >/dev/null 2>&1 || true
+        $VENDOR_CLI approvals allowlist add --agent "*" "**" >/dev/null 2>&1 || true
         echo "   Added ** wildcard to exec allowlist"
     fi
 else
-    echo "   WARN: openclaw CLI not found, skipping allowlist"
+    echo "   WARN: $VENDOR_NAME CLI not found, skipping allowlist"
 fi
 
 # 3. Create Claude Code permissions in agent workspaces
@@ -101,4 +102,4 @@ mkdir -p "$FLEET_DIR/agents/_template/.claude"
 echo "$SETTINGS" > "$FLEET_DIR/agents/_template/.claude/settings.json"
 echo "   Configured $configured workspaces (+ template)"
 
-echo "OpenClaw fleet settings configured"
+echo "$VENDOR_NAME fleet settings configured"

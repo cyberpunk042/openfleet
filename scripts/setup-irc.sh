@@ -12,7 +12,8 @@ set -euo pipefail
 #   - make irc-connect (opens weechat if installed, else prints instructions)
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-OPENCLAW_CONFIG="$HOME/.openclaw/openclaw.json"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
+OPENCLAW_CONFIG="$VENDOR_CONFIG_FILE"
 IRC_PORT="${FLEET_IRC_PORT:-6667}"
 IRC_CHANNELS="${FLEET_IRC_CHANNELS:-#fleet,#alerts,#reviews,#sprint,#agents,#security,#human,#builds,#memory,#plane}"
 IRC_NICK="${FLEET_IRC_NICK:-fleet-bot}"
@@ -55,7 +56,7 @@ else
         fi
     fi
 
-    $MINIIRCD_CMD --ports "$IRC_PORT" --motd "OpenClaw Fleet IRC — connect to #fleet" &
+    $MINIIRCD_CMD --ports "$IRC_PORT" --motd "Fleet IRC — connect to #fleet" &
     IRC_PID=$!
     echo "$IRC_PID" > "$IRC_PID_FILE"
     sleep 2
@@ -69,7 +70,7 @@ else
 fi
 
 # 3. Configure OpenClaw IRC channel
-echo "3. Configuring OpenClaw IRC channel..."
+echo "3. Configuring $VENDOR_NAME IRC channel..."
 python3 -c "
 import json
 
@@ -123,8 +124,8 @@ with open('$OPENCLAW_CONFIG', 'w') as f:
 # 4. Bind agents to IRC channel
 echo "4. Binding agents to IRC..."
 # Get agents and bindings ONCE (openclaw CLI takes ~5s per invocation)
-AGENTS=$(openclaw agents list 2>/dev/null | grep "^-" | sed 's/^- //' | awk '{print $1}')
-BINDINGS=$(openclaw agents bindings 2>/dev/null || true)
+AGENTS=$($VENDOR_CLI agents list 2>/dev/null | grep "^-" | sed 's/^- //' | awk '{print $1}')
+BINDINGS=$($VENDOR_CLI agents bindings 2>/dev/null || true)
 BOUND=0
 
 for agent in $AGENTS; do
@@ -137,7 +138,7 @@ for agent in $AGENTS; do
         continue
     fi
 
-    openclaw agents bind --agent "$agent" --bind "irc:fleet" >/dev/null 2>&1 || true
+    $VENDOR_CLI agents bind --agent "$agent" --bind "irc:fleet" >/dev/null 2>&1 || true
     BOUND=$((BOUND + 1))
 done
 echo "   $BOUND agents bound to IRC (irc:fleet)"

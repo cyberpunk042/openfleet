@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
+
 # Clean gateway config — deduplicate agents, set safe heartbeat intervals.
 # Agents get duplicated because register-agents.sh creates one entry and
 # MC provisioning creates another. Keep the MC-provisioned one (has workspace-mc-* path).
 # Remove unnamed/main entries. Set staggered heartbeat intervals.
 
-OPENCLAW_CONFIG="$HOME/.openclaw/openclaw.json"
+OPENCLAW_CONFIG="$VENDOR_CONFIG_FILE"
 
 if [[ ! -f "$OPENCLAW_CONFIG" ]]; then
   echo "ERROR: $OPENCLAW_CONFIG not found"

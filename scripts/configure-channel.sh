@@ -10,7 +10,8 @@ set -euo pipefail
 # After configuration, restart the gateway: make gateway-restart
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-OPENCLAW_CONFIG="$HOME/.openclaw/openclaw.json"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
+OPENCLAW_CONFIG="$VENDOR_CONFIG_FILE"
 
 CHANNEL_TYPE="${1:?Usage: configure-channel.sh <discord|irc> [options]}"
 shift
@@ -120,9 +121,9 @@ esac
 
 echo ""
 echo "After restart, bind agents to the channel:"
-echo "  openclaw agents bind <agent-name> --channel $CHANNEL_TYPE --target <target>"
+echo "  $VENDOR_CLI agents bind <agent-name> --channel $CHANNEL_TYPE --target <target>"
 echo ""
 echo "Or bind all fleet agents:"
 echo "  for agent in architect software-engineer qa-engineer devops technical-writer ux-designer; do"
-echo "    openclaw agents bind \$agent --channel $CHANNEL_TYPE --target <target>"
+echo "    $VENDOR_CLI agents bind \$agent --channel $CHANNEL_TYPE --target <target>"
 echo "  done"
