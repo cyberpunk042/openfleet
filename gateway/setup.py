@@ -469,7 +469,7 @@ def run_setup() -> int:
                 else:
                     print(f"   WARN: {name} failed")
 
-        print(f"   Registered {registered}, Reprovisioned {reprovisioned}/{len(local_agents)} agents")
+        print(f"   Registered {registered}/{len(local_agents)} agents")
 
         # Step 6b: Set fleet-ops as board lead
         print("\n6b. Setting fleet-ops as board lead...")
