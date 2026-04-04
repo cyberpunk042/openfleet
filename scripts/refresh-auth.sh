@@ -8,7 +8,7 @@ set -euo pipefail
 # Usage: bash scripts/refresh-auth.sh [--restart-gateway]
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-OPENCLAW_ENV="${HOME}/.openclaw/.env"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
 CLAUDE_CREDS="${HOME}/.claude/.credentials.json"
 RESTART_GATEWAY=false
 
@@ -33,8 +33,8 @@ else:
 
 # Get stored token
 STORED_TOKEN=""
-if [[ -f "$OPENCLAW_ENV" ]]; then
-    STORED_TOKEN=$(grep "^ANTHROPIC_API_KEY=" "$OPENCLAW_ENV" 2>/dev/null | cut -d= -f2 || true)
+if [[ -f "$VENDOR_ENV_FILE" ]]; then
+    STORED_TOKEN=$(grep "^ANTHROPIC_API_KEY=" "$VENDOR_ENV_FILE" 2>/dev/null | cut -d= -f2 || true)
 fi
 
 # Compare
@@ -44,12 +44,12 @@ if [[ "$NEW_TOKEN" == "$STORED_TOKEN" ]]; then
 fi
 
 # Update
-mkdir -p "${HOME}/.openclaw"
-if [[ -f "$OPENCLAW_ENV" ]]; then
-    grep -v "ANTHROPIC_API_KEY" "$OPENCLAW_ENV" > "${OPENCLAW_ENV}.tmp" 2>/dev/null || true
-    mv "${OPENCLAW_ENV}.tmp" "$OPENCLAW_ENV"
+mkdir -p "$VENDOR_CONFIG_DIR"
+if [[ -f "$VENDOR_ENV_FILE" ]]; then
+    grep -v "ANTHROPIC_API_KEY" "$VENDOR_ENV_FILE" > "${VENDOR_ENV_FILE}.tmp" 2>/dev/null || true
+    mv "${VENDOR_ENV_FILE}.tmp" "$VENDOR_ENV_FILE"
 fi
-echo "ANTHROPIC_API_KEY=${NEW_TOKEN}" >> "$OPENCLAW_ENV"
+echo "ANTHROPIC_API_KEY=${NEW_TOKEN}" >> "$VENDOR_ENV_FILE"
 echo "Token refreshed (rotation detected)"
 
 # Restart gateway if requested (picks up new token)
