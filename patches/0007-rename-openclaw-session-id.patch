@@ -1,0 +1,856 @@
+diff --git a/backend/app/api/approvals.py b/backend/app/api/approvals.py
+index ecb13a3..a2bcc07 100644
+--- a/backend/app/api/approvals.py
++++ b/backend/app/api/approvals.py
+@@ -238,7 +238,7 @@ async def _notify_lead_on_approval_resolution(
+     if approval.status not in {"approved", "rejected"}:
+         return
+     lead = await _resolve_board_lead(session, board_id=board.id)
+-    if lead is None or not lead.openclaw_session_id:
++    if lead is None or not lead.session_id:
+         return
+ 
+     dispatch = GatewayDispatchService(session)
+@@ -253,7 +253,7 @@ async def _notify_lead_on_approval_resolution(
+         task_ids=task_ids_by_approval.get(approval.id, []),
+     )
+     error = await dispatch.try_send_agent_message(
+-        session_key=lead.openclaw_session_id,
++        session_key=lead.session_id,
+         config=config,
+         agent_name=lead.name,
+         message=message,
+diff --git a/backend/app/api/board_group_memory.py b/backend/app/api/board_group_memory.py
+index edcbfc1..c077db6 100644
+--- a/backend/app/api/board_group_memory.py
++++ b/backend/app/api/board_group_memory.py
+@@ -215,7 +215,7 @@ def _group_chat_targets(
+ ) -> dict[str, Agent]:
+     targets: dict[str, Agent] = {}
+     for agent in agents:
+-        if not agent.openclaw_session_id:
++        if not agent.session_id:
+             continue
+         if actor.actor_type == "agent" and actor.agent and agent.id == actor.agent.id:
+             continue
+@@ -260,7 +260,7 @@ async def _notify_group_target(
+     context: _NotifyGroupContext,
+     agent: Agent,
+ ) -> None:
+-    session_key = agent.openclaw_session_id
++    session_key = agent.session_id
+     board_id = agent.board_id
+     if not session_key or board_id is None:
+         return
+diff --git a/backend/app/api/board_memory.py b/backend/app/api/board_memory.py
+index 5db1fa7..3c150aa 100644
+--- a/backend/app/api/board_memory.py
++++ b/backend/app/api/board_memory.py
+@@ -111,10 +111,10 @@ async def _send_control_command(
+     for agent in pause_targets:
+         if actor.actor_type == "agent" and actor.agent and agent.id == actor.agent.id:
+             continue
+-        if not agent.openclaw_session_id:
++        if not agent.session_id:
+             continue
+         error = await dispatch.try_send_agent_message(
+-            session_key=agent.openclaw_session_id,
++            session_key=agent.session_id,
+             config=config,
+             agent_name=agent.name,
+             message=command,
+@@ -193,7 +193,7 @@ async def _notify_chat_targets(
+         snippet = f"{snippet[: MAX_SNIPPET_LENGTH - 3]}..."
+     base_url = settings.base_url
+     for agent in targets.values():
+-        if not agent.openclaw_session_id:
++        if not agent.session_id:
+             continue
+         mentioned = matches_agent_mention(agent, mentions)
+         header = "BOARD CHAT MENTION" if mentioned else "BOARD CHAT"
+@@ -207,7 +207,7 @@ async def _notify_chat_targets(
+             'Body: {"content":"...","tags":["chat"]}'
+         )
+         error = await dispatch.try_send_agent_message(
+-            session_key=agent.openclaw_session_id,
++            session_key=agent.session_id,
+             config=config,
+             agent_name=agent.name,
+             message=message,
+diff --git a/backend/app/api/board_webhooks.py b/backend/app/api/board_webhooks.py
+index f388c56..6aa9018 100644
+--- a/backend/app/api/board_webhooks.py
++++ b/backend/app/api/board_webhooks.py
+@@ -288,7 +288,7 @@ async def _notify_lead_on_webhook_payload(
+             .filter(col(Agent.is_board_lead).is_(True))
+             .first(session)
+         )
+-    if target_agent is None or not target_agent.openclaw_session_id:
++    if target_agent is None or not target_agent.session_id:
+         return
+ 
+     dispatch = GatewayDispatchService(session)
+@@ -315,7 +315,7 @@ async def _notify_lead_on_webhook_payload(
+         "--- END EXTERNAL DATA ---"
+     )
+     await dispatch.try_send_agent_message(
+-        session_key=target_agent.openclaw_session_id,
++        session_key=target_agent.session_id,
+         config=config,
+         agent_name=target_agent.name,
+         message=message,
+diff --git a/backend/app/api/boards.py b/backend/app/api/boards.py
+index d7b7e87..5b62a33 100644
+--- a/backend/app/api/boards.py
++++ b/backend/app/api/boards.py
+@@ -316,7 +316,7 @@ async def _notify_agents_on_board_group_change(
+     skipped_missing_config = 0
+     skipped_missing_board = 0
+     for agent in agents:
+-        if not agent.openclaw_session_id:
++        if not agent.session_id:
+             skipped_missing_session += 1
+             continue
+         if agent.board_id is None:
+@@ -329,7 +329,7 @@ async def _notify_agents_on_board_group_change(
+             skipped_missing_config += 1
+             continue
+         error = await dispatch.try_send_agent_message(
+-            session_key=agent.openclaw_session_id,
++            session_key=agent.session_id,
+             config=config,
+             agent_name=agent.name,
+             message=message,
+@@ -420,7 +420,7 @@ async def _notify_lead_on_board_update(
+         .filter(col(Agent.is_board_lead).is_(True))
+         .first(session)
+     )
+-    if lead is None or not lead.openclaw_session_id:
++    if lead is None or not lead.session_id:
+         return
+     dispatch = GatewayDispatchService(session)
+     config = await dispatch.optional_gateway_config_for_board(board)
+@@ -431,7 +431,7 @@ async def _notify_lead_on_board_update(
+         changed_fields=changed_fields,
+     )
+     error = await dispatch.try_send_agent_message(
+-        session_key=lead.openclaw_session_id,
++        session_key=lead.session_id,
+         config=config,
+         agent_name=lead.name,
+         message=message,
+diff --git a/backend/app/api/tasks.py b/backend/app/api/tasks.py
+index 739f46f..5c0fab1 100644
+--- a/backend/app/api/tasks.py
++++ b/backend/app/api/tasks.py
+@@ -670,7 +670,7 @@ async def _wake_agent_online_for_task(
+     agent: Agent,
+     reason: str,
+ ) -> None:
+-    if not agent.openclaw_session_id:
++    if not agent.session_id:
+         return
+     service = AgentLifecycleService(session)
+     try:
+@@ -703,7 +703,7 @@ async def _notify_agent_on_task_assign(
+     agent: Agent,
+     wake_assignee: bool = True,
+ ) -> None:
+-    if not agent.openclaw_session_id:
++    if not agent.session_id:
+         return
+     if wake_assignee:
+         await _wake_agent_online_for_task(
+@@ -720,7 +720,7 @@ async def _notify_agent_on_task_assign(
+     message = _assignment_notification_message(board=board, task=task, agent=agent)
+     error = await _send_agent_task_message(
+         dispatch=dispatch,
+-        session_key=agent.openclaw_session_id,
++        session_key=agent.session_id,
+         config=config,
+         agent_name=agent.name,
+         message=message,
+@@ -755,7 +755,7 @@ async def _notify_agent_on_task_rework(
+     agent: Agent,
+     lead: Agent,
+ ) -> None:
+-    if not agent.openclaw_session_id:
++    if not agent.session_id:
+         return
+     dispatch = GatewayDispatchService(session)
+     config = await dispatch.optional_gateway_config_for_board(board)
+@@ -773,7 +773,7 @@ async def _notify_agent_on_task_rework(
+     )
+     error = await _send_agent_task_message(
+         dispatch=dispatch,
+-        session_key=agent.openclaw_session_id,
++        session_key=agent.session_id,
+         config=config,
+         agent_name=agent.name,
+         message=message,
+@@ -827,7 +827,7 @@ async def _notify_lead_on_task_create(
+         .filter(col(Agent.is_board_lead).is_(True))
+         .first(session)
+     )
+-    if lead is None or not lead.openclaw_session_id:
++    if lead is None or not lead.session_id:
+         return
+     dispatch = GatewayDispatchService(session)
+     config = await dispatch.optional_gateway_config_for_board(board)
+@@ -849,7 +849,7 @@ async def _notify_lead_on_task_create(
+     )
+     error = await _send_lead_task_message(
+         dispatch=dispatch,
+-        session_key=lead.openclaw_session_id,
++        session_key=lead.session_id,
+         config=config,
+         message=message,
+     )
+@@ -886,7 +886,7 @@ async def _notify_lead_on_task_unassigned(
+         .filter(col(Agent.is_board_lead).is_(True))
+         .first(session)
+     )
+-    if lead is None or not lead.openclaw_session_id:
++    if lead is None or not lead.session_id:
+         return
+     dispatch = GatewayDispatchService(session)
+     config = await dispatch.optional_gateway_config_for_board(board)
+@@ -908,7 +908,7 @@ async def _notify_lead_on_task_unassigned(
+     )
+     error = await _send_lead_task_message(
+         dispatch=dispatch,
+-        session_key=lead.openclaw_session_id,
++        session_key=lead.session_id,
+         config=config,
+         message=message,
+     )
+@@ -1848,7 +1848,7 @@ async def _notify_task_comment_targets(
+     snippet = _truncate_snippet(request.message)
+     actor_name = _comment_actor_name(request.actor)
+     for agent in request.targets.values():
+-        if not agent.openclaw_session_id:
++        if not agent.session_id:
+             continue
+         mentioned = matches_agent_mention(agent, request.mention_names)
+         header = "TASK MENTION" if mentioned else "NEW TASK COMMENT"
+@@ -1870,7 +1870,7 @@ async def _notify_task_comment_targets(
+         )
+         await _send_agent_task_message(
+             dispatch=dispatch,
+-            session_key=agent.openclaw_session_id,
++            session_key=agent.session_id,
+             config=config,
+             agent_name=agent.name,
+             message=notification,
+diff --git a/backend/app/models/agents.py b/backend/app/models/agents.py
+index 9c97e97..14a7b99 100644
+--- a/backend/app/models/agents.py
++++ b/backend/app/models/agents.py
+@@ -25,7 +25,7 @@ class Agent(QueryModel, table=True):
+     gateway_id: UUID = Field(foreign_key="gateways.id", index=True)
+     name: str = Field(index=True)
+     status: str = Field(default="provisioning", index=True)
+-    openclaw_session_id: str | None = Field(default=None, index=True)
++    session_id: str | None = Field(default=None, index=True)
+     agent_token_hash: str | None = Field(default=None, index=True)
+     heartbeat_config: dict[str, Any] | None = Field(
+         default=None,
+diff --git a/backend/app/schemas/agents.py b/backend/app/schemas/agents.py
+index 0e115d5..1b04ede 100644
+--- a/backend/app/schemas/agents.py
++++ b/backend/app/schemas/agents.py
+@@ -236,9 +236,9 @@ class AgentRead(AgentBase):
+         default=False,
+         description="Whether this agent is the primary gateway agent.",
+     )
+-    openclaw_session_id: str | None = Field(
++    session_id: str | None = Field(
+         default=None,
+-        description="Optional openclaw session token.",
++        description="Optional session token.",
+         examples=["sess_01J..."],
+     )
+     last_seen_at: datetime | None = Field(
+diff --git a/backend/app/services/openclaw/admin_service.py b/backend/app/services/openclaw/admin_service.py
+index 5a58e18..6540776 100644
+--- a/backend/app/services/openclaw/admin_service.py
++++ b/backend/app/services/openclaw/admin_service.py
+@@ -124,7 +124,7 @@ class GatewayAdminLifecycleService(OpenClawDBService):
+                 board_id=None,
+                 gateway_id=gateway.id,
+                 is_board_lead=False,
+-                openclaw_session_id=session_key,
++                session_id=session_key,
+                 heartbeat_config=DEFAULT_HEARTBEAT_CONFIG.copy(),
+                 identity_profile=identity_profile,
+             )
+@@ -142,8 +142,8 @@ class GatewayAdminLifecycleService(OpenClawDBService):
+         if agent.name != main_agent_name:
+             agent.name = main_agent_name
+             changed = True
+-        if agent.openclaw_session_id != session_key:
+-            agent.openclaw_session_id = session_key
++        if agent.session_id != session_key:
++            agent.session_id = session_key
+             changed = True
+         if agent.heartbeat_config is None:
+             agent.heartbeat_config = DEFAULT_HEARTBEAT_CONFIG.copy()
+diff --git a/backend/app/services/openclaw/coordination_service.py b/backend/app/services/openclaw/coordination_service.py
+index 6384ecd..7a0be76 100644
+--- a/backend/app/services/openclaw/coordination_service.py
++++ b/backend/app/services/openclaw/coordination_service.py
+@@ -182,7 +182,7 @@ class GatewayCoordinationService(AbstractGatewayMessagingService):
+             target_agent_id,
+         )
+         target = await self._board_agent_or_404(board=board, agent_id=target_agent_id)
+-        if not target.openclaw_session_id:
++        if not target.session_id:
+             raise HTTPException(
+                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                 detail="Target agent has no session key",
+@@ -192,7 +192,7 @@ class GatewayCoordinationService(AbstractGatewayMessagingService):
+         ).require_gateway_config_for_board(board)
+         try:
+             await self._dispatch_gateway_message(
+-                session_key=target.openclaw_session_id or "",
++                session_key=target.session_id or "",
+                 config=config,
+                 agent_name=target.name,
+                 message=message,
+@@ -544,13 +544,13 @@ class GatewayCoordinationService(AbstractGatewayMessagingService):
+                 options=LeadAgentOptions(action="provision"),
+             ),
+         )
+-        if not lead.openclaw_session_id:
++        if not lead.session_id:
+             raise HTTPException(
+                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                 detail="Lead agent has no session key",
+             )
+         await self._dispatch_gateway_message(
+-            session_key=lead.openclaw_session_id or "",
++            session_key=lead.session_id or "",
+             config=config,
+             agent_name=lead.name,
+             message=message,
+diff --git a/backend/app/services/openclaw/internal/agent_key.py b/backend/app/services/openclaw/internal/agent_key.py
+index 9df6ee0..691f97c 100644
+--- a/backend/app/services/openclaw/internal/agent_key.py
++++ b/backend/app/services/openclaw/internal/agent_key.py
+@@ -16,7 +16,7 @@ def slugify(value: str) -> str:
+ 
+ def agent_key(agent: Agent) -> str:
+     """Return stable gateway agent id derived from session key or name fallback."""
+-    session_key = agent.openclaw_session_id or ""
++    session_key = agent.session_id or ""
+     if session_key.startswith("agent:"):
+         parts = session_key.split(":")
+         if len(parts) >= _SESSION_KEY_PARTS_MIN and parts[1]:
+diff --git a/backend/app/services/openclaw/policies.py b/backend/app/services/openclaw/policies.py
+index 8bca6cb..a7f13d4 100644
+--- a/backend/app/services/openclaw/policies.py
++++ b/backend/app/services/openclaw/policies.py
+@@ -52,7 +52,7 @@ class OpenClawAuthorizationPolicy:
+                 status_code=status.HTTP_403_FORBIDDEN,
+                 detail=cls._GATEWAY_MAIN_ONLY_DETAIL,
+             )
+-        if actor_agent.openclaw_session_id != GatewayAgentIdentity.session_key(gateway):
++        if actor_agent.session_id != GatewayAgentIdentity.session_key(gateway):
+             raise HTTPException(
+                 status_code=status.HTTP_403_FORBIDDEN,
+                 detail=cls._GATEWAY_MAIN_ONLY_DETAIL,
+diff --git a/backend/app/services/openclaw/provisioning.py b/backend/app/services/openclaw/provisioning.py
+index f49fecf..4ba49a1 100644
+--- a/backend/app/services/openclaw/provisioning.py
++++ b/backend/app/services/openclaw/provisioning.py
+@@ -369,7 +369,7 @@ def _build_context(
+     agent_id = str(agent.id)
+     workspace_root = gateway.workspace_root
+     workspace_path = _workspace_path(agent, workspace_root)
+-    session_key = agent.openclaw_session_id or ""
++    session_key = agent.session_id or ""
+     base_url = settings.base_url
+     main_session_key = GatewayAgentIdentity.session_key(gateway)
+     identity_context = _identity_context(agent)
+@@ -418,7 +418,7 @@ def _build_main_context(
+         "agent_name": agent.name,
+         "agent_id": str(agent.id),
+         "is_main_agent": "true",
+-        "session_key": agent.openclaw_session_id or "",
++        "session_key": agent.session_id or "",
+         "base_url": base_url,
+         "auth_token": auth_token,
+         "main_session_key": GatewayAgentIdentity.session_key(gateway),
+@@ -908,7 +908,7 @@ class BaseAgentLifecycleManager(ABC):
+             msg = "gateway_workspace_root is required"
+             raise ValueError(msg)
+         # Ensure templates render with the active deterministic session key.
+-        agent.openclaw_session_id = session_key
++        agent.session_id = session_key
+ 
+         agent_id = self._agent_id(agent)
+         workspace_path = _workspace_path(agent, self._gateway.workspace_root)
+@@ -1159,7 +1159,7 @@ class OpenClawGatewayProvisioner:
+         # Resolve session key and agent type.
+         if board is None:
+             session_key = (
+-                agent.openclaw_session_id or GatewayAgentIdentity.session_key(gateway) or ""
++                agent.session_id or GatewayAgentIdentity.session_key(gateway) or ""
+             ).strip()
+             if not session_key:
+                 msg = "gateway main agent session_key is required"
+@@ -1243,7 +1243,7 @@ class OpenClawGatewayProvisioner:
+         if delete_session:
+             if agent.board_id is None:
+                 session_key = (
+-                    agent.openclaw_session_id or GatewayAgentIdentity.session_key(gateway) or ""
++                    agent.session_id or GatewayAgentIdentity.session_key(gateway) or ""
+                 ).strip()
+             else:
+                 session_key = _session_key(agent)
+diff --git a/backend/app/services/openclaw/provisioning_db.py b/backend/app/services/openclaw/provisioning_db.py
+index 15f8e68..876ec2c 100644
+--- a/backend/app/services/openclaw/provisioning_db.py
++++ b/backend/app/services/openclaw/provisioning_db.py
+@@ -177,8 +177,8 @@ class OpenClawProvisioningService(OpenClawDBService):
+                 existing.gateway_id = request.gateway.id
+                 changed = True
+             desired_session_key = self.lead_session_key(board)
+-            if existing.openclaw_session_id != desired_session_key:
+-                existing.openclaw_session_id = desired_session_key
++            if existing.session_id != desired_session_key:
++                existing.session_id = desired_session_key
+                 changed = True
+             if changed:
+                 existing.updated_at = utcnow()
+@@ -208,7 +208,7 @@ class OpenClawProvisioningService(OpenClawDBService):
+             is_board_lead=True,
+             heartbeat_config=DEFAULT_HEARTBEAT_CONFIG.copy(),
+             identity_profile=merged_identity_profile,
+-            openclaw_session_id=self.lead_session_key(board),
++            session_id=self.lead_session_key(board),
+         )
+         raw_token = mint_agent_token(agent)
+         await self.add_commit_refresh(agent)
+@@ -782,7 +782,7 @@ class AgentLifecycleService(OpenClawDBService):
+         - For board-scoped agents, default to a UUID-based key to avoid name collisions.
+         """
+ 
+-        existing = (agent.openclaw_session_id or "").strip()
++        existing = (agent.session_id or "").strip()
+         if agent.board_id is None:
+             # Gateway-main agents must have an explicit deterministic key (set elsewhere).
+             if existing:
+@@ -1067,7 +1067,7 @@ class AgentLifecycleService(OpenClawDBService):
+     ) -> tuple[Agent, str]:
+         agent = Agent.model_validate(data)
+         raw_token = mint_agent_token(agent)
+-        agent.openclaw_session_id = self.resolve_session_key(agent)
++        agent.session_id = self.resolve_session_key(agent)
+         await self.add_commit_refresh(agent)
+         return agent, raw_token
+ 
+@@ -1222,7 +1222,7 @@ class AgentLifecycleService(OpenClawDBService):
+             updates["board_id"] = None
+             updates["gateway_id"] = gateway_for_main.id
+             agent.is_board_lead = False
+-            agent.openclaw_session_id = GatewayAgentIdentity.session_key(gateway_for_main)
++            agent.session_id = GatewayAgentIdentity.session_key(gateway_for_main)
+             main_gateway = gateway_for_main
+         elif make_main is not None:
+             if "board_id" not in updates or updates["board_id"] is None:
+@@ -1240,7 +1240,7 @@ class AgentLifecycleService(OpenClawDBService):
+                     detail="Board gateway_id is required",
+                 )
+             updates["gateway_id"] = board.gateway_id
+-            agent.openclaw_session_id = None
++            agent.session_id = None
+ 
+         if make_main is None and "board_id" in updates:
+             board = await self.require_board(updates["board_id"])
+@@ -1416,10 +1416,10 @@ class AgentLifecycleService(OpenClawDBService):
+         if agent.board_id is None:
+             return
+         desired = self.resolve_session_key(agent)
+-        existing = (agent.openclaw_session_id or "").strip()
++        existing = (agent.session_id or "").strip()
+         if existing == desired:
+             return
+-        agent.openclaw_session_id = desired
++        agent.session_id = desired
+         self.session.add(agent)
+         await self.session.commit()
+         await self.session.refresh(agent)
+diff --git a/backend/app/services/webhooks/dispatch.py b/backend/app/services/webhooks/dispatch.py
+index 13c3234..5358666 100644
+--- a/backend/app/services/webhooks/dispatch.py
++++ b/backend/app/services/webhooks/dispatch.py
+@@ -80,7 +80,7 @@ async def _notify_target_agent(
+         target_agent = await Agent.objects.filter_by(board_id=board.id, is_board_lead=True).first(
+             session
+         )
+-    if target_agent is None or not target_agent.openclaw_session_id:
++    if target_agent is None or not target_agent.session_id:
+         return
+ 
+     dispatch = GatewayDispatchService(session)
+@@ -90,7 +90,7 @@ async def _notify_target_agent(
+ 
+     message = _webhook_message(board=board, webhook=webhook, payload=payload)
+     await dispatch.try_send_agent_message(
+-        session_key=target_agent.openclaw_session_id,
++        session_key=target_agent.session_id,
+         config=config,
+         agent_name=target_agent.name,
+         message=message,
+diff --git a/backend/tests/test_agent_delete_main_agent.py b/backend/tests/test_agent_delete_main_agent.py
+index 68add47..dfc0480 100644
+--- a/backend/tests/test_agent_delete_main_agent.py
++++ b/backend/tests/test_agent_delete_main_agent.py
+@@ -34,7 +34,7 @@ class _AgentStub:
+     name: str
+     gateway_id: UUID
+     board_id: UUID | None = None
+-    openclaw_session_id: str | None = None
++    session_id: str | None = None
+ 
+ 
+ @dataclass
+@@ -60,7 +60,7 @@ async def test_delete_gateway_main_agent_does_not_require_board_id(
+         name="Primary Gateway Agent",
+         gateway_id=gateway_id,
+         board_id=None,
+-        openclaw_session_id="agent:gateway-x:main",
++        session_id="agent:gateway-x:main",
+     )
+     gateway = _GatewayStub(
+         id=gateway_id,
+diff --git a/backend/tests/test_agent_provisioning_utils.py b/backend/tests/test_agent_provisioning_utils.py
+index 871c62b..39ca98a 100644
+--- a/backend/tests/test_agent_provisioning_utils.py
++++ b/backend/tests/test_agent_provisioning_utils.py
+@@ -31,7 +31,7 @@ def test_slugify_falls_back_to_uuid_hex(monkeypatch):
+ @dataclass
+ class _AgentStub:
+     name: str
+-    openclaw_session_id: str | None = None
++    session_id: str | None = None
+     heartbeat_config: dict | None = None
+     is_board_lead: bool = False
+     id: UUID = field(default_factory=uuid4)
+@@ -41,10 +41,10 @@ class _AgentStub:
+ 
+ 
+ def test_agent_key_uses_session_key_when_present():
+-    agent = _AgentStub(name="Alice", openclaw_session_id="agent:alice:main")
++    agent = _AgentStub(name="Alice", session_id="agent:alice:main")
+     assert agent_provisioning._agent_key(agent) == "alice"
+ 
+-    agent2 = _AgentStub(name="Hello, World", openclaw_session_id=None)
++    agent2 = _AgentStub(name="Hello, World", session_id=None)
+     assert agent_provisioning._agent_key(agent2) == "hello-world"
+ 
+ 
+@@ -52,7 +52,7 @@ def test_workspace_path_preserves_tilde_in_workspace_root():
+     # Mission Control accepts a user-entered workspace root (from the UI) and must
+     # treat it as an opaque string. In particular, we must not expand "~" to a
+     # filesystem path since that behavior depends on the host environment.
+-    agent = _AgentStub(name="Alice", openclaw_session_id="agent:alice:main")
++    agent = _AgentStub(name="Alice", session_id="agent:alice:main")
+     assert agent_provisioning._workspace_path(agent, "~/.openclaw") == "~/.openclaw/workspace-alice"
+ 
+ 
+@@ -134,7 +134,7 @@ async def test_provision_main_agent_uses_dedicated_openclaw_agent_id(monkeypatch
+         token=None,
+         workspace_root="/tmp/openclaw",
+     )
+-    agent = _AgentStub(name="Acme Gateway Agent", openclaw_session_id=session_key)
++    agent = _AgentStub(name="Acme Gateway Agent", session_id=session_key)
+     captured: dict[str, object] = {}
+ 
+     async def _fake_ensure_agent_session(self, session_key, *, label=None):
+@@ -710,7 +710,7 @@ async def test_delete_agent_lifecycle_ignores_missing_gateway_agent(monkeypatch)
+         id=uuid4(),
+         name="Worker",
+         board_id=uuid4(),
+-        openclaw_session_id=None,
++        session_id=None,
+         is_board_lead=False,
+     )
+     control_plane = _ControlPlaneStub()
+@@ -748,7 +748,7 @@ async def test_delete_agent_lifecycle_raises_on_non_missing_agent_error(monkeypa
+         id=uuid4(),
+         name="Worker",
+         board_id=uuid4(),
+-        openclaw_session_id=None,
++        session_id=None,
+         is_board_lead=False,
+     )
+     monkeypatch.setattr(
+diff --git a/backend/tests/test_agent_webhook_payload_read_api.py b/backend/tests/test_agent_webhook_payload_read_api.py
+index a4c45ec..3e7d274 100644
+--- a/backend/tests/test_agent_webhook_payload_read_api.py
++++ b/backend/tests/test_agent_webhook_payload_read_api.py
+@@ -98,7 +98,7 @@ async def _seed_payload(
+             name="Lead Agent",
+             status="online",
+             is_board_lead=True,
+-            openclaw_session_id="agent:lead:session",
++            session_id="agent:lead:session",
+             agent_token_hash=token_hash,
+         ),
+     )
+diff --git a/backend/tests/test_approvals_lead_notifications.py b/backend/tests/test_approvals_lead_notifications.py
+index 92674ce..1618cd9 100644
+--- a/backend/tests/test_approvals_lead_notifications.py
++++ b/backend/tests/test_approvals_lead_notifications.py
+@@ -82,7 +82,7 @@ async def test_update_approval_notifies_lead_when_approved(
+         gateway_id=uuid4(),
+         name="Lead Agent",
+         is_board_lead=True,
+-        openclaw_session_id="agent:lead:session",
++        session_id="agent:lead:session",
+     )
+     session = _FakeSession()
+     captured: dict[str, Any] = {}
+diff --git a/backend/tests/test_board_group_assignment_notifications.py b/backend/tests/test_board_group_assignment_notifications.py
+index e7d481c..7360bca 100644
+--- a/backend/tests/test_board_group_assignment_notifications.py
++++ b/backend/tests/test_board_group_assignment_notifications.py
+@@ -305,28 +305,28 @@ async def test_notify_agents_on_board_group_addition_fanout_and_records_results(
+         board_id=board.id,
+         gateway_id=board.gateway_id or uuid4(),
+         name="Lead",
+-        openclaw_session_id="agent:lead:session",
++        session_id="agent:lead:session",
+     )
+     agent_skip = Agent(
+         id=uuid4(),
+         board_id=board.id,
+         gateway_id=board.gateway_id or uuid4(),
+         name="Observer",
+-        openclaw_session_id=None,
++        session_id=None,
+     )
+     agent_fail = Agent(
+         id=uuid4(),
+         board_id=board.id,
+         gateway_id=board.gateway_id or uuid4(),
+         name="Worker",
+-        openclaw_session_id="agent:worker:session",
++        session_id="agent:worker:session",
+     )
+     agent_peer = Agent(
+         id=uuid4(),
+         board_id=peer_board.id,
+         gateway_id=peer_board.gateway_id or uuid4(),
+         name="Partner",
+-        openclaw_session_id="agent:partner:session",
++        session_id="agent:partner:session",
+     )
+ 
+     class _FakeBoardQuery:
+@@ -427,14 +427,14 @@ async def test_notify_agents_on_board_group_removal_fanout_and_records_results(
+         board_id=board.id,
+         gateway_id=board.gateway_id or uuid4(),
+         name="Lead",
+-        openclaw_session_id="agent:lead:session",
++        session_id="agent:lead:session",
+     )
+     agent_peer = Agent(
+         id=uuid4(),
+         board_id=peer_board.id,
+         gateway_id=peer_board.gateway_id or uuid4(),
+         name="Partner",
+-        openclaw_session_id="agent:partner:session",
++        session_id="agent:partner:session",
+     )
+ 
+     class _FakeBoardQuery:
+diff --git a/backend/tests/test_board_webhooks_api.py b/backend/tests/test_board_webhooks_api.py
+index d23686e..620e321 100644
+--- a/backend/tests/test_board_webhooks_api.py
++++ b/backend/tests/test_board_webhooks_api.py
+@@ -97,7 +97,7 @@ async def _seed_webhook(
+             gateway_id=gateway_id,
+             name="Lead Agent",
+             status="online",
+-            openclaw_session_id="lead:session:key",
++            session_id="lead:session:key",
+             is_board_lead=True,
+         ),
+     )
+diff --git a/backend/tests/test_lifecycle_services.py b/backend/tests/test_lifecycle_services.py
+index 52617b0..dc1ae45 100644
+--- a/backend/tests/test_lifecycle_services.py
++++ b/backend/tests/test_lifecycle_services.py
+@@ -34,7 +34,7 @@ class _FakeSession:
+ class _AgentStub:
+     id: UUID
+     name: str
+-    openclaw_session_id: str | None = None
++    session_id: str | None = None
+     board_id: UUID | None = None
+ 
+ 
+@@ -54,7 +54,7 @@ async def test_gateway_coordination_nudge_success(monkeypatch: pytest.MonkeyPatc
+     target = _AgentStub(
+         id=uuid4(),
+         name="Worker Agent",
+-        openclaw_session_id="agent:worker:main",
++        session_id="agent:worker:main",
+         board_id=board.id,
+     )
+     captured: list[dict[str, Any]] = []
+@@ -123,7 +123,7 @@ async def test_gateway_coordination_nudge_maps_gateway_error(
+     target = _AgentStub(
+         id=uuid4(),
+         name="Worker Agent",
+-        openclaw_session_id="agent:worker:main",
++        session_id="agent:worker:main",
+         board_id=board.id,
+     )
+ 
+diff --git a/backend/tests/test_security_fixes.py b/backend/tests/test_security_fixes.py
+index a559591..5f01a6d 100644
+--- a/backend/tests/test_security_fixes.py
++++ b/backend/tests/test_security_fixes.py
+@@ -100,7 +100,7 @@ async def _seed_webhook_with_secret(
+             gateway_id=gateway_id,
+             name="Lead Agent",
+             status="online",
+-            openclaw_session_id="lead:session:key",
++            session_id="lead:session:key",
+             is_board_lead=True,
+         ),
+     )
+diff --git a/backend/tests/test_task_agent_permissions.py b/backend/tests/test_task_agent_permissions.py
+index 05b0733..bd8e856 100644
+--- a/backend/tests/test_task_agent_permissions.py
++++ b/backend/tests/test_task_agent_permissions.py
+@@ -467,7 +467,7 @@ async def test_non_lead_agent_move_to_review_reassigns_to_lead_and_sends_review_
+                     gateway_id=gateway_id,
+                     status="online",
+                     is_board_lead=True,
+-                    openclaw_session_id="lead-session",
++                    session_id="lead-session",
+                 ),
+             )
+             session.add(
+@@ -573,7 +573,7 @@ async def test_lead_moves_review_task_to_inbox_and_reassigns_last_worker_with_re
+                     board_id=board_id,
+                     gateway_id=gateway_id,
+                     status="online",
+-                    openclaw_session_id="worker-session",
++                    session_id="worker-session",
+                 ),
+             )
+             session.add(
+@@ -584,7 +584,7 @@ async def test_lead_moves_review_task_to_inbox_and_reassigns_last_worker_with_re
+                     gateway_id=gateway_id,
+                     status="online",
+                     is_board_lead=True,
+-                    openclaw_session_id="lead-session",
++                    session_id="lead-session",
+                 ),
+             )
+             session.add(
+@@ -961,7 +961,7 @@ async def test_lead_assignment_and_in_progress_wakes_assignee_once(
+                     gateway_id=gateway_id,
+                     status="online",
+                     is_board_lead=True,
+-                    openclaw_session_id="session-lead",
++                    session_id="session-lead",
+                 ),
+             )
+             session.add(
+@@ -971,7 +971,7 @@ async def test_lead_assignment_and_in_progress_wakes_assignee_once(
+                     board_id=board_id,
+                     gateway_id=gateway_id,
+                     status="offline",
+-                    openclaw_session_id="session-worker",
++                    session_id="session-worker",
+                 ),
+             )
+             session.add(
+@@ -1066,7 +1066,7 @@ async def test_entering_in_progress_with_existing_assignee_wakes_assignee(
+                     board_id=board_id,
+                     gateway_id=gateway_id,
+                     status="offline",
+-                    openclaw_session_id="session-worker",
++                    session_id="session-worker",
+                 ),
+             )
+             session.add(
+diff --git a/backend/tests/test_tasks_blocked_lead_dependency_only.py b/backend/tests/test_tasks_blocked_lead_dependency_only.py
+index 82da4ba..c120c0b 100644
+--- a/backend/tests/test_tasks_blocked_lead_dependency_only.py
++++ b/backend/tests/test_tasks_blocked_lead_dependency_only.py
+@@ -56,7 +56,7 @@ async def test_lead_dependency_only_update_allowed_when_task_blocked() -> None:
+                     board_id=board_id,
+                     gateway_id=uuid4(),
+                     is_board_lead=True,
+-                    openclaw_session_id="agent:lead:session",
++                    session_id="agent:lead:session",
+                 ),
+             )
+             session.add(
+diff --git a/backend/tests/test_tasks_blocked_lead_transitions.py b/backend/tests/test_tasks_blocked_lead_transitions.py
+index be35780..12dc812 100644
+--- a/backend/tests/test_tasks_blocked_lead_transitions.py
++++ b/backend/tests/test_tasks_blocked_lead_transitions.py
+@@ -51,7 +51,7 @@ async def test_lead_update_rejects_assignment_change_when_task_blocked() -> None
+                     board_id=board_id,
+                     gateway_id=uuid4(),
+                     is_board_lead=True,
+-                    openclaw_session_id="agent:lead:session",
++                    session_id="agent:lead:session",
+                 ),
+             )
+             session.add(
+@@ -61,7 +61,7 @@ async def test_lead_update_rejects_assignment_change_when_task_blocked() -> None
+                     board_id=board_id,
+                     gateway_id=uuid4(),
+                     is_board_lead=False,
+-                    openclaw_session_id="agent:worker:session",
++                    session_id="agent:worker:session",
+                 ),
+             )
+             session.add(Task(id=dep_id, board_id=board_id, title="dep", description=None))
+@@ -143,7 +143,7 @@ async def test_lead_update_rejects_status_change_when_task_blocked() -> None:
+                     board_id=board_id,
+                     gateway_id=uuid4(),
+                     is_board_lead=True,
+-                    openclaw_session_id="agent:lead:session",
++                    session_id="agent:lead:session",
+                 ),
+             )
+             session.add(Task(id=dep_id, board_id=board_id, title="dep", description=None))
+diff --git a/backend/tests/test_webhook_dispatch.py b/backend/tests/test_webhook_dispatch.py
+index 29274e8..3cb0a2b 100644
+--- a/backend/tests/test_webhook_dispatch.py
++++ b/backend/tests/test_webhook_dispatch.py
+@@ -229,12 +229,12 @@ async def test_notify_target_agent_prefers_mapped_agent(monkeypatch: pytest.Monk
+     mapped_agent = SimpleNamespace(
+         id=agent_id,
+         name="Mapped Agent",
+-        openclaw_session_id="mapped:session",
++        session_id="mapped:session",
+     )
+     lead_agent = SimpleNamespace(
+         id=uuid4(),
+         name="Lead Agent",
+-        openclaw_session_id="lead:session",
++        session_id="lead:session",
+     )
+     sent: list[dict[str, str]] = []
+ 
+@@ -293,7 +293,7 @@ async def test_notify_target_agent_falls_back_to_lead(monkeypatch: pytest.Monkey
+     lead_agent = SimpleNamespace(
+         id=uuid4(),
+         name="Lead Agent",
+-        openclaw_session_id="lead:session",
++        session_id="lead:session",
+     )
+     sent: list[dict[str, str]] = []
+ 
