@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Start the OpenClaw gateway.
+# Start the gateway.
 # Kills any existing gateway first (clean restart).
 # Must run before Mission Control connects.
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+source "$FLEET_DIR/scripts/lib/vendor.sh"
 
 # Load config
 source "$FLEET_DIR/.env" 2>/dev/null || true
@@ -31,7 +32,10 @@ if ! curl -sf "http://localhost:${MC_PORT}/health" >/dev/null 2>&1; then
     exit 1
 fi
 
-echo "=== Starting OpenClaw Gateway ==="
+echo "=== Starting $VENDOR_NAME Gateway ==="
+
+# Stop legacy vendor if switching from openclaw to openarms
+_vendor_stop_legacy
 
 # Stop systemd-managed gateway if running (it would respawn after kill)
 if systemctl --user is-active openclaw-fleet-gateway.service >/dev/null 2>&1; then
@@ -40,18 +44,14 @@ if systemctl --user is-active openclaw-fleet-gateway.service >/dev/null 2>&1; th
     sleep 2
 fi
 
-# Kill existing gateway processes (avoid duplicates)
-if pgrep -f "openclaw-gateway" >/dev/null 2>&1; then
-    echo "  Killing existing OpenClaw gateway..."
-    pkill -f "openclaw-gateway" 2>/dev/null || true
-    sleep 2
-fi
-
-# Also kill stale openclaw parent process
-if pgrep -f "openclaw$" >/dev/null 2>&1; then
-    pkill -f "openclaw$" 2>/dev/null || true
-    sleep 1
-fi
+# Kill existing gateway processes (avoid duplicates — check both vendors)
+for proc_pattern in "openarms gateway" "openclaw gateway" "openarms$" "openclaw$"; do
+    if pgrep -f "$proc_pattern" >/dev/null 2>&1; then
+        echo "  Killing $proc_pattern..."
+        pkill -f "$proc_pattern" 2>/dev/null || true
+    fi
+done
+sleep 2
 
 # Kill anything else occupying the gateway port
 PORT_PID=$(lsof -ti :"$GW_PORT" 2>/dev/null || true)
@@ -74,7 +74,7 @@ if [[ -f "$FLEET_DIR/systemd/openclaw-fleet-gateway.service.template" ]]; then
 else
     # Fallback: start directly if no systemd template
     export NODE_OPTIONS="--max-old-space-size=4096"
-    nohup openclaw gateway run --port "$GW_PORT" > "$FLEET_DIR/.gateway.log" 2>&1 &
+    nohup $VENDOR_CLI gateway run --port "$GW_PORT" > "$FLEET_DIR/.gateway.log" 2>&1 &
     disown
 fi
 

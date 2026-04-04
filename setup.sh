@@ -142,6 +142,7 @@ echo ""
 # Step 1: Install gateway vendor
 bash scripts/install-openclaw.sh
 source "$FLEET_DIR/scripts/lib/vendor.sh"  # re-source after install
+_vendor_cutover  # migrate config from openclaw if switching to openarms
 echo ""
 
 # Step 2: Configure gateway vendor (if not already set up)
