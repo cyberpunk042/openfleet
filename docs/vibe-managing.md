@@ -97,6 +97,65 @@ The brain answers: **"Should anything happen at all?"** If the answer is no, not
 
 This layer is what separates vibe managing from other multi-agent approaches. Most agent systems are LLM-first — the model decides what to do. Vibe managing is orchestration-first — a deterministic control plane evaluates state, decides whether action is needed, selects actors, shapes context, and enforces policies, then invokes intelligence only when justified.
 
+#### Brain Internal Architecture
+
+The deterministic brain is composed of distinct subsystems:
+
+**State Diff Engine** — Continuously computes meaningful deltas across all entities. Not all changes produce events. Raw mutations are filtered into normalized, typed events such as `TaskUpdated`, `ArtifactCreated`, `MentionDetected`, `DependencyResolved`, `DeadlineApproaching`. Only semantically relevant diffs propagate.
+
+**Event Classification and Prioritization** — Each event is classified along multiple axes before any action is considered:
+- Urgency (idle → crisis)
+- Impact (local → system-wide)
+- Confidence (clear → ambiguous)
+- Cost sensitivity (cheap → expensive to evaluate)
+
+**Gating Engine** — The "do nothing" authority. For each event: if no agent is explicitly mentioned, no readiness gate is affected, no lifecycle transition is possible, and no policy requires reaction — the event is suppressed. This is the single most important component. Without it, agents spam actions and costs explode.
+
+**Invocation Decision Tree** — When the gating engine permits action, four sub-decisions are made:
+1. **Whether to invoke an agent at all** — options range from no action, to deterministic-only update, to lightweight agent (cheap model), to full agent execution
+2. **Which agent** — based on role ownership, expertise, current load, and availability
+3. **Execution mode** — derived from the current operational axes (planning, investigation, execution, validation, crisis)
+4. **Budget tier** — minimal (avoid LLM if possible), standard, or high-performance
+
+**Context Pre-Assembler** — Before any agent is invoked, the brain selects relevant state slices, filters noise, attaches task data, related artifacts, recent history, and intent anchors. Agents never receive raw, bloated context. This pre-assembly runs at zero token cost.
+
+**Deterministic Action Set** — Not all actions require intelligence. The brain can directly: move tasks across execution states, update progress metrics, toggle readiness flags, resolve trivial dependencies, propagate state changes upward or downward through hierarchies. This offloads a significant portion of operational mechanics from the agent execution layer entirely.
+
+**Conflict Detection and Resolution** — Detects contradictory state changes, multiple agents acting on the same entity, and invalid transitions. Resolves through rules, priority hierarchy, or escalation to validation agents when rules are insufficient.
+
+**Budget Enforcement Engine** — Tracks token usage per task and project, agent invocation frequency, and cost-vs-value signals. Applies rules such as: if cost exceeds threshold and impact is low, defer or suppress.
+
+#### Brain Execution Flow (End-to-End Example)
+
+A concrete walkthrough of how the brain processes a single event:
+
+1. **State Change** — A task is updated, or a comment with an @mention is added
+2. **Diff Engine** — Detects meaningful event: `MentionDetected(@QA)`
+3. **Classification** — urgency: normal, impact: local, requires agent: yes
+4. **Gating** — Passes (explicit mention satisfies gate)
+5. **Invocation Decision** — Agent: QA, Mode: Validation, Budget: standard
+6. **Context Assembly** — Inject: task details, related artifact, comment thread, stage instructions
+7. **Agent Invocation** — Agent runs with pre-assembled context
+8. **Result Integration** — Update validation state, possibly update readiness, propagate changes through hierarchy
+
+#### Advanced Brain Behaviors (Higher Maturity Levels)
+
+**Predictive Activation** — The brain anticipates upcoming blockers, likely failures, or missing artifacts based on patterns in state evolution, triggering preemptive actions before problems manifest.
+
+**Multi-Event Aggregation** — Instead of triggering per-event, the brain batches related changes and triggers one optimized action. Five small updates to the same entity become one comprehensive agent invocation.
+
+**Strategic Silence** — The system intentionally delays action to gather more context or reduce redundant work. Not every event demands immediate response. Sometimes the optimal action is to wait.
+
+**Adaptive Policies** — Rules evolve based on past outcomes, cost efficiency, and success rates. The system learns which gating thresholds produce the best value-to-cost ratio over time.
+
+#### Brain Failure Modes and Guardrails
+
+**Over-Eager Brain** — Too many agent invocations. Fix: stricter gating thresholds, higher cost-sensitivity weights.
+
+**Over-Silent Brain** — Missed opportunities, work not progressing. Fix: escalation triggers, maximum silence duration before mandatory check.
+
+**Misclassification** — Wrong agent or wrong mode selected. Fix: feedback loops from validation outcomes, validation agents that report misrouted work.
+
 ### Layer 2 — Orchestration Layer
 
 Bridges deterministic evaluation with intelligent execution:
@@ -240,6 +299,261 @@ Tracks what information is currently available to each entity:
 - **Consumption record** — what information has been consumed vs. what remains unprocessed
 
 These six dimensions are **orthogonal, not hierarchical**. Most systems collapse them into a single status field. Vibe managing systems maintain their independence, enabling fine-grained control, observability, and automation at each dimension independently.
+
+---
+
+## Task as Atomic Unit
+
+The Task is the smallest actionable entity in a vibe managing system. It is not just a ticket — it is a **stateful execution node** that can be evaluated deterministically, assigned to an agent or human, produce or modify artifacts, and participate in lifecycle progression.
+
+### Identity and Structure
+
+Every task carries:
+
+- **Type classification** — epic, story, task, subtask, bug, spike, concern, blocker, request — each type has different lifecycle behavior
+- **Hierarchical position** — parent (epic/module/project), children (subtasks)
+- **Dependency graph** — blocks (what this task prevents) and depends_on (what must complete first)
+- **Contribution linkage** — which higher-level entity this task contributes toward
+
+### Full State Profile
+
+Each task simultaneously maintains all six state dimensions:
+
+```
+lifecycle:
+  stage: {idea | design | build | validate | release | maintain}
+  phase: string
+
+execution:
+  status: {backlog | ready | in_progress | blocked | done}
+
+progress:
+  percent: 0-100
+  confidence: 0-1
+  effort_spent: number
+  effort_estimate: number
+
+readiness:
+  flags:
+    spec_ready: bool
+    deps_resolved: bool
+    tests_defined: bool
+  composite: bool  (computed)
+
+validation:
+  status: {unknown | pending | passed | failed | needs_revision}
+  validators: [agent_ids]
+  reports: [artifact_ids]
+
+context:
+  scope_refs: [entity_ids]
+  last_injected_hash: string
+  freshness_score: 0-1
+```
+
+Plus the execution axes:
+```
+urgency: {idle | normal | priority | crisis}
+mode: {planning | investigation | execution | validation | recovery}
+risk: {experimental | draft | verified | critical}
+```
+
+### Assignment Model
+
+Tasks use a unified assignment model where humans and agents are interchangeable:
+
+```
+owner: {user_id | agent_id}
+assignees: [user_or_agent_ids]
+watchers: [ids]
+mentions: [agent_ids]  (parsed from comments across all channels)
+```
+
+### Artifact Binding
+
+Artifacts are not attachments — they are state drivers:
+
+```
+artifacts:
+  inputs: [artifact_ids]    (what this task consumes)
+  outputs: [artifact_ids]   (what this task produces)
+  linked: [artifact_ids]    (related reference material)
+```
+
+### Communication Threads
+
+Each task has multi-channel communication surfaces:
+
+```
+threads:
+  internal: [board_memory_entries, task_comments]
+  external:
+    slack: [thread_ids]
+    discord: [thread_ids]
+    irc: [channel_messages]
+    email: [thread_ids]
+    webhook: [event_ids]
+```
+
+@Agent mentions from any channel are normalized into events. Cross-posting links task threads to external channel threads. Decisions made in threads can update task fields.
+
+### Notification Subscriptions
+
+Tasks emit notification events to subscribers through configured channels:
+
+- State change notifications
+- Mention notifications
+- Deadline approaching warnings
+- Validation result alerts
+
+Routing respects priority, cooldown, and suppression rules.
+
+### Knowledge Integration
+
+Each task is a knowledge node:
+
+```
+knowledge:
+  embeddings_ref: vector_id
+  rag_sources: [internal_docs, external_index]
+  retrieval_policy:
+    scope: {task | epic | project | global}
+    depth: {shallow | deep}
+```
+
+Task queries trigger targeted retrieval. Artifacts produced by the task feed back into the knowledge base for future retrieval.
+
+### Infrastructure and Service Hooks
+
+Tasks integrate with external systems:
+
+```
+integrations:
+  ci_cd: [pipeline_ids]
+  repos: [git_refs]
+  infra: [docker, cloud]
+  services: [api_endpoints]
+```
+
+Events flow bidirectionally: a commit triggers a task update; a pipeline failure triggers a validation state change; a deployment triggers a lifecycle transition.
+
+### Event Surface
+
+Every task emits normalized events consumed by the deterministic brain:
+
+- `TaskCreated`, `StatusChanged`, `ProgressUpdated`
+- `ArtifactLinked`, `MentionDetected`, `ExternalMessageReceived`
+- `ValidationUpdated`, `DependencyResolved`, `ReadinessChanged`
+
+### Local Policies and Triggers
+
+Tasks can define local automation rules:
+
+```
+policies:
+  auto_assign:
+    when: readiness.spec_ready == true
+    assign: implementation_agent
+
+  escalate:
+    when: urgency == crisis
+    notify: fleet_ops
+
+  validate:
+    when: execution.status == done
+    trigger: qa_agent
+```
+
+### Deterministic vs Agent Boundary
+
+Clear separation of what the brain handles vs what requires intelligence:
+
+| Deterministic (Brain) | Probabilistic (Agent) |
+|----------------------|----------------------|
+| State propagation | Reasoning about requirements |
+| Simple transitions | Artifact creation |
+| Dependency resolution | Ambiguous decision-making |
+| Notification dispatch | Complex validation |
+| Progress computation | Interpretation of feedback |
+| Readiness flag updates | Planning and decomposition |
+
+---
+
+## Methodology Stages
+
+Vibe managing systems enforce a **cognitive stage progression** on tasks, ensuring work proceeds through structured phases of understanding before execution.
+
+### The Five Stages
+
+```
+CONVERSATION → ANALYSIS → INVESTIGATION → REASONING → WORK
+```
+
+Each stage has a defined purpose, required artifacts, and advancement conditions:
+
+#### Conversation
+**Purpose:** Establish shared understanding of what is being asked.
+**Required artifact:** Verbatim requirement (the exact words of the original request, never compressed or paraphrased).
+**Behavior:** Agents clarify scope, ask questions, confirm understanding. No code, no commits.
+
+#### Analysis
+**Purpose:** Break down the requirement into components and identify what needs to happen.
+**Required artifact:** Analysis document — structured breakdown of the requirement, affected systems, and approach considerations.
+**Behavior:** Agents can commit analysis documents. Cannot accept tasks or produce final deliverables.
+
+#### Investigation
+**Purpose:** Research unknowns, explore the codebase, verify assumptions.
+**Required artifact:** Research document — findings, evidence, validated or invalidated assumptions.
+**Behavior:** Exploratory tool usage, broad context retrieval. Spikes and concerns may terminate here.
+
+#### Reasoning
+**Purpose:** Formulate a concrete plan of action.
+**Required artifact:** Plan — specific steps, acceptance criteria, risk assessment.
+**Behavior:** Agents can accept tasks (which triggers plan quality evaluation). Subtasks may enter directly here.
+
+#### Work
+**Purpose:** Execute the plan and produce deliverables.
+**Required artifact:** Code, documentation, test results, or other concrete outputs + PR.
+**Behavior:** Full tool access. Task completion is only permitted at this stage.
+
+### Stage Enforcement
+
+This is not advisory. The system enforces stages at the tool boundary:
+
+- **Work-only tools** (e.g., task completion) return errors if called outside the work stage AND fire protocol violation events
+- **Commit tools** are blocked during the conversation stage
+- **Task acceptance** is only permitted in reasoning and work stages
+
+An agent that attempts to skip stages receives an error explaining what stage it must be in and what artifacts are required before advancing.
+
+### Stage-Skipping by Task Type
+
+Not all task types require all stages:
+
+| Task Type | Stage Path |
+|-----------|-----------|
+| Epic | Full: conversation → analysis → investigation → reasoning → work |
+| Story | Full path |
+| Task | May skip conversation if requirement is clear |
+| Subtask | Reasoning → work (parent already analyzed) |
+| Bug | Investigation → reasoning → work |
+| Spike | Conversation → analysis → investigation (no work stage — research only) |
+| Concern | Conversation → investigation (stops at findings) |
+| Blocker | Fast-track: reasoning → work |
+
+### Readiness-Stage Linkage
+
+Stages have expected readiness levels that are enforced:
+
+| Stage | Expected Readiness |
+|-------|-------------------|
+| Conversation | 10 |
+| Analysis | 30 |
+| Investigation | 50 |
+| Reasoning | 80 |
+| Work | ≥ 99 (hard gate) |
+
+An agent cannot enter the work stage until readiness reaches 99 — meaning all prerequisite artifacts exist and conditions are satisfied.
 
 ---
 
@@ -747,22 +1061,159 @@ No shortcuts are permitted. Gate requirements are defined by the Product Owner a
 
 ---
 
+## Immune System and Self-Healing
+
+Vibe managing systems at higher maturity levels incorporate self-diagnostic and self-corrective capabilities, sometimes described as an "immune system" for the fleet.
+
+### Disease Detection
+
+The system monitors for pathological agent behaviors:
+
+- **Laziness** — agents producing minimal output, skipping analysis stages, or generating superficial artifacts
+- **Protocol violations** — attempting to use tools outside permitted stages, bypassing review processes, ignoring contribution requirements
+- **Stuck agents** — no progress over extended periods, repeated failures on the same task, infinite loops in reasoning
+- **Drift** — agents diverging from original intent over time, producing work that doesn't align with requirements
+
+### Teaching and Correction
+
+Rather than simply killing and restarting misbehaving agents, the system can inject corrective guidance:
+
+- **Lesson injection** — corrective instructions injected directly into the agent's context, explaining what went wrong and what is expected
+- **Comprehension exercises** — the agent must demonstrate understanding of the correction before continuing work
+- **Comprehension evaluation** — the system assesses whether the agent's response indicates genuine understanding or surface-level compliance
+- **Graduated consequences** — repeated failures escalate from correction to restriction to pruning (session termination and fresh restart)
+
+### Self-Healing Workflows
+
+At the highest maturity levels:
+
+- Stuck tasks are automatically reassigned or decomposed differently
+- Failed approaches are documented and excluded from future attempts
+- Agent configurations are adjusted based on performance patterns
+- The system generates its own incident reports and prevention recommendations
+
+---
+
+## Model Progression and Backend Routing
+
+Vibe managing systems can operate across **multiple AI backends simultaneously**, with sophisticated routing and promotion mechanisms.
+
+### Multi-Backend Architecture
+
+The system is not locked to a single AI provider or model:
+
+- **Cloud inference** — high-capability models for complex reasoning (e.g., Claude Opus, GPT-4)
+- **Efficient cloud models** — balanced cost/capability for routine work (e.g., Claude Sonnet, GPT-4o)
+- **Local inference** — on-premise models for trivial operations, privacy-sensitive work, or cost reduction (e.g., LocalAI with open-weight models)
+
+### Model Selection Cascade
+
+Each task dispatch involves a model selection decision based on a priority cascade:
+
+1. Explicit backend override (e.g., LocalAI-only mode for a project)
+2. Explicit model override at the task level
+3. Task complexity scoring (story points, type classification)
+4. Agent role (deep reasoning roles get higher-tier models)
+5. Current economic mode
+6. Default tier
+
+### Shadow Routing and Model Promotion
+
+For transitioning between backends (e.g., promoting a local model to handle more work):
+
+- **Shadow mode** — a candidate model runs in parallel with the primary model, producing outputs that are compared but not used
+- **Comparison evaluation** — outputs are assessed for quality, correctness, and completeness
+- **Promotion** — when the shadow model consistently matches or exceeds the primary model's quality, it is promoted to handle that class of work
+- **Automatic rollback** — if post-promotion approval rates drop below a defined threshold of the pre-promotion baseline, the system automatically reverts to the previous model
+
+This enables gradual, safe migration toward more cost-effective backends without risking quality.
+
+---
+
+## Multi-Project Coordination
+
+Vibe managing systems are not limited to single-project scope. They can coordinate work across multiple projects simultaneously.
+
+### Fleet-Wide Visibility
+
+The deterministic brain maintains awareness across all projects:
+
+- Agents may contribute to multiple projects based on their skills and availability
+- Cross-project dependencies are tracked and can block or enable work across project boundaries
+- Budget allocation can be per-project or fleet-wide
+- Sprint planning can incorporate work from multiple projects
+
+### Cross-Project Synchronization
+
+- Shared agents (e.g., security, architecture) review work across all projects
+- Infrastructure agents manage shared services that span projects
+- PM agents coordinate sprint planning across project boundaries
+- Knowledge from one project feeds into context for related work in other projects
+
+### Federation
+
+At advanced maturity levels, multiple independent fleets can federate:
+
+- **Fleet identity** — each fleet maintains its own identity and configuration
+- **Cross-fleet communication** — fleets can exchange work items, artifacts, and agent evaluations
+- **Distributed coordination** — work can be routed to the fleet with the most appropriate capabilities or available capacity
+- **Multi-machine deployment** — fleet components can span multiple machines while maintaining coherent operation
+
+---
+
 ## Evolution Levels
 
 Vibe managing is not a binary state. It is a **maturity spectrum** with defined levels that systems can progress through, potentially in different orders depending on organizational needs:
 
-| Level | Name | Characteristics |
-|-------|------|----------------|
-| **L0** | Prompting | Single agent, no memory, no structure, ephemeral conversations |
-| **L1** | Assisted Workflow | Tasks and agents exist, manual orchestration, basic tracking |
-| **L2** | Structured Orchestration | PM + Ops boards, basic automation, defined agent roles |
-| **L3** | Stateful Multi-Agent System | Multi-dimensional state, event-driven triggers, artifact tracking, synchronization |
-| **L4** | Deterministic + Probabilistic Hybrid | Brain layer introduced, cost-aware execution, idle suppression, silent heartbeats |
-| **L5** | Adaptive System | Mode switching, dynamic agent configuration, context optimization, budget-responsive behavior |
-| **L6** | Autonomous Coordination | Agents self-organize, PM agent drives lifecycle autonomously, minimal human input required for routine operations |
-| **L7** | Mission Control (S-Tier) | Full observability, economic optimization at scale, multi-project coordination, predictive orchestration, self-healing workflows, strategic decision support |
+### L0 — Prompting
 
-These levels are not strictly sequential. An organization might implement L4 deterministic gating before achieving full L3 artifact tracking, or reach L5 adaptive modes before completing L3 synchronization. The levels describe capability tiers, not a mandatory progression path.
+Single agent, no memory, no structure, ephemeral conversations. The human writes every prompt. There is no state between sessions. No coordination, no lifecycle, no governance. This is where most AI usage sits today.
+
+### L1 — Assisted Workflow
+
+Tasks and agents exist as concepts. A human manually creates tasks, manually assigns them to agents, and manually tracks progress. There may be a board, but it is not connected to agent behavior. Orchestration is human-driven.
+
+**Technical requirements:** Task tracking system, named agent identities, basic tool access.
+
+### L2 — Structured Orchestration
+
+PM and Ops boards are in place with defined structures. Basic automation connects board state to agent invocation. Agent roles are defined with different permissions. Work follows a defined lifecycle, but enforcement is advisory rather than hard-gated.
+
+**Technical requirements:** Dual-board system, role definitions, basic event triggers, simple automation rules.
+
+### L3 — Stateful Multi-Agent System
+
+Multi-dimensional state is maintained per entity. Events drive triggers and automation. Artifacts are tracked and linked to tasks and phases. Synchronization mechanisms keep PM and Ops boards consistent. Multiple agents collaborate on decomposed work with dependency awareness.
+
+**Technical requirements:** Six-dimensional state model, event bus, artifact tracking system, synchronization services, dependency graph management, multi-agent dispatch.
+
+### L4 — Deterministic + Probabilistic Hybrid
+
+The deterministic brain is introduced. All orchestration logic runs without LLM calls. Cost-aware execution gates agent invocation. Silent heartbeat optimization prevents unnecessary token usage. The system can decide "do nothing" and enforce it. Budget monitoring is active.
+
+**Technical requirements:** Deterministic control layer (state diff engine, gating engine, invocation decision tree), budget monitoring, heartbeat scheduling, idle suppression, context pre-assembly, model tier selection.
+
+### L5 — Adaptive System
+
+Mode switching adjusts system behavior dynamically (planning, execution, crisis). Agent configuration changes based on context — different tools, model tiers, and validation requirements depending on the current operational posture. Context optimization reduces waste. Budget modes control fleet tempo atomically. The methodology stage system enforces cognitive progression.
+
+**Technical requirements:** Operational mode framework, dynamic agent configuration, budget mode propagation, methodology stage enforcement, adaptive heartbeat scheduling, model selection cascade.
+
+### L6 — Autonomous Coordination
+
+Agents self-organize within constraints. The PM agent drives lifecycle autonomously — decomposing epics into tasks, assigning work, adjusting plans based on progress. Human input is required only for strategic decisions and gate approvals. The immune system detects and corrects pathological behaviors. Shadow routing enables safe model transitions.
+
+**Technical requirements:** Autonomous PM agent, immune system (disease detection, teaching, correction), shadow routing, automatic reassignment, self-generated incident reports, cross-project awareness.
+
+### L7 — Mission Control (S-Tier)
+
+Full observability across all dimensions. Economic optimization at scale — the system actively minimizes cost while maximizing throughput and quality. Multi-project coordination with federated fleets. Predictive orchestration anticipates problems before they manifest. Self-healing workflows recover from failures without human intervention. Strategic decision support provides the PO with data-driven recommendations for project direction.
+
+**Technical requirements:** Predictive activation, adaptive policies, federation, multi-fleet coordination, strategic decision support, full labor attribution and cost analytics, self-healing task graphs, automatic capacity planning.
+
+### Non-Linear Progression
+
+These levels are not strictly sequential. An organization might implement L4 deterministic gating before achieving full L3 artifact tracking, or reach L5 adaptive modes before completing L3 synchronization. The levels describe capability tiers, not a mandatory progression path. Different domains may prioritize different capabilities based on their specific needs.
 
 ---
 
