@@ -402,7 +402,7 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
                 name=item.get("name", ""),
                 status=item.get("status", "offline"),
                 board_id=str(item.get("board_id", "")) if item.get("board_id") else None,
-                session_key=item.get("openclaw_session_id"),
+                session_key=item.get("session_id") or item.get("openclaw_session_id"),
             )
             for item in items
         ]

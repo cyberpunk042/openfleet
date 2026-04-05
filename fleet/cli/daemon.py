@@ -229,7 +229,7 @@ async def _run_auth_daemon(interval: int = 120) -> None:
 
                     if mc_up:
                         import subprocess as _sp
-                        _sp.run(["pkill", "-f", "openclaw-gateway"],
+                        _sp.run(["pkill", "-f", "openarms-gateway|openclaw-gateway"],
                                 capture_output=True, timeout=5)
                         await asyncio.sleep(3)
                         fleet_dir = os.environ.get(

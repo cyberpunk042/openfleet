@@ -49,8 +49,8 @@ async def _pause(reason: str = "") -> int:
         print("   MCP servers: could not kill")
 
     # 3. Kill ALL gateway and openclaw processes
-    print("3. Killing gateway and openclaw processes...")
-    for pattern in ["openclaw-gateway", "openclaw$", "python3 -m gateway start", "miniircd"]:
+    print("3. Killing gateway processes...")
+    for pattern in ["openarms-gateway", "openclaw-gateway", "openarms$", "openclaw$", "python3 -m gateway start", "miniircd"]:
         try:
             result = subprocess.run(
                 ["pkill", "-f", pattern], capture_output=True, timeout=5

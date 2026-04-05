@@ -51,7 +51,7 @@ async def _gateway_rpc(
             cfg = json.load(f)
         oc_token = cfg.get("gateway", {}).get("auth", {}).get("token", "")
     except (FileNotFoundError, json.JSONDecodeError) as exc:
-        logger.error("Failed to read openclaw config: %s", exc)
+        logger.error("Failed to read gateway config: %s", exc)
         return False, {"error": str(exc)}
 
     try:
