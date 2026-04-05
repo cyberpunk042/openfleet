@@ -1,5 +1,5 @@
 diff --git a/frontend/src/components/templates/DashboardShell.tsx b/frontend/src/components/templates/DashboardShell.tsx
-index f88cd60..9afb4d6 100644
+index f88cd60..2346289 100644
 --- a/frontend/src/components/templates/DashboardShell.tsx
 +++ b/frontend/src/components/templates/DashboardShell.tsx
 @@ -13,6 +13,7 @@ import {
