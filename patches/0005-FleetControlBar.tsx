@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuth } from "@/auth/clerk";
+import { customFetch } from "@/api/mutator";
+import { getApiBaseUrl } from "@/lib/api-base";
 
 const WORK_MODES = [
   { value: "full-autonomous", label: "Full Autonomous" },
@@ -57,7 +58,6 @@ interface FleetControlBarProps {
 }
 
 export function FleetControlBar({ boardId }: FleetControlBarProps) {
-  const { isSignedIn, getToken } = useAuth();
   const [workMode, setWorkMode] = useState("full-autonomous");
   const [cyclePhase, setCyclePhase] = useState("execution");
   const [backendMode, setBackendMode] = useState("claude");
@@ -67,35 +67,20 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
   const [resolvedBoardId, setResolvedBoardId] = useState<string | undefined>(boardId);
   const [workModeBeforePause, setWorkModeBeforePause] = useState<string | null>(null);
 
-  // Helper: build auth headers for MC API calls
-  const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
-    const token = await getToken();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    return headers;
-  }, [getToken]);
-
   // Auto-resolve board ID if not provided
   useEffect(() => {
     if (boardId) {
       setResolvedBoardId(boardId);
       return;
     }
-    if (!isSignedIn) return;
 
     const resolveBoard = async () => {
       try {
-        const headers = await authHeaders();
-        const resp = await fetch("/api/v1/boards?limit=10&offset=0", { headers });
-        if (resp.ok) {
-          const data = await resp.json();
-          const boards = data.items || [];
-          const fleet = boards.find((b: any) => b.name === "Fleet Operations") || boards[0];
-          if (fleet) {
-            setResolvedBoardId(fleet.id);
-          }
+        const data = await customFetch<any>("/api/v1/boards?limit=10&offset=0", { method: "GET" });
+        const boards = data.items || [];
+        const fleet = boards.find((b: any) => b.name === "Fleet Operations") || boards[0];
+        if (fleet) {
+          setResolvedBoardId(fleet.id);
         }
       } catch {
         // Silent fail
@@ -103,33 +88,29 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
     };
 
     resolveBoard();
-  }, [isSignedIn, boardId, authHeaders]);
+  }, [boardId]);
 
   // Fetch current fleet_config from board
   useEffect(() => {
-    if (!isSignedIn || !resolvedBoardId) return;
+    if (!resolvedBoardId) return;
 
     const fetchConfig = async () => {
       try {
-        const headers = await authHeaders();
-        const resp = await fetch(`/api/v1/boards/${resolvedBoardId}`, { headers });
-        if (resp.ok) {
-          const board = await resp.json();
-          const config = board.fleet_config || {};
-          setWorkMode(config.work_mode || "full-autonomous");
-          setCyclePhase(config.cycle_phase || "execution");
-          setBackendMode(config.backend_mode || "claude");
-          setBudgetMode(config.budget_mode || "standard");
-          setCostUsedPct(config.cost_used_pct || 0);
-          setWorkModeBeforePause(config.work_mode_before_pause || null);
-        }
+        const board = await customFetch<any>(`/api/v1/boards/${resolvedBoardId}`, { method: "GET" });
+        const config = board.fleet_config || {};
+        setWorkMode(config.work_mode || "full-autonomous");
+        setCyclePhase(config.cycle_phase || "execution");
+        setBackendMode(config.backend_mode || "claude");
+        setBudgetMode(config.budget_mode || "standard");
+        setCostUsedPct(config.cost_used_pct || 0);
+        setWorkModeBeforePause(config.work_mode_before_pause || null);
       } catch {
         // Silent fail — keep defaults
       }
     };
 
     fetchConfig();
-  }, [isSignedIn, resolvedBoardId, authHeaders]);
+  }, [resolvedBoardId]);
 
   // Update fleet_config on the board
   const updateConfig = useCallback(
@@ -138,7 +119,6 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
       setLoading(true);
 
       try {
-        const headers = await authHeaders();
         const currentConfig = {
           work_mode: workMode,
           cycle_phase: cyclePhase,
@@ -150,9 +130,8 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
 
         const newConfig = { ...currentConfig, ...updates };
 
-        await fetch(`/api/v1/boards/${resolvedBoardId}`, {
+        await customFetch(`/api/v1/boards/${resolvedBoardId}`, {
           method: "PATCH",
-          headers,
           body: JSON.stringify({ fleet_config: newConfig }),
         });
       } catch {
@@ -161,7 +140,7 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
         setLoading(false);
       }
     },
-    [resolvedBoardId, workMode, cyclePhase, backendMode, budgetMode, loading, authHeaders],
+    [resolvedBoardId, workMode, cyclePhase, backendMode, budgetMode, loading],
   );
 
   const handleWorkModeChange = (value: string) => {
