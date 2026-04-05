@@ -37,6 +37,13 @@ echo "=== Starting $VENDOR_NAME Gateway ==="
 # Stop legacy vendor if switching from openclaw to openarms
 _vendor_stop_legacy
 
+# Unmask in case teardown left it masked
+systemctl --user unmask fleet-gateway.service 2>/dev/null || true
+
+# Disable legacy service (Restart=always causes storms)
+systemctl --user stop openclaw-fleet-gateway.service 2>/dev/null || true
+systemctl --user disable openclaw-fleet-gateway.service 2>/dev/null || true
+
 # Stop systemd-managed gateway if running (it would respawn after kill)
 if systemctl --user is-active fleet-gateway.service >/dev/null 2>&1; then
     echo "  Stopping systemd gateway service..."

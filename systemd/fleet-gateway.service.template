@@ -12,7 +12,10 @@ Environment=HOME={{HOME}}
 Environment=NODE_OPTIONS=--max-old-space-size=4096
 ExecStartPre=/bin/bash -c 'test ! -f {{FLEET_DIR}}/.fleet-paused || (echo "Fleet is PAUSED" && exit 1)'
 ExecStartPre=/bin/bash -c 'curl -sf http://localhost:8000/healthz >/dev/null 2>&1 || (echo "MC is DOWN" && exit 1)'
-ExecStart=/bin/bash -c 'exec {{VENDOR_BIN}} gateway run --port "${OCF_GATEWAY_PORT:-18789}"'
+# OCF_GATEWAY_PORT is for the OCF Python gateway (port 9400) — NOT for the vendor.
+# The vendor gateway reads its port from ~/.openarms/openarms.json (gateway.port).
+# Do NOT pass --port here; it would collide with the OCF gateway.
+ExecStart=/bin/bash -c 'exec {{VENDOR_BIN}} gateway run'
 # BUDGET PROTECTION — DO NOT CHANGE TO Restart=always
 # Restart=always causes a restart storm when OCMC is down: ExecStartPre fails,
 # systemd restarts, fails again, forever. Each cycle spawns processes.
