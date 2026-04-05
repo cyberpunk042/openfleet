@@ -1,0 +1,8 @@
+{
+  "name": "fleet-heartbeat-gate",
+  "version": "1.0.0",
+  "description": "Gates heartbeat Claude calls using brain decisions from the fleet orchestrator",
+  "hooks": {
+    "before_dispatch": true
+  }
+}
