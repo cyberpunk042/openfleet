@@ -426,6 +426,55 @@ class MCClient(TaskClient, MemoryClient, ApprovalClient, AgentClient):
                 return a.board_id
         return None
 
+    async def update_board_fleet_config(self, board_id: str, updates: dict) -> bool:
+        """Update fleet_config fields on a board. Merges with existing config.
+
+        Args:
+            board_id: The board UUID.
+            updates: Dict of fleet_config fields to update (merged, not replaced).
+
+        Returns:
+            True if update succeeded.
+        """
+        try:
+            # Read current config to merge
+            board = await self.get_board(board_id)
+            current = board.get("fleet_config") or {}
+            merged = {**current, **updates}
+            resp = await self._client.patch(
+                f"/api/v1/boards/{board_id}",
+                json={"fleet_config": merged},
+            )
+            return resp.status_code == 200
+        except Exception:
+            return False
+
+    async def is_board_paused(self, board_id: str) -> bool:
+        """Check if a board is paused via OCMC pause button.
+
+        Queries board memory for the latest /pause or /resume command.
+        Returns True if the latest command is /pause.
+        """
+        try:
+            resp = await self._client.get(
+                f"/api/v1/boards/{board_id}/memory",
+                params={"limit": 50, "offset": 0},
+            )
+            if resp.status_code != 200:
+                return False
+            data = resp.json()
+            items = data.get("items", [])
+            # Find the latest /pause or /resume in board memory
+            for entry in items:
+                content = (entry.get("content") or "").strip().lower()
+                if content == "/pause":
+                    return True
+                if content == "/resume":
+                    return False
+            return False
+        except Exception:
+            return False
+
     # ─── Helpers ────────────────────────────────────────────────────────
 
     @staticmethod
