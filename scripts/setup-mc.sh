@@ -48,9 +48,11 @@ if [[ "$MODE" != "--register" ]]; then
     bash scripts/apply-patches.sh
     bash scripts/apply-fleet-ui.sh
 
-    # Start Docker services
+    # Build Docker images (can take minutes on first run)
+    echo "Building Mission Control images..."
+    docker compose build 2>&1 | grep -E 'Building|Built|CACHED|DONE|ERROR' || true
     echo "Starting Mission Control services..."
-    docker compose up -d --build 2>&1 | tail -5
+    docker compose up -d 2>&1 | tail -5
 
     # Wait for backend
     echo "Waiting for backend..."
