@@ -230,7 +230,7 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
 
       <Select value={budgetMode} onValueChange={handleBudgetModeChange}>
         <SelectTrigger
-          className="h-8 w-[120px] rounded-md border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 shadow-none"
+          className="h-8 w-[160px] rounded-md border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 shadow-none"
           disabled={loading}
         >
           <SelectValue />
@@ -246,24 +246,24 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
       </Select>
 
       {/* Cost bars: 5h session + 7d weekly */}
-      <div className="flex items-center gap-1.5" title={`5h: ${sessionCostPct}% | 7d: ${costUsedPct}%`}>
-        <div className="flex flex-col gap-0.5">
-          <div className="h-1.5 w-12 rounded-full bg-slate-100 overflow-hidden">
+      <div className="flex items-center gap-2" title={`5h: ${sessionCostPct}% | 7d: ${costUsedPct}%`}>
+        <div className="flex flex-col gap-1">
+          <div className="h-2 w-16 rounded-full bg-slate-100 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${sessionCostPct >= 90 ? "bg-red-500" : sessionCostPct >= 70 ? "bg-amber-500" : "bg-emerald-500"}`}
               style={{ width: `${Math.min(sessionCostPct, 100)}%` }}
             />
           </div>
-          <div className="h-1.5 w-12 rounded-full bg-slate-100 overflow-hidden">
+          <div className="h-2 w-16 rounded-full bg-slate-100 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${costUsedPct >= 90 ? "bg-red-500" : costUsedPct >= 70 ? "bg-amber-500" : "bg-emerald-500"}`}
               style={{ width: `${Math.min(costUsedPct, 100)}%` }}
             />
           </div>
         </div>
-        <div className="flex flex-col text-[9px] font-mono text-slate-500 leading-tight">
-          <span>5h:{sessionCostPct}%</span>
-          <span>7d:{costUsedPct}%</span>
+        <div className="flex flex-col text-[10px] font-mono text-slate-500 leading-tight">
+          <span>5h: {sessionCostPct}%</span>
+          <span>7d: {costUsedPct}%</span>
         </div>
       </div>
     </div>
