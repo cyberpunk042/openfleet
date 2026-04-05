@@ -1,8 +1,6 @@
-diff --git a/backend/app/schemas/agents.py b/backend/app/schemas/agents.py
-index 1234567..abcdefg 100644
 --- a/backend/app/schemas/agents.py
 +++ b/backend/app/schemas/agents.py
-@@ -266,6 +266,10 @@ class AgentHeartbeat(SQLModel):
+@@ -268,6 +268,10 @@
          description="Agent health status string.",
          examples=["healthy", "offline", "degraded"],
      )
@@ -13,11 +11,9 @@ index 1234567..abcdefg 100644
 
 
  class AgentHeartbeatCreate(AgentHeartbeat):
-diff --git a/backend/app/services/openclaw/provisioning_db.py b/backend/app/services/openclaw/provisioning_db.py
-index 1234567..abcdefg 100644
 --- a/backend/app/services/openclaw/provisioning_db.py
 +++ b/backend/app/services/openclaw/provisioning_db.py
-@@ -942,11 +942,14 @@ class AgentLifecycleService:
+@@ -940,11 +940,14 @@
          OpenClawAuthorizationPolicy.require_board_write_access(allowed=allowed)
 
      @staticmethod
@@ -34,8 +30,7 @@ index 1234567..abcdefg 100644
              agent_id=agent.id,
              board_id=agent.board_id,
          )
-@@ -1434,6 +1437,7 @@ class AgentLifecycleService:
-         self,
+@@ -1433,6 +1436,7 @@
          *,
          agent: Agent,
          status_value: str | None,
@@ -43,7 +38,8 @@ index 1234567..abcdefg 100644
      ) -> AgentRead:
          if status_value:
              agent.status = status_value
-@@ -1447,7 +1451,7 @@ class AgentLifecycleService:
+@@ -1444,7 +1448,7 @@
+         agent.checkin_deadline_at = None
          agent.last_provision_error = None
          agent.updated_at = utcnow()
 -        self.record_heartbeat(self.session, agent)
@@ -51,7 +47,7 @@ index 1234567..abcdefg 100644
          self.session.add(agent)
          await self.session.commit()
          await self.session.refresh(agent)
-@@ -1680,6 +1684,7 @@ class AgentLifecycleService:
+@@ -1679,6 +1683,7 @@
          return await self.commit_heartbeat(
              agent=agent,
              status_value=payload.status,
