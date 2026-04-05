@@ -372,6 +372,10 @@ for a in items:
     done
     echo "  $ONLINE agents online"
 
+    # Wait for gateway to fully initialize before template sync
+    echo "  Waiting for gateway to stabilize..."
+    sleep 15
+
     # Trigger template sync to recreate CRON jobs for all agents
     GW_ID=$(curl -sf -m 5 -H "Authorization: Bearer $LOCAL_AUTH_TOKEN" \
         http://localhost:8000/api/v1/gateways \

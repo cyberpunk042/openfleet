@@ -246,8 +246,10 @@ async def run_orchestrator_cycle(
                 "updated_at": now.isoformat(),
                 "updated_by": "orchestrator",
             }
-            # Write cost data from budget monitor if available
+            # Fetch fresh cost data (runs even when paused — cost tracking is always on)
             try:
+                if _budget_monitor:
+                    _budget_monitor.check_quota()
                 reading = _budget_monitor._last_reading if _budget_monitor else None
                 if reading:
                     sync_updates["cost_used_pct"] = round(reading.weekly_all_pct, 1)
