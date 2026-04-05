@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { customFetch } from "@/api/mutator";
-import { getApiBaseUrl } from "@/lib/api-base";
 
 const WORK_MODES = [
   { value: "full-autonomous", label: "Full Autonomous" },
@@ -172,8 +171,6 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
     costUsedPct >= 90 ? "bg-red-500" :
     costUsedPct >= 70 ? "bg-amber-500" :
     "bg-emerald-500";
-
-  if (!resolvedBoardId) return null;
 
   return (
     <div className="flex items-center gap-2">
