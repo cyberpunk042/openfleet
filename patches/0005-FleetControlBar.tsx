@@ -42,7 +42,11 @@ const CYCLE_PHASES = [
 const BACKEND_MODES = [
   { value: "claude", label: "Claude" },
   { value: "localai", label: "LocalAI" },
-  { value: "hybrid", label: "Hybrid" },
+  { value: "openrouter", label: "OpenRouter" },
+  { value: "claude+localai", label: "Claude + LocalAI" },
+  { value: "claude+openrouter", label: "Claude + OpenRouter" },
+  { value: "localai+openrouter", label: "LocalAI + OpenRouter" },
+  { value: "claude+localai+openrouter", label: "All Backends" },
 ];
 
 const BUDGET_MODES = [
@@ -75,8 +79,9 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
 
     const resolveBoard = async () => {
       try {
-        const data = await customFetch<any>("/api/v1/boards?limit=10&offset=0", { method: "GET" });
-        const boards = data.items || [];
+        const resp = await customFetch<any>("/api/v1/boards?limit=10&offset=0", { method: "GET" });
+        const payload = resp.data || resp;
+        const boards = payload.items || [];
         const fleet = boards.find((b: any) => b.name === "Fleet Operations") || boards[0];
         if (fleet) {
           setResolvedBoardId(fleet.id);
@@ -95,7 +100,8 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
 
     const fetchConfig = async () => {
       try {
-        const board = await customFetch<any>(`/api/v1/boards/${resolvedBoardId}`, { method: "GET" });
+        const resp = await customFetch<any>(`/api/v1/boards/${resolvedBoardId}`, { method: "GET" });
+        const board = resp.data || resp;
         const config = board.fleet_config || {};
         if (config.work_mode) setWorkMode(config.work_mode);
         if (config.cycle_phase) setCyclePhase(config.cycle_phase);
@@ -133,6 +139,7 @@ export function FleetControlBar({ boardId }: FleetControlBarProps) {
 
         await customFetch(`/api/v1/boards/${resolvedBoardId}`, {
           method: "PATCH",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ fleet_config: newConfig }),
         });
       } catch {
