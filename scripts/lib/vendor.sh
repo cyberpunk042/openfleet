@@ -38,7 +38,8 @@ elif command -v openclaw >/dev/null 2>&1; then
         VENDOR_LEGACY_ENV_FILE=""
     fi
 else
-    echo "ERROR: Neither openarms nor openclaw found in PATH" >&2
+    # No vendor installed yet — this is normal during first setup.
+    # Callers check $VENDOR_CLI being empty to decide whether to install.
     VENDOR_CLI=""
     VENDOR_NAME=""
     VENDOR_CONFIG_DIR=""

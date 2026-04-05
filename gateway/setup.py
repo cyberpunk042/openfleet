@@ -228,8 +228,9 @@ class FleetSetup:
         except Exception:
             return []
 
-    def register_agent(self, board_id: str, agent_config: Dict) -> Optional[Dict]:
+    def register_agent(self, board_id: str, agent_config: Dict, max_retries: int = 3) -> Optional[Dict]:
         """Register an agent in Mission Control from its agent.yaml config."""
+        import time as _time
         data = {
             "board_id": board_id,
             "name": agent_config.get("name", "unnamed"),
@@ -244,18 +245,30 @@ class FleetSetup:
             "soul_template": f"You are the {agent_config.get('name', '')} agent. "
                            f"Mission: {agent_config.get('mission', '')}",
         }
-        try:
-            r = httpx.post(
-                f"{self.mc_url}/api/v1/agents",
-                headers=self.headers, json=data, timeout=30.0,
-            )
-            if r.status_code in (200, 201):
-                return r.json()
-            print(f"   DEBUG: Agent register {agent_config.get('name')} returned {r.status_code}: {r.text[:200]}", file=sys.stderr)
-            return None
-        except Exception as e:
-            print(f"   DEBUG: Agent register exception: {e}", file=sys.stderr)
-            return None
+        name = agent_config.get("name", "unnamed")
+        for attempt in range(1, max_retries + 1):
+            try:
+                r = httpx.post(
+                    f"{self.mc_url}/api/v1/agents",
+                    headers=self.headers, json=data, timeout=30.0,
+                )
+                if r.status_code in (200, 201):
+                    return r.json()
+                # Retry on 502 (gateway provision transient failure)
+                if r.status_code == 502 and attempt < max_retries:
+                    print(f"   RETRY: {name} (attempt {attempt}/{max_retries}, got {r.status_code})")
+                    _time.sleep(5 * attempt)
+                    continue
+                print(f"   DEBUG: Agent register {name} returned {r.status_code}: {r.text[:200]}", file=sys.stderr)
+                return None
+            except Exception as e:
+                if attempt < max_retries:
+                    print(f"   RETRY: {name} (attempt {attempt}/{max_retries}, {type(e).__name__})")
+                    _time.sleep(5 * attempt)
+                    continue
+                print(f"   DEBUG: Agent register exception: {e}", file=sys.stderr)
+                return None
+        return None
 
     def load_local_agents(self) -> List[Dict]:
         """Load agent configs from agents/ directory."""

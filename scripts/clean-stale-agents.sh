@@ -73,15 +73,16 @@ if [[ -d "$OPENCLAW_AGENTS" ]]; then
 fi
 echo "  Stale agent dirs removed: $cleaned_dirs"
 
-# 3. Clean stale entries from gateway config (openclaw.json agents.list)
-python3 << PYEOF
+# 3. Clean stale entries from gateway config (agents.list)
+if [[ -n "$VENDOR_CONFIG_FILE" && -f "$VENDOR_CONFIG_FILE" ]]; then
+    python3 << PYEOF
 import json, os
 
 current_ids = set('''$CURRENT_IDS'''.strip().split('\n'))
 # Gateway uses mc-{UUID} format
 current_gw_ids = {f"mc-{uid}" for uid in current_ids if uid}
 
-config_path = os.environ.get("VENDOR_CONFIG_FILE", os.path.expanduser("~/.openclaw/openclaw.json"))
+config_path = "$VENDOR_CONFIG_FILE"
 with open(config_path) as f:
     cfg = json.load(f)
 
@@ -99,11 +100,14 @@ if removed > 0:
     with open(config_path, "w") as f:
         json.dump(cfg, f, indent=2)
     # Reset config health checkpoint
-    health_path = os.path.join(os.environ.get("VENDOR_CONFIG_DIR", os.path.expanduser("~/.openclaw")), "logs", "config-health.json")
+    health_path = os.path.join("$VENDOR_CONFIG_DIR", "logs", "config-health.json")
     if os.path.exists(health_path):
         os.remove(health_path)
 
 print(f"  Stale gateway entries removed: {removed}")
 PYEOF
+else
+    echo "  Stale gateway entries removed: 0 (no vendor config)"
+fi
 
 echo "  Done"

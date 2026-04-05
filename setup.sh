@@ -40,7 +40,8 @@ set -euo pipefail
 
 FLEET_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$FLEET_DIR"
-source "$FLEET_DIR/scripts/lib/vendor.sh"
+# NOTE: vendor.sh is sourced AFTER install step (line ~165).
+# Sourcing it here would fail because openarms/openclaw isn't installed yet.
 
 echo "╔══════════════════════════════════════╗"
 echo "║     Fleet Setup                      ║"
@@ -290,6 +291,20 @@ bash scripts/clean-gateway-config.sh
 echo ""
 echo "=== Restarting Gateway (seeded + clean config) ==="
 bash scripts/start-fleet.sh
+echo ""
+
+# Step 7g: Bind agents to IRC (agents now exist after seed + restart)
+echo "=== Binding Agents to IRC ==="
+if [[ -n "$VENDOR_CLI" ]]; then
+    AGENTS=$($VENDOR_CLI agents list 2>/dev/null | grep "^-" | sed 's/^- //' | awk '{print $1}')
+    BOUND=0
+    for agent in $AGENTS; do
+        [[ "$agent" == "main" ]] && continue
+        [[ "$agent" == mc-gateway-* ]] && continue
+        $VENDOR_CLI agents bind --agent "$agent" --bind "irc:fleet" >/dev/null 2>&1 && BOUND=$((BOUND + 1)) || true
+    done
+    echo "  $BOUND agents bound to IRC"
+fi
 echo ""
 
 # Step 8: Start The Lounge (web IRC client)
