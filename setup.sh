@@ -51,6 +51,7 @@ echo ""
 echo "=== Cleaning Existing Processes ==="
 pkill -f "fleet daemon" 2>/dev/null && echo "  Killed fleet daemons" || true
 pkill -f "fleet.mcp.server" 2>/dev/null && echo "  Killed MCP servers" || true
+pkill -f "setup-lightrag" 2>/dev/null && echo "  Killed stale LightRAG sync" || true
 pkill -f "miniircd" 2>/dev/null && echo "  Killed IRC daemon" || true
 pkill -f "python3 -m gateway start" 2>/dev/null && echo "  Killed stale AICP gateway" || true
 echo "  Clean"
