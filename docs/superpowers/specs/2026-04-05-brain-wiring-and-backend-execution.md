@@ -27,31 +27,64 @@ Design docs that specify how these connect:
 - `brain_evaluates` property exists but never checked
 - `record_heartbeat_ok()` / `record_heartbeat_work()` exist but never called in production
 
-### What to add (new orchestrator step)
+### Architecture: Two-Layer Gating
 
-After the fleet lifecycle update and BEFORE the dispatch gate, add a brain evaluation step:
+**Layer 1: Orchestrator (Python) — the brain**
 
+Every cycle (30s), the orchestrator:
+1. Calls `_fleet_lifecycle.agents_needing_heartbeat(now)` 
+2. For each agent where `brain_evaluates == True`:
+   - Runs `evaluate_agent_heartbeat()` — free Python, $0
+   - Writes decision to `{agent_workspace}/context/.brain-decision.json`:
+     ```json
+     {"decision": "silent", "timestamp": "...", "reasons": []}
+     ```
+     or `{"decision": "wake", ...}` or `{"decision": "strategic", "model": "opus", "effort": "high", ...}`
+3. For SILENT decisions: touches MC `last_seen_at` directly, posts board activity
+4. For WAKE/STRATEGIC: writes fresh HEARTBEAT.md context (gateway will need it)
+
+**Layer 2: Gateway Hook (Node.js) — the gate**
+
+A `before_dispatch` hook in OpenArms reads the brain decision file:
+```typescript
+api.registerHook("before_dispatch", async (event, ctx) => {
+  if (ctx.trigger === "heartbeat") {
+    const decision = readBrainDecision(ctx.agentId);
+    if (decision?.decision === "silent") {
+      return { handled: true, text: "HEARTBEAT_OK" };  // $0, no Claude call
+    }
+    // WAKE or STRATEGIC: proceed to Claude with fresh HEARTBEAT.md
+    if (decision?.decision === "strategic") {
+      // Apply model/effort overrides
+    }
+  }
+  return { handled: false };
+});
 ```
-For each agent where needs_heartbeat(now) == True:
-  If brain_evaluates:
-    Run evaluate_agent_heartbeat() — free Python, $0
-    If SILENT:
-      - Touch MC last_seen_at via heartbeat API
-      - Post board activity: "Heartbeat received from {agent}. (silent)"
-      - Call record_heartbeat_ok()
-      - Mark heartbeat sent
-    If WAKE:
-      - Write fresh HEARTBEAT.md context
-      - Let gateway CRON fire real Claude heartbeat
-      - Mark heartbeat sent
-    If STRATEGIC:
-      - Write fresh HEARTBEAT.md with model/effort overrides
-      - Let gateway CRON fire with strategic config
-      - Mark heartbeat sent
-  Else (not brain_evaluates — agent is ACTIVE or first heartbeat):
-    - Write fresh HEARTBEAT.md context (normal)
-    - Let gateway CRON fire normally
+
+**Flow:**
 ```
+Gateway CRON fires for agent
+  → before_dispatch hook reads .brain-decision.json
+  → SILENT? Return handled=true ($0, done)
+  → WAKE? Return handled=false → Claude runs with fresh HEARTBEAT.md
+  → STRATEGIC? Apply overrides → Claude runs with specific model/effort
+```
+
+**Why file-based:** No network call, no latency. Orchestrator writes every 30s. Hook reads instantly. Works with both openclaw and openarms.
+
+### Implementation
+
+**Orchestrator side (Python):**
+- Add brain evaluation step after lifecycle update
+- Write `.brain-decision.json` per agent workspace
+- Touch MC `last_seen_at` for SILENT agents
+- Post board activity for all decisions
+
+**Gateway side (OpenArms plugin):**
+- Create a fleet plugin that registers the `before_dispatch` hook
+- Hook reads `.brain-decision.json` from agent workspace
+- Returns `handled: true` for SILENT, `handled: false` for WAKE/STRATEGIC
 
 ### MC activity reporting
 
