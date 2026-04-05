@@ -401,7 +401,11 @@ if [[ -n "${LIGHTRAG_PID:-}" ]] && kill -0 "$LIGHTRAG_PID" 2>/dev/null; then
     echo ""
     echo "  Press ENTER to detach (sync continues in background)"
     echo "  Type 'w' + ENTER to detach and get notified when done"
+    echo "  Press Ctrl+C to cancel the sync"
     echo ""
+
+    # Ctrl+C cancels the LightRAG sync
+    trap 'echo ""; echo "  Cancelling LightRAG sync..."; kill "$LIGHTRAG_PID" 2>/dev/null; kill "$INPUT_PID" 2>/dev/null; rm -f "$INPUT_FLAG"; trap - INT; echo "  Cancelled."; echo ""' INT
 
     # Progress loop: show sync progress, check for user input
     # Background: watch for user input, write to a temp file when received
@@ -511,6 +515,9 @@ elif [[ -n "${LIGHTRAG_PID:-}" ]]; then
     tail -3 "$LIGHTRAG_LOG" 2>/dev/null | sed 's/^/  /'
     echo ""
 fi
+
+# Reset trap
+trap - INT
 
 echo "╔══════════════════════════════════════╗"
 echo "║     Fleet Setup Complete             ║"

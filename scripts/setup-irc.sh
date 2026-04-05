@@ -138,7 +138,8 @@ for agent in $AGENTS; do
         continue
     fi
 
-    $VENDOR_CLI agents bind --agent "$agent" --bind "irc:fleet" >/dev/null 2>&1 || true
+    echo -n "   $agent..."
+    $VENDOR_CLI agents bind --agent "$agent" --bind "irc:fleet" >/dev/null 2>&1 && echo " ok" || echo " skip"
     BOUND=$((BOUND + 1))
 done
 echo "   $BOUND agents bound to IRC (irc:fleet)"
