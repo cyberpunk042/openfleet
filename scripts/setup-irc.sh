@@ -121,28 +121,9 @@ with open('$OPENCLAW_CONFIG', 'w') as f:
     json.dump(cfg, f, indent=2)
 "
 
-# 4. Bind agents to IRC channel
-echo "4. Binding agents to IRC..."
-# Get agents and bindings ONCE (openclaw CLI takes ~5s per invocation)
-AGENTS=$($VENDOR_CLI agents list 2>/dev/null | grep "^-" | sed 's/^- //' | awk '{print $1}')
-BINDINGS=$($VENDOR_CLI agents bindings 2>/dev/null || true)
-BOUND=0
-
-for agent in $AGENTS; do
-    # Skip main and gateway agents
-    [[ "$agent" == "main" ]] && continue
-    [[ "$agent" == mc-gateway-* ]] && continue
-
-    # Check cached bindings
-    if echo "$BINDINGS" | grep -q "$agent.*irc"; then
-        continue
-    fi
-
-    echo -n "   $agent..."
-    $VENDOR_CLI agents bind --agent "$agent" --bind "irc:fleet" >/dev/null 2>&1 && echo " ok" || echo " skip"
-    BOUND=$((BOUND + 1))
-done
-echo "   $BOUND agents bound to IRC (irc:fleet)"
+# 4. Agent IRC binding is handled by setup.sh step 7g (after agents are registered).
+# setup-irc.sh runs before agent registration, so no agents exist yet.
+echo "4. Agent IRC binding deferred to post-registration step"
 
 echo ""
 echo "=== IRC Setup Complete ==="

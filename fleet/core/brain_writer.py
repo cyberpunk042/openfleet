@@ -104,10 +104,12 @@ def write_brain_decisions(
         _write_decision(fleet_dir, agents, agent_name, evaluation)
         results[agent_name] = evaluation
 
+        # Always reset heartbeat timer — silent or not.
+        # Without this, silent decisions never update last_heartbeat_at,
+        # so needs_heartbeat() returns True every 30s cycle → flooding.
+        agent_state.mark_heartbeat_sent(now)
         if evaluation.decision == HeartbeatDecision.SILENT:
             agent_state.record_heartbeat_ok()
-        else:
-            agent_state.mark_heartbeat_sent(now)
 
     return results
 
