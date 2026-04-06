@@ -263,6 +263,15 @@ async def run_orchestrator_cycle(
     # Brain evaluation — evaluate idle/sleeping agents, write decisions, report to MC
     try:
         from fleet.core.brain_writer import write_brain_decisions
+
+        # Log lifecycle state before evaluation
+        needing = list(_fleet_lifecycle.agents_needing_heartbeat(now))
+        all_agents_state = [
+            f"{s.name}:{s.status.value}:hb={s.last_heartbeat_at.strftime('%H:%M') if s.last_heartbeat_at else 'None'}:ok={s.consecutive_heartbeat_ok}"
+            for s in _fleet_lifecycle._agents.values()
+        ]
+        state.notes.append(f"Lifecycle: {len(needing)} need heartbeat of {len(_fleet_lifecycle._agents)}")
+
         brain_results = write_brain_decisions(
             lifecycle=_fleet_lifecycle,
             now=now,
@@ -271,15 +280,26 @@ async def run_orchestrator_cycle(
             board_memory=[],
             fleet_dir=os.environ.get("FLEET_DIR", str(Path(__file__).resolve().parent.parent.parent)),
         )
+
+        hb_ok = 0
+        hb_fail = 0
         for agent_name, evaluation in brain_results.items():
             decision = evaluation.decision.value
             if decision == "silent":
                 agent = agent_name_map.get(agent_name)
                 if agent:
                     try:
-                        await mc.heartbeat_agent(agent.id, message="(silent)")
-                    except Exception:
-                        pass
+                        ok = await mc.heartbeat_agent(agent.id, message="(silent)")
+                        if ok:
+                            hb_ok += 1
+                        else:
+                            hb_fail += 1
+                            state.notes.append(f"HB FAIL (HTTP): {agent_name}")
+                    except Exception as exc:
+                        hb_fail += 1
+                        state.notes.append(f"HB FAIL (exc): {agent_name}: {exc}")
+                else:
+                    state.notes.append(f"HB SKIP: {agent_name} not in agent_name_map")
             elif decision == "strategic":
                 try:
                     model = evaluation.model_override or "opus"
@@ -293,10 +313,13 @@ async def run_orchestrator_cycle(
         if brain_results:
             silent_count = sum(1 for e in brain_results.values() if e.decision.value == "silent")
             wake_count = sum(1 for e in brain_results.values() if e.decision.value != "silent")
-            state.notes.append(f"Brain: {silent_count} silent, {wake_count} wake")
+            state.notes.append(f"Brain: {silent_count} silent, {wake_count} wake, hb_sent={hb_ok}, hb_fail={hb_fail}")
+        else:
+            state.notes.append("Brain: 0 agents evaluated (none needed heartbeat)")
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("Brain evaluation failed: %s", e)
+        import traceback
+        state.notes.append(f"Brain CRASH: {e}")
+        state.errors.append(f"Brain evaluation failed: {e}\n{traceback.format_exc()}")
 
     # Step 0: Refresh agent context files — pre-embed full data for heartbeats
     # Always runs — agents need fresh context even when dispatch is paused.
@@ -1361,7 +1384,7 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
     token = env.get("LOCAL_AUTH_TOKEN", "")
 
     if not token:
-        print("[orchestrator] ERROR: No LOCAL_AUTH_TOKEN")
+        print("[orchestrator] ERROR: No LOCAL_AUTH_TOKEN", flush=True)
         return
 
     config = _load_orchestrator_config(loader)
@@ -1375,11 +1398,11 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
         gateway_token = oc_cfg.get("gateway", {}).get("auth", {}).get("token", "")
 
     mode = " [DRY RUN]" if dry_run else ""
-    print(f"[orchestrator] Daemon started{mode} (interval={interval}s)")
+    print(f"[orchestrator] Daemon started{mode} (interval={interval}s)", flush=True)
     print(f"[orchestrator] Auto-approve threshold: "
-          f"{config.get('auto_approve_threshold', 80)}%")
+          f"{config.get('auto_approve_threshold', 80)}%", flush=True)
     print(f"[orchestrator] Driver agents: "
-          f"{config.get('driver_agents', ['project-manager', 'fleet-ops'])}")
+          f"{config.get('driver_agents', ['project-manager', 'fleet-ops'])}", flush=True)
 
     from fleet.core.outage_detector import OutageDetector
     _outage = OutageDetector()
@@ -1391,7 +1414,7 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
         should_run, skip_reason = _outage.should_run_cycle()
         if not should_run:
             ts = datetime.now().strftime("%H:%M:%S")
-            print(f"[{ts}] [orchestrator] Skipping: {skip_reason}")
+            print(f"[{ts}] [orchestrator] Skipping: {skip_reason}", flush=True)
             await asyncio.sleep(interval)
             continue
 
@@ -1465,6 +1488,8 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
                 )
 
                 ts = datetime.now().strftime("%H:%M:%S")
+                # Always log cycle summary — silent cycles included
+                notes_str = "; ".join(state.notes) if state.notes else "idle"
                 if state.total_actions > 0 or state.errors:
                     print(
                         f"[{ts}] [orchestrator] "
@@ -1473,16 +1498,20 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
                         f"dispatched={state.tasks_dispatched} "
                         f"parents={state.parents_evaluated} "
                         f"drivers={state.drivers_woken} "
-                        f"errors={len(state.errors)}"
+                        f"errors={len(state.errors)} "
+                        f"| {notes_str}",
+                        flush=True,
                     )
                     for err in state.errors:
-                        print(f"  ERROR: {err}")
+                        print(f"  ERROR: {err}", flush=True)
+                else:
+                    print(f"[{ts}] [orchestrator] {notes_str}", flush=True)
 
             await mc.close()
         except Exception as e:
             _outage.record_failure("mc_api", str(e))
             ts = datetime.now().strftime("%H:%M:%S")
-            print(f"[{ts}] [orchestrator] MC UNREACHABLE: {e}")
+            print(f"[{ts}] [orchestrator] MC UNREACHABLE: {e}", flush=True)
 
             # MC is DOWN. Fleet is OFF. Disable cron jobs so the gateway
             # stops firing heartbeats. Do NOT kill the gateway process —
