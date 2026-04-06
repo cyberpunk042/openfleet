@@ -53,16 +53,19 @@ OFFLINE_AFTER = 4 * 60 * 60   # 4 hours sleeping → offline
 # Content-aware threshold — 1 HEARTBEAT_OK = brain takes over
 IDLE_AFTER_HEARTBEAT_OK = 1   # 1 proper heartbeat with nothing → brain relay
 
+# MC computes agent status dynamically: if last_seen_at > OFFLINE_AFTER, agent
+# shows as offline. Our heartbeat intervals MUST stay below this threshold or
+# agents flicker offline between heartbeats.
+MC_OFFLINE_AFTER = 10 * 60  # 10 minutes (MC's with_computed_status)
+
 # Heartbeat intervals by status (seconds)
-# These control how often the CRON fires. The brain intercepts every fire.
-# ACTIVE: no cron needed, agent drives its own work via Claude session
-# IDLE: cron fires, brain evaluates (free), fires real heartbeat only if needed
-# SLEEPING: longer interval, brain still evaluates on each fire
+# All intervals < MC_OFFLINE_AFTER to prevent agents showing offline between beats.
+# Brain evaluation is free (no Claude calls) so frequent checks cost nothing.
 HEARTBEAT_INTERVALS = {
     AgentStatus.ACTIVE: 0,              # No cron — agent drives its own work
-    AgentStatus.IDLE: 10 * 60,          # 10 minutes — brain intercepts each fire
-    AgentStatus.SLEEPING: 30 * 60,      # 30 minutes — brain intercepts each fire
-    AgentStatus.OFFLINE: 60 * 60,       # 60 minutes — minimal checking
+    AgentStatus.IDLE: 8 * 60,           # 8 minutes — frequent, brain-gated (free)
+    AgentStatus.SLEEPING: 8 * 60,       # 8 minutes — same: must stay < MC_OFFLINE_AFTER
+    AgentStatus.OFFLINE: 8 * 60,        # 8 minutes — same: agent stays visible in MC
 }
 
 
