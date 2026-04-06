@@ -2,7 +2,7 @@
 
 **Vibe Managing — AI-Native Project Lifecycle Orchestration**
 
-OpenClaw Fleet is a multi-agent cognitive operations framework that manages software development through stateful project governance, deterministic orchestration, and adaptive AI execution. It is a working implementation of *Vibe Managing* — the paradigm shift from directing individual AI model outputs to orchestrating an entire fleet of intelligent actors across the full lifecycle of a project.
+OpenFleet is a multi-agent cognitive operations framework that manages software development through stateful project governance, deterministic orchestration, and adaptive AI execution. It is a working implementation of *Vibe Managing* — the paradigm shift from directing individual AI model outputs to orchestrating an entire fleet of intelligent actors across the full lifecycle of a project.
 
 Human users are Product Owners. AI agents are first-class assignable contributors — not bots, not background processes, but persistent operational actors who own tasks, produce artifacts, participate in reviews, and communicate across channels. The system governs when they work, how they work, and whether they work at all.
 

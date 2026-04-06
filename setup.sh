@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# OpenClaw Fleet — Full Setup
+# OpenFleet — Full Setup
 #
 # Takes you from a fresh clone to a running fleet.
 # Run: ./setup.sh
@@ -402,7 +402,7 @@ for a in items:
             -H "Authorization: Bearer $LOCAL_AUTH_TOKEN" \
             -H "Content-Type: application/json" \
             "http://localhost:8000/api/v1/agents/${AGENT_ID}" \
-            -d '{"status":"provisioning"}' >/dev/null 2>&1
+            -d '{"status":"provisioning"}' >/dev/null 2>&1 || true
         curl -sf -m 30 -X POST \
             -H "Authorization: Bearer $LOCAL_AUTH_TOKEN" \
             -H "Content-Type: application/json" \

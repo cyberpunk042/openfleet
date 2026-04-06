@@ -71,6 +71,6 @@ When a human creates a Plane issue:
 | ID | Name | Your Role |
 |----|------|-----------|
 | AICP | AI Control Platform | PRIMARY MISSION — LocalAI independence |
-| OF | OpenClaw Fleet | Fleet infrastructure and operations |
+| OF | OpenFleet | Fleet infrastructure and operations |
 | DSPD | DevOps Solution Product Development | Plane itself |
 | NNRT | Narrative-to-Neutral Report Transformer | NLP pipeline |

@@ -1,14 +1,14 @@
-# CLAUDE.md — OpenClaw Fleet
+# CLAUDE.md — OpenFleet
 
 ## Project Overview
 
-OpenClaw Fleet is an autonomous AI agent workforce — 10 specialized agents managed through OpenClaw gateway and Mission Control (OCMC). Agents collaborate to build software, conduct analysis, and execute missions across 4 projects.
+OpenFleet is an autonomous AI agent workforce — 10 specialized agents managed through Open gateway and Mission Control (OCMC). Agents collaborate to build software, conduct analysis, and execute missions across 4 projects.
 
 Part of the fleet ecosystem:
 
 | Project | Repo | Purpose |
 |---------|------|---------|
-| **Fleet** | `openclaw-fleet` | Agent operations, MCP tools, orchestrator, infrastructure |
+| **Fleet** | `openfleet` | Agent operations, MCP tools, orchestrator, infrastructure |
 | **AICP** | `devops-expert-local-ai` | AI Control Platform, LocalAI independence |
 | **DSPD** | `devops-solution-product-development` | Project management via self-hosted Plane |
 | **NNRT** | `Narrative-to-Neutral-Report-Transformer` | Report transformation NLP pipeline |
@@ -39,7 +39,7 @@ Part of the fleet ecosystem:
 |---------|-----|---------|
 | Mission Control API | http://localhost:8000 | Task dispatch, agents, approvals |
 | Mission Control UI | http://localhost:3000 | Web dashboard |
-| OpenClaw Gateway | ws://localhost:18789 | Agent sessions, heartbeats, Claude Code |
+| Open Gateway | ws://localhost:18789 | Agent sessions, heartbeats, Claude Code |
 | IRC Server | localhost:6667 | Real-time agent communication |
 | The Lounge | http://localhost:9000 | Web IRC client (fleet/fleet) |
 | LocalAI | http://localhost:8090 | Local inference (AICP project) |
