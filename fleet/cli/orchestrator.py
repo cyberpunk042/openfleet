@@ -1003,6 +1003,20 @@ async def _wake_drivers(
                         f"{task_details}"
                     )
                     await inject_content(pm.session_key, wake_msg)
+                    # Write "wake" brain decision so HeartbeatRunner fires Claude
+                    # instead of being gated to silent.
+                    from fleet.core.brain_writer import _write_decision
+                    from fleet.core.heartbeat_gate import HeartbeatDecision, HeartbeatEvaluation, HeartbeatReason
+                    _write_decision(
+                        os.environ.get("FLEET_DIR", str(Path(__file__).resolve().parent.parent.parent)),
+                        agents, "project-manager",
+                        HeartbeatEvaluation(
+                            decision=HeartbeatDecision.WAKE,
+                            reasons=[HeartbeatReason(trigger="unassigned_tasks", details=f"{len(unassigned)} inbox tasks", urgency="high")],
+                        ),
+                    )
+                    # Also call MC heartbeat to mark PM alive + create activity
+                    await mc.heartbeat_agent(pm.id, message=f"(wake: {len(unassigned)} unassigned tasks)")
                     state.notes.append(f"Woke PM for {len(unassigned)} unassigned tasks")
                     await _notify(irc, "#fleet", f"[orchestrator] Woke PM — {len(unassigned)} unassigned tasks")
                 except Exception as e:
@@ -1026,6 +1040,15 @@ async def _wake_drivers(
                         f"PROCESS approvals NOW.\n"
                     )
                     await inject_content(ops.session_key, wake_msg)
+                    _write_decision(
+                        os.environ.get("FLEET_DIR", str(Path(__file__).resolve().parent.parent.parent)),
+                        agents, "fleet-ops",
+                        HeartbeatEvaluation(
+                            decision=HeartbeatDecision.WAKE,
+                            reasons=[HeartbeatReason(trigger="pending_reviews", details=f"{len(review_tasks)} reviews", urgency="high")],
+                        ),
+                    )
+                    await mc.heartbeat_agent(ops.id, message=f"(wake: {len(review_tasks)} reviews)")
                     state.notes.append(f"Woke fleet-ops for {len(review_tasks)} reviews")
                     await _notify(irc, "#reviews", f"[orchestrator] Woke fleet-ops — {len(review_tasks)} pending reviews")
                 except Exception as e:
