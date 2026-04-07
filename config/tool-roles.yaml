@@ -1,0 +1,445 @@
+# Per-role tool usage — what each role uses, how, and when.
+#
+# Source of truth: fleet-elevation/24 (tool call trees + role matrix)
+#                  fleet-elevation/05-14 (per-role operational surfaces)
+#
+# The generator script reads this to produce role-specific TOOLS.md.
+# Each role lists ONLY the tools they actually use.
+# Each tool has role-specific "usage" and "when" that differ from the
+# generic chain documentation in tool-chains.yaml.
+
+# ═══════════════════════════════════════════════════════════════════════
+# PROJECT MANAGER
+# ═══════════════════════════════════════════════════════════════════════
+
+project-manager:
+  tools:
+    fleet_read_context:
+      usage: "Load full board state — unassigned tasks, sprint data, agent status, contributions"
+      when: "FIRST call — data is pre-embedded but call refreshes for decisions"
+
+    fleet_task_create:
+      usage: "Create subtasks, contribution tasks, assignments, follow-ups"
+      when: "Breaking epics, assigning work, creating contribution opportunities"
+      note: "Set ALL fields: task_type, task_stage, task_readiness, story_points, agent_name, requirement_verbatim, delivery_phase, parent_task"
+
+    fleet_chat:
+      usage: "Communicate with agents, post sprint summaries, announce assignments"
+      when: "Assigning work, asking for status, resolving blockers, sprint standup"
+
+    fleet_gate_request:
+      usage: "Route PO gate decisions — readiness 90%, phase advancement"
+      when: "Task readiness reaches 90%, delivery phase needs advancement"
+      note: "Provide summary, plan status, contribution status, recommendation"
+
+    fleet_escalate:
+      usage: "Escalate blockers or decisions requiring PO"
+      when: "Blocked, need PO input, unclear requirement, cannot resolve"
+
+    fleet_alert:
+      usage: "Flag fleet issues — bottlenecks, capacity problems, stale work"
+      when: "More than 2 blockers, agent overloaded, sprint at risk"
+
+    fleet_agent_status:
+      usage: "Check fleet snapshot — who's available, who's busy"
+      when: "Before assigning, capacity planning, sprint standup"
+
+    fleet_artifact_create:
+      usage: "Create sprint plans, epic breakdowns as structured artifacts"
+      when: "Sprint planning, epic evaluation"
+
+    fleet_plane_status:
+      usage: "Check Plane project state (when connected)"
+      when: "Sprint planning, checking for new Plane issues"
+
+    fleet_plane_sync:
+      usage: "Sync issues between Plane and ops board"
+      when: "New Plane issues to bring in, state discrepancies"
+
+    fleet_phase_advance:
+      usage: "Request delivery phase advancement for a deliverable"
+      when: "Phase standards met, ready to advance"
+
+# ═══════════════════════════════════════════════════════════════════════
+# FLEET-OPS (OPS BOARD LEAD)
+# ═══════════════════════════════════════════════════════════════════════
+
+fleet-ops:
+  tools:
+    fleet_read_context:
+      usage: "Load approval queue, review queue, health alerts, budget status"
+      when: "FIRST call — data is pre-embedded"
+
+    fleet_approve:
+      usage: "Approve or reject work after REAL review"
+      when: "After reading work, comparing to verbatim, checking trail and phase standards"
+      note: "Approve with specific reasoning. Reject with what to fix, which stage to return to"
+
+    fleet_alert:
+      usage: "Flag quality issues, compliance gaps, budget concerns"
+      when: "Methodology violation detected, quality standard not met, budget warning"
+
+    fleet_escalate:
+      usage: "Escalate to PO when unsure about approval or when patterns need attention"
+      when: "Complex approval decision, recurring quality issues, budget critical"
+
+    fleet_chat:
+      usage: "Communicate review feedback, process improvement observations"
+      when: "Agents need guidance, patterns observed, compliance notes"
+
+    fleet_agent_status:
+      usage: "Check fleet health — offline agents, stuck tasks"
+      when: "Board health monitoring, identifying issues"
+
+# ═══════════════════════════════════════════════════════════════════════
+# ARCHITECT
+# ═══════════════════════════════════════════════════════════════════════
+
+architect:
+  tools:
+    fleet_read_context:
+      usage: "Load task context, existing design decisions, codebase state"
+      when: "FIRST call — before any design work"
+
+    fleet_contribute:
+      usage: "Provide design_input — approach, file structure, patterns, constraints, rationale"
+      when: "Contribution task assigned — target task entering reasoning stage"
+      note: "Be SPECIFIC: name files, patterns, rationale. Not vague guidance."
+
+    fleet_artifact_create:
+      usage: "Create analysis_document, investigation_document, or plan"
+      when: "Starting analysis, investigation, or reasoning stage on assigned task"
+
+    fleet_artifact_update:
+      usage: "Build artifacts progressively — scope, findings, options, steps"
+      when: "Every heartbeat cycle with work — add findings, update plan, refine options"
+      note: "Each update triggers Plane HTML transposition + completeness check"
+
+    fleet_task_accept:
+      usage: "Confirm design plan before implementation or transfer"
+      when: "Plan produced in reasoning stage, ready for PO review"
+
+    fleet_task_complete:
+      usage: "Complete design task (rare — usually transfers to engineers)"
+      when: "Design work done, plan confirmed, ready for implementation"
+      note: "Architect rarely reaches work stage — usually transfers"
+
+    fleet_transfer:
+      usage: "Transfer task to engineer after design is complete"
+      when: "Design and plan confirmed, engineer should implement"
+      note: "Packages context: design approach, file structure, constraints"
+
+    fleet_chat:
+      usage: "Design guidance, answer architecture questions, post ADRs"
+      when: "Engineers ask design questions, decisions made, patterns to share"
+      note: "Tag decisions: [architecture, decision] in board memory"
+
+    fleet_alert:
+      usage: "Flag architecture concerns — drift, coupling, inconsistent patterns"
+      when: "Implementation diverges from design, technical debt accumulating"
+
+    fleet_escalate:
+      usage: "Escalate design decisions requiring PO input"
+      when: "Multiple valid approaches, PO needs to decide direction"
+
+    fleet_commit:
+      usage: "Commit design documents (rare — only if architect implements)"
+      when: "Work stage only — rare for architect"
+
+# ═══════════════════════════════════════════════════════════════════════
+# DEVSECOPS (CYBERPUNK-ZERO)
+# ═══════════════════════════════════════════════════════════════════════
+
+devsecops-expert:
+  tools:
+    fleet_read_context:
+      usage: "Load security tasks, PR queue for review, infrastructure health, alerts"
+      when: "FIRST call — data is pre-embedded"
+
+    fleet_contribute:
+      usage: "Provide security_requirement — specific requirements, not 'be secure'"
+      when: "Contribution task assigned — security-relevant task entering reasoning"
+      note: "'Use JWT with RS256' / 'Pin actions to SHA' / 'Sanitize input on endpoint X'"
+
+    fleet_alert:
+      usage: "Security findings — vulnerabilities, exposed secrets, infrastructure issues"
+      when: "Critical finding, CVE detected, infrastructure security concern"
+      note: "category='security'. If critical → sets security_hold on task"
+
+    fleet_artifact_create:
+      usage: "Create security assessment documents for assigned security tasks"
+      when: "Starting analysis on security audit or hardening task"
+
+    fleet_artifact_update:
+      usage: "Build security analysis progressively — findings, mitigations, recommendations"
+      when: "Security task work across cycles"
+
+    fleet_task_accept:
+      usage: "Confirm security fix plan"
+      when: "Reasoning stage on security task"
+
+    fleet_commit:
+      usage: "Commit security fixes — security-tagged conventional commits"
+      when: "Work stage on security task"
+
+    fleet_task_complete:
+      usage: "Complete security task with fix summary"
+      when: "Security fix implemented and verified"
+
+    fleet_escalate:
+      usage: "Escalate critical security incidents to PO"
+      when: "Critical vulnerability, active incident, crisis mode"
+
+    fleet_chat:
+      usage: "Security guidance, vulnerability advisories, review findings"
+      when: "PR security review results, dependency audit findings"
+
+# ═══════════════════════════════════════════════════════════════════════
+# SOFTWARE ENGINEER
+# ═══════════════════════════════════════════════════════════════════════
+
+software-engineer:
+  tools:
+    fleet_read_context:
+      usage: "Load task data + colleague contributions (design, tests, security, UX)"
+      when: "FIRST call — before any work. Contributions are in context."
+
+    fleet_task_accept:
+      usage: "Confirm implementation plan"
+      when: "Reasoning stage — plan produced referencing verbatim requirement"
+
+    fleet_artifact_create:
+      usage: "Create analysis_document, investigation_document, or plan"
+      when: "Starting analysis, investigation, or reasoning stage"
+
+    fleet_artifact_update:
+      usage: "Build artifacts progressively across cycles"
+      when: "Adding findings, updating plan fields, recording progress"
+
+    fleet_commit:
+      usage: "Commit code changes — one logical change per commit"
+      when: "Work stage ONLY — conventional format: type(scope): description [task:XXXXXXXX]"
+      note: "BLOCKED outside work stage"
+
+    fleet_task_complete:
+      usage: "Complete task — triggers full review chain"
+      when: "Work stage — all acceptance criteria met, tests pass"
+      note: "ONE call: push → PR → approval → IRC → Plane → trail → parent eval"
+
+    fleet_task_create:
+      usage: "Create subtasks or follow-up tasks for other agents"
+      when: "Complex work needs breakdown, discover docs/security/test gaps"
+      note: "Missing docs → technical-writer. Security → devsecops. Test gap → qa-engineer."
+
+    fleet_request_input:
+      usage: "Request missing contribution from a specialist"
+      when: "Required contribution (design, tests, security, UX) not in context"
+
+    fleet_chat:
+      usage: "Report blockers, ask design questions, communicate progress"
+      when: "Blocked → @project-manager. Design question → @architect."
+
+    fleet_pause:
+      usage: "Pause work, report blocker"
+      when: "Cannot proceed — design wrong, requirement unclear, dependency missing"
+
+    fleet_alert:
+      usage: "Flag quality or technical concerns discovered during work"
+      when: "Found security issue, architecture drift, systemic problem"
+
+# ═══════════════════════════════════════════════════════════════════════
+# DEVOPS
+# ═══════════════════════════════════════════════════════════════════════
+
+devops:
+  tools:
+    fleet_read_context:
+      usage: "Load infrastructure tasks, deployment state, health indicators"
+      when: "FIRST call — data is pre-embedded"
+
+    fleet_task_accept:
+      usage: "Confirm infrastructure plan"
+      when: "Reasoning stage — plan specifies configs, scripts, environments"
+
+    fleet_artifact_create:
+      usage: "Create infrastructure analysis or deployment plan"
+      when: "Starting analysis or reasoning on infrastructure task"
+
+    fleet_artifact_update:
+      usage: "Build infrastructure assessment progressively"
+      when: "Adding findings, documenting current state, planning changes"
+
+    fleet_commit:
+      usage: "Commit IaC changes — scripts, configs, Dockerfiles, CI pipelines"
+      when: "Work stage ONLY — everything scriptable, everything reproducible"
+
+    fleet_task_complete:
+      usage: "Complete infrastructure task"
+      when: "IaC changes implemented, verified, documented"
+
+    fleet_contribute:
+      usage: "Provide deployment_manifest — environment, config, deploy strategy, monitoring, rollback"
+      when: "Feature entering staging/production needs infrastructure"
+
+    fleet_request_input:
+      usage: "Request architect infrastructure design or DevSecOps security review"
+      when: "Infrastructure task needs design input or security requirements"
+
+    fleet_alert:
+      usage: "Infrastructure health issues — services down, CI broken, config drift"
+      when: "MC, gateway, LocalAI, Plane, IRC issues detected"
+
+    fleet_chat:
+      usage: "Infrastructure status, deployment coordination"
+      when: "Responding to infra questions, coordinating with other agents"
+
+# ═══════════════════════════════════════════════════════════════════════
+# QA ENGINEER
+# ═══════════════════════════════════════════════════════════════════════
+
+qa-engineer:
+  tools:
+    fleet_read_context:
+      usage: "Load contribution tasks, review tasks, test infrastructure state"
+      when: "FIRST call — data is pre-embedded"
+
+    fleet_contribute:
+      usage: "Provide qa_test_definition — structured test criteria (TC-001, TC-002...)"
+      when: "Contribution task assigned — target task entering reasoning stage"
+      note: "Each criterion: ID, description, type (unit/integration/e2e), priority, verification"
+
+    fleet_task_accept:
+      usage: "Confirm test approach for assigned test tasks"
+      when: "Reasoning stage — test plan referencing acceptance criteria"
+
+    fleet_artifact_create:
+      usage: "Create test analysis document or test plan"
+      when: "Starting analysis on test coverage or test infrastructure task"
+
+    fleet_artifact_update:
+      usage: "Build test findings progressively"
+      when: "Documenting coverage gaps, test results, infrastructure needs"
+
+    fleet_commit:
+      usage: "Commit test code — test(scope): description [task:XXXXXXXX]"
+      when: "Work stage — writing test implementations"
+
+    fleet_task_complete:
+      usage: "Complete test task"
+      when: "Tests written, executed, results documented"
+
+    fleet_chat:
+      usage: "Flag untestable criteria to PM, ask engineers about implementation"
+      when: "Acceptance criteria vague, need implementation details for validation"
+
+    fleet_alert:
+      usage: "Quality findings — test failures, coverage gaps, untestable criteria"
+      when: "Systemic test issues, acceptance criteria quality concerns"
+
+# ═══════════════════════════════════════════════════════════════════════
+# TECHNICAL WRITER
+# ═══════════════════════════════════════════════════════════════════════
+
+technical-writer:
+  tools:
+    fleet_read_context:
+      usage: "Load documentation tasks, recently completed features, stale page indicators"
+      when: "FIRST call — data is pre-embedded"
+
+    fleet_contribute:
+      usage: "Provide documentation_outline — what docs are expected for a feature"
+      when: "Contribution task assigned — feature entering reasoning stage"
+
+    fleet_task_accept:
+      usage: "Confirm documentation plan"
+      when: "Reasoning stage — doc structure, outline, audience"
+
+    fleet_artifact_create:
+      usage: "Create documentation artifact"
+      when: "Starting documentation work"
+
+    fleet_artifact_update:
+      usage: "Build documentation progressively"
+      when: "Adding sections, updating content, refining structure"
+
+    fleet_commit:
+      usage: "Commit documentation files — docs(scope): description [task:XXXXXXXX]"
+      when: "Work stage — code-adjacent docs (README, inline docs)"
+
+    fleet_task_complete:
+      usage: "Complete documentation task"
+      when: "Documentation published, verified against code"
+
+    fleet_chat:
+      usage: "Verify technical claims with engineers, coordinate terminology with UX"
+      when: "Need implementation details for accuracy, API behavior verification"
+
+    fleet_alert:
+      usage: "Flag documentation discrepancies — docs don't match code"
+      when: "Code/doc mismatch discovered"
+
+    fleet_plane_status:
+      usage: "Check Plane page state for staleness detection (when connected)"
+      when: "Proactive doc maintenance in fully autonomous mode"
+
+# ═══════════════════════════════════════════════════════════════════════
+# UX DESIGNER
+# ═══════════════════════════════════════════════════════════════════════
+
+ux-designer:
+  tools:
+    fleet_read_context:
+      usage: "Load UX contribution tasks, design review tasks, component library state"
+      when: "FIRST call — data is pre-embedded"
+
+    fleet_contribute:
+      usage: "Provide ux_spec — components, states, interactions, accessibility, patterns"
+      when: "Contribution task assigned — user-facing work at any level (UI, CLI, API, errors, config)"
+      note: "ALL states, ALL interactions, ALL accessibility. Not just happy path."
+
+    fleet_task_accept:
+      usage: "Confirm UX design approach"
+      when: "Reasoning stage — component specs, interaction flows"
+
+    fleet_artifact_create:
+      usage: "Create UX specification document"
+      when: "Starting UX design work"
+
+    fleet_artifact_update:
+      usage: "Build UX specs progressively — components, states, interactions"
+      when: "Designing components, defining accessibility requirements"
+
+    fleet_task_complete:
+      usage: "Complete UX design task"
+      when: "Specs produced, patterns documented"
+
+    fleet_chat:
+      usage: "UX guidance for engineers, coordinate with architect on structure"
+      when: "Engineers implementing user-facing work, component pattern questions"
+
+    fleet_alert:
+      usage: "Accessibility concerns, UX pattern violations"
+      when: "Implementation doesn't follow UX spec, accessibility gaps"
+
+# ═══════════════════════════════════════════════════════════════════════
+# ACCOUNTABILITY GENERATOR
+# ═══════════════════════════════════════════════════════════════════════
+
+accountability-generator:
+  tools:
+    fleet_read_context:
+      usage: "Load completed tasks for trail verification, compliance metrics"
+      when: "FIRST call — data is pre-embedded"
+
+    fleet_artifact_create:
+      usage: "Create compliance_report or audit_trail artifact"
+      when: "Sprint boundary, module milestone, PO-requested audit"
+
+    fleet_alert:
+      usage: "Compliance patterns — recurring methodology gaps, trail deficiencies"
+      when: "Systemic compliance issue detected across multiple tasks"
+      note: "Tags: [compliance, pattern] — feeds the immune system"
+
+    fleet_chat:
+      usage: "Report compliance findings, flag process gaps to PM"
+      when: "Trail verification complete, patterns identified"

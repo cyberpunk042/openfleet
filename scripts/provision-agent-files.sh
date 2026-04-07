@@ -48,6 +48,28 @@ SKIPPED=0
 
 # ─── Helpers ─────────────────────────────────────────────────────────
 
+# Copy template with placeholder substitution, only if content differs
+copy_template() {
+    local src="$1" dst="$2" label="$3"
+
+    if [[ ! -f "$src" ]]; then
+        echo -e "    ${YELLOW}[skip]${NC} $label: template not found ($src)"
+        return 1
+    fi
+
+    local content
+    content=$(sed \
+        -e "s|{{AGENT_NAME}}|$agent_name|g" \
+        -e "s|{{DISPLAY_NAME}}|$display_name|g" \
+        -e "s|{{USERNAME}}|$username|g" \
+        -e "s|{{FLEET_ID}}|$fleet_id|g" \
+        -e "s|{{FLEET_NAME}}|$fleet_name|g" \
+        -e "s|{{FLEET_NUMBER}}|$fleet_number|g" \
+        "$src")
+
+    write_if_changed "$content" "$dst" "$label"
+}
+
 # Copy file only if content differs
 copy_if_changed() {
     local src="$1" dst="$2" label="$3"
@@ -99,10 +121,12 @@ provision_agent() {
     local agent_name="$1"
     local agent_dir="$AGENTS_DIR/$agent_name"
 
-    local display_name fleet_id fleet_name
+    local display_name username fleet_id fleet_name fleet_number
     display_name=$(yq -r ".agents.\"$agent_name\".display_name // \"$agent_name\"" "$IDENTITIES")
+    username=$(yq -r ".agents.\"$agent_name\".username // \"$agent_name\"" "$IDENTITIES")
     fleet_id=$(yq -r '.fleet.id // "alpha"' "$IDENTITIES")
     fleet_name=$(yq -r '.fleet.name // "Fleet Alpha"' "$IDENTITIES")
+    fleet_number=$(yq -r '.fleet.number // 1' "$IDENTITIES")
 
     echo ""
     echo "Provisioning agents/$agent_name ($display_name)..."
@@ -127,8 +151,8 @@ provision_agent() {
         write_if_changed "$yaml_content" "$agent_dir/agent.yaml" "agent.yaml"
     fi
 
-    # 2. CLAUDE.md — role-specific from template
-    copy_if_changed "$TEMPLATE_DIR/CLAUDE.md/${agent_name}.md" "$agent_dir/CLAUDE.md" "CLAUDE.md"
+    # 2. CLAUDE.md — role-specific template with placeholder substitution
+    copy_template "$TEMPLATE_DIR/CLAUDE.md/${agent_name}.md" "$agent_dir/CLAUDE.md" "CLAUDE.md"
 
     # 3. HEARTBEAT.md — role-specific, fallback to worker template
     local heartbeat_src="$TEMPLATE_DIR/heartbeats/${agent_name}.md"
@@ -137,47 +161,11 @@ provision_agent() {
     fi
     copy_if_changed "$heartbeat_src" "$agent_dir/HEARTBEAT.md" "HEARTBEAT.md"
 
-    # 4. IDENTITY.md — generate if missing or stub
-    if [[ ! -f "$agent_dir/IDENTITY.md" ]] || [[ $(wc -l < "$agent_dir/IDENTITY.md") -lt 3 ]]; then
-        write_if_changed "# Identity — $display_name
+    # 4. IDENTITY.md — role-specific template with placeholder substitution
+    copy_template "$TEMPLATE_DIR/IDENTITY.md/${agent_name}.md" "$agent_dir/IDENTITY.md" "IDENTITY.md"
 
-You are **$display_name**, a top-tier expert in $fleet_name.
-
-Fleet: $fleet_name (fleet_id: $fleet_id)
-Role: $agent_name
-Display Name: $display_name
-
-You are a professional. You follow process. You deliver excellence." \
-            "$agent_dir/IDENTITY.md" "IDENTITY.md"
-    else
-        echo -e "    ${YELLOW}[keep]${NC} IDENTITY.md (has content)"
-    fi
-
-    # 5. SOUL.md — generate if missing or stub
-    if [[ ! -f "$agent_dir/SOUL.md" ]] || [[ $(wc -l < "$agent_dir/SOUL.md") -lt 3 ]]; then
-        write_if_changed "# Soul — Values & Anti-Corruption Rules
-
-## Values
-- Correctness over speed
-- Humility over confidence
-- Process over shortcuts
-- Collaboration over isolation
-
-## Anti-Corruption Rules
-1. PO's words are sacrosanct. Do not deform, interpret, abstract, or compress the verbatim requirement.
-2. Do not summarize when original needed. 20 things = address 20.
-3. Do not replace PO's words with your own.
-4. Do not add scope not in the requirement.
-5. Do not compress scope. Large system = large system.
-6. Do not skip reading. Read before modifying.
-7. Do not produce code outside work stage.
-8. Three corrections = model is wrong. Stop, re-read, start fresh.
-9. Follow the autocomplete chain. Context tells you what to do.
-10. When uncertain, ask — don't guess." \
-            "$agent_dir/SOUL.md" "SOUL.md"
-    else
-        echo -e "    ${YELLOW}[keep]${NC} SOUL.md (has content)"
-    fi
+    # 5. SOUL.md — role-specific template with placeholder substitution
+    copy_template "$TEMPLATE_DIR/SOUL.md/${agent_name}.md" "$agent_dir/SOUL.md" "SOUL.md"
 
     # 6. TOOLS.md — placeholder if missing or stub (generate-tools-md.sh fills real content)
     if [[ ! -f "$agent_dir/TOOLS.md" ]] || [[ $(wc -c < "$agent_dir/TOOLS.md") -lt 50 ]]; then

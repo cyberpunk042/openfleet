@@ -1,26 +1,44 @@
-# HEARTBEAT.md — DevOps
+# HEARTBEAT — DevOps
 
-FIRST: Do you have assigned tasks or chat messages?
-  If NO and nothing in your domain needs attention: respond HEARTBEAT_OK immediately.
-  Do NOT call tools unnecessarily. Minimize token usage on empty heartbeats.
-  If YES: proceed below.
+Your full context is pre-embedded — assigned tasks with stages,
+readiness, infrastructure health, messages, directives.
+Read it FIRST. The data is already there.
 
-## 1. Check Chat
-Call `fleet_read_context()`. Read `chat_messages` for @mentions.
-Respond to infrastructure questions, deployment requests, CI issues.
+## 0. PO Directives (HIGHEST PRIORITY)
+
+Read your DIRECTIVES section. PO orders override everything.
+
+## 1. Check Messages
+
+Read your MESSAGES section. Respond to @mentions via `fleet_chat()`.
+Infrastructure questions, deployment requests, CI issues.
 
 ## 2. Work on Assigned Tasks
-If tasks assigned: work on them. Blocker tasks are HIGHEST priority.
-If blocked: `fleet_pause()` with specifics.
 
-## 3. Infrastructure Health
-Quick checks (only if idle):
-- Docker services running? Check with simple commands.
-- Any CI pipeline failures? Check recent build status.
-- Any dependency issues reported? Check board memory alerts.
-If issues → `fleet_alert(category="workflow")`.
+Read your ASSIGNED TASKS section. Your task context includes your
+current stage and the stage protocol — follow it.
 
-## 4. Proactive (Only If Idle)
-- Check if setup.sh is up to date with recent changes
-- Check if any scripts need updating
-- `fleet_chat("Idle — ready for infra work", mention="lead")`
+IaC principle always: everything you do must be scriptable and
+reproducible. fleet_commit for each config/script change.
+
+## 3. Contribution Tasks
+
+When assigned a deployment_manifest contribution:
+- Assess what infrastructure the feature needs
+- Provide: environment requirements, config needs, deployment strategy,
+  monitoring requirements, rollback procedure
+- fleet_contribute(task_id, "deployment_manifest", content)
+
+## 4. Infrastructure Health (When Idle)
+
+Monitor the fleet's infrastructure from your context:
+- MC backend, gateway, daemons healthy?
+- CI pipelines passing?
+- Services running?
+If issues → fleet_alert(category="infrastructure")
+
+## 5. Idle
+
+If no tasks, no contribution tasks, no messages, infrastructure healthy:
+- Respond HEARTBEAT_OK
+- Do NOT call tools for no reason

@@ -1,0 +1,171 @@
+# Tool chain documentation — what each fleet MCP tool does and triggers.
+#
+# The generator script (generate-tools-md.sh) reads this to produce
+# chain-aware TOOLS.md per agent. Each tool entry describes:
+#   what: primary action (one line)
+#   when: stage/conditions for using it
+#   chain: what fires automatically after the call
+#   input: key parameters
+#   auto: what the agent does NOT need to do manually
+#
+# Per-role relevance is in config/agent-tooling.yaml.
+# This file documents the chains — shared across all roles.
+
+tools:
+
+  fleet_read_context:
+    what: "Load full task and project context"
+    when: "FIRST call every session — before any decision or work"
+    chain: "none (read-only)"
+    input: "(none — reads context for current agent)"
+    auto: ""
+
+  fleet_task_accept:
+    what: "Confirm your plan for the task"
+    when: "Reasoning or work stage — after producing a plan"
+    chain: "event emitted → trail recorded → task marked accepted"
+    input: "plan (your implementation approach)"
+    auto: ""
+
+  fleet_task_progress:
+    what: "Report progress on current task"
+    when: "Any stage — when you have meaningful progress to report"
+    chain: "comment posted → readiness updated → Plane sync → event"
+    input: "summary, readiness_delta (optional)"
+    auto: "Plane sync, event emission"
+
+  fleet_commit:
+    what: "Commit files with conventional message"
+    when: "Work stage ONLY — each logical change gets one commit"
+    chain: "git add + commit → event → methodology check → trail"
+    input: "files (list of paths), message (conventional format)"
+    auto: "Trail recording, event emission"
+    blocked: "BLOCKED outside work stage — returns error + protocol_violation"
+
+  fleet_task_complete:
+    what: "Complete task — triggers full review chain"
+    when: "Work stage — all acceptance criteria met"
+    chain: "git push → create PR → MC status → review → approval object → IRC #reviews → ntfy → Plane sync → labor stamp → trail → parent evaluation"
+    input: "summary (what you did and why)"
+    auto: "Push, PR creation, approval, IRC notification, Plane sync, parent evaluation — ONE call does everything"
+    blocked: "BLOCKED outside work stage"
+
+  fleet_task_create:
+    what: "Create a new task (subtask, contribution task, follow-up)"
+    when: "Any stage — when you discover needed work"
+    chain: "task created → inbox → event → IRC #fleet → board memory"
+    input: "title, description, agent_name, task_type, parent_task, custom_fields"
+    auto: "Agent notification (heartbeat picks it up), sprint tracking"
+
+  fleet_chat:
+    what: "Post message to board memory with optional @mention"
+    when: "Any stage — communicating with agents or PO"
+    chain: "board memory (tagged mention:{agent}) → IRC #fleet → agent sees in MESSAGES"
+    input: "message, mention (optional agent name)"
+    auto: "IRC routing, mention routing to agent heartbeat"
+
+  fleet_alert:
+    what: "Post alert to IRC channel"
+    when: "Any stage — quality issues, compliance gaps, security findings"
+    chain: "IRC #alerts → board memory → ntfy if high/critical"
+    input: "category, severity, details"
+    auto: "IRC routing, ntfy escalation for critical"
+
+  fleet_escalate:
+    what: "Escalate blocker or decision to PO/senior"
+    when: "Any stage — blocked, need PO input, unclear requirement"
+    chain: "ntfy (urgent) → IRC #alerts → board memory [escalation]"
+    input: "title, details, severity"
+    auto: "PO notification via ntfy"
+
+  fleet_notify_human:
+    what: "Send push notification to PO"
+    when: "Urgent matters requiring immediate PO attention"
+    chain: "ntfy push to PO device"
+    input: "title, message"
+    auto: ""
+
+  fleet_pause:
+    what: "Pause work, report blocker"
+    when: "Any stage — when blocked and cannot proceed"
+    chain: "comment posted → event → PM notified"
+    input: "reason"
+    auto: "PM sees blocker in next heartbeat"
+
+  fleet_approve:
+    what: "Approve or reject a review task"
+    when: "Review stage — fleet-ops only (after REAL review)"
+    chain_approve: "task → done → trail → sprint progress → parent eval → IRC #reviews"
+    chain_reject: "task stays review → readiness regressed → agent notified → trail"
+    input: "approval_id, decision (approved/rejected), comment (specifics)"
+    auto: "Task status transition, agent notification, trail recording"
+
+  fleet_agent_status:
+    what: "Check all agents status"
+    when: "Any stage — checking fleet state"
+    chain: "none (read-only)"
+    input: "(none)"
+    auto: ""
+
+  fleet_contribute:
+    what: "Post contribution to another agent's task"
+    when: "Contribution task — providing specialist input"
+    chain: "comment on target task → own task done → event → trail → notify owner → check completeness → if all received notify PM"
+    input: "task_id (TARGET task), contribution_type, content (full, not compressed)"
+    auto: "Target agent sees contribution in context, own task marked done, completeness checked"
+
+  fleet_request_input:
+    what: "Request input from a colleague"
+    when: "Work stage — missing required contribution"
+    chain: "creates contribution task for the requested role"
+    input: "task_id, role, question"
+    auto: "Contribution task creation and assignment"
+
+  fleet_gate_request:
+    what: "Route gate decision to PO"
+    when: "Readiness 90%, phase advancement — BLOCKING gates"
+    chain: "ntfy to PO → IRC #gates → board memory [gate, po-required]"
+    input: "task_id, gate_type, summary for PO"
+    auto: "PO notification via ntfy"
+
+  fleet_artifact_create:
+    what: "Create a new structured artifact on the task"
+    when: "Any stage — starting a new analysis, investigation, plan, etc."
+    chain: "object created → Plane HTML rendered → completeness check → event"
+    input: "artifact_type (analysis_document, plan, etc.), title"
+    auto: "Plane HTML transposition, completeness tracking"
+
+  fleet_artifact_update:
+    what: "Update a field on an existing artifact"
+    when: "Any stage — building artifacts progressively"
+    chain: "object updated → Plane HTML re-rendered → completeness rechecked → readiness suggestion updated → event"
+    input: "artifact_type, field, value (or values for lists), append (for list fields)"
+    auto: "Plane HTML update, completeness recalculation, readiness suggestion"
+
+  fleet_artifact_read:
+    what: "Read the current artifact on a task"
+    when: "Any stage — checking artifact state"
+    chain: "none (read-only)"
+    input: "task_id (optional, defaults to current)"
+    auto: ""
+
+  fleet_transfer:
+    what: "Transfer task to another agent"
+    when: "When task needs a different agent (usually architect → engineer)"
+    chain: "agent_name updated → context packaged → event → new agent notified"
+    input: "task_id, target_agent, context (what the receiving agent needs to know)"
+    auto: "Context packaging for receiving agent"
+
+  fleet_plane_status:
+    what: "Get Plane project status"
+    when: "Any stage — checking Plane state (when connected)"
+    chain: "none (read-only)"
+    input: "(none)"
+    auto: ""
+
+  fleet_plane_sync:
+    what: "Sync issues between Plane and ops board"
+    when: "Any stage — when sync is needed"
+    chain: "Plane → OCMC sync"
+    input: "(none)"
+    auto: ""

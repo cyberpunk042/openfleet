@@ -205,6 +205,16 @@ class ChainRunner:
                 )
                 return {"comment_posted": task_id}
 
+        elif action == "update_custom_fields":
+            task_id = params.get("task_id", "")
+            custom_fields = params.get("custom_fields", {})
+            if task_id and custom_fields:
+                await self._mc.update_task(
+                    self._board_id, task_id,
+                    custom_fields=custom_fields,
+                )
+                return {"updated": task_id, "fields": list(custom_fields.keys())}
+
         return {"action": action, "status": "no_handler"}
 
     async def _handle_public(self, event: Event) -> dict:
@@ -310,6 +320,33 @@ class ChainRunner:
                     json={"comment_html": f"<p>{comment}</p>"},
                 )
                 return {"comment_posted": issue_id}
+
+        elif action == "update_labels":
+            issue_id = params.get("issue_id", "")
+            project_id = params.get("project_id", "")
+            label_ids = params.get("label_ids", [])
+            if issue_id and project_id and label_ids:
+                await self._plane.update_issue(
+                    self._plane_ws, project_id, issue_id,
+                    label_ids=label_ids,
+                )
+                return {"labels_updated": issue_id, "count": len(label_ids)}
+
+        elif action == "create_issue":
+            project_id = params.get("project_id", "")
+            title = params.get("title", "")
+            description = params.get("description", "")
+            priority = params.get("priority", "medium")
+            label_ids = params.get("label_ids", [])
+            if project_id and title:
+                issue = await self._plane.create_issue(
+                    self._plane_ws, project_id,
+                    title=title,
+                    description_html=f"<p>{description}</p>" if description else f"<p>{title}</p>",
+                    priority=priority,
+                    label_ids=label_ids or None,
+                )
+                return {"issue_created": issue.id, "title": title}
 
         return {"action": action, "status": "no_handler"}
 

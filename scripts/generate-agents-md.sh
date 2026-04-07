@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-# generate-agents-md.sh — Generate AGENTS.md per agent from synergy matrix + identities
+# generate-agents-md.sh — Generate synergy-aware AGENTS.md per agent
 #
 # Usage: bash scripts/generate-agents-md.sh [agent-name]
 #
-# Reads: config/agent-identities.yaml (names, roles)
-# Produces: agents/{name}/AGENTS.md (knowledge of colleagues)
+# Reads: config/agent-identities.yaml (names, display names)
+# Produces: agents/{name}/AGENTS.md (per tools-agents-standard.md)
+#
+# Format per colleague:
+#   ### {Display Name} — {role}
+#   **Contributes to me:** {what they provide + when}
+#   **I contribute to them:** {what I provide + when}
+#   **When to @mention:** {conditions}
 
 set -euo pipefail
 
@@ -21,116 +27,86 @@ if ! command -v yq &>/dev/null; then
     exit 1
 fi
 
-# Synergy matrix: who contributes what to whom (from fleet-elevation/15)
-# Format: target_role|contributor_role|contribution_type
+# Synergy matrix from fleet-elevation/15 + config/synergy-matrix.yaml
+# Format: target_role|contributor_role|contribution_type|description
 SYNERGY_MATRIX=(
-    "software-engineer|architect|design_input"
-    "software-engineer|devsecops-expert|security_requirement"
-    "software-engineer|qa-engineer|qa_test_definition"
-    "architect|software-engineer|feasibility_assessment"
-    "architect|devsecops-expert|security_review"
-    "devops|architect|infrastructure_design"
-    "devops|devsecops-expert|security_requirement"
-    "devops|software-engineer|application_requirements"
-    "qa-engineer|software-engineer|implementation_context"
-    "qa-engineer|architect|design_context"
-    "technical-writer|software-engineer|technical_accuracy"
-    "technical-writer|architect|architecture_context"
-    "devsecops-expert|architect|architecture_context"
-    "devsecops-expert|software-engineer|implementation_context"
+    "software-engineer|architect|design_input|approach, files, patterns, constraints"
+    "software-engineer|devsecops-expert|security_requirement|what to do and not do security-wise"
+    "software-engineer|qa-engineer|qa_test_definition|test criteria the implementation must satisfy"
+    "software-engineer|ux-designer|ux_spec|component patterns for user-facing work"
+    "architect|software-engineer|feasibility_assessment|validates design against implementation reality"
+    "architect|devsecops-expert|security_review|security implications of designs"
+    "devops|architect|infrastructure_design|infrastructure architecture and patterns"
+    "devops|devsecops-expert|security_requirement|infrastructure security requirements"
+    "devops|software-engineer|application_requirements|what the application needs from infrastructure"
+    "qa-engineer|software-engineer|implementation_context|what was implemented for test validation"
+    "qa-engineer|architect|design_context|architecture context for test strategy"
+    "technical-writer|software-engineer|technical_accuracy|verifies docs match implementation"
+    "technical-writer|architect|architecture_context|design decisions to formalize as ADRs"
+    "devsecops-expert|architect|architecture_context|architecture for security assessment"
+    "devsecops-expert|software-engineer|implementation_context|code for security review"
+)
+
+# When to @mention per role (from fleet-elevation/15 per-agent operational surface)
+declare -A MENTION_GUIDANCE=(
+    ["project-manager"]="When blocked, scope unclear, done early, need assignment"
+    ["fleet-ops"]="(rarely — finds you through review queue)"
+    ["architect"]="Design input unclear, architectural implications discovered, need complexity assessment"
+    ["devsecops-expert"]="Security-sensitive decisions, vulnerability discovered"
+    ["software-engineer"]="Implementation questions, need feasibility assessment"
+    ["qa-engineer"]="Test criteria ambiguous or untestable"
+    ["devops"]="Need infrastructure changes, CI/CD issues"
+    ["technical-writer"]="Feature needs user documentation"
+    ["ux-designer"]="UX spec unclear, need interaction guidance"
+    ["accountability-generator"]="(rarely — reads trails automatically)"
 )
 
 generate_for_agent() {
     local agent_name="$1"
     local agent_dir="$AGENTS_DIR/$agent_name"
 
-    if [[ ! -d "$agent_dir" ]]; then
-        return
-    fi
+    [[ -d "$agent_dir" ]] || return
 
     local display_name
     display_name=$(yq -r ".agents.\"$agent_name\".display_name // \"$agent_name\"" "$IDENTITIES")
 
-    local content="# Colleagues — $display_name
-
-## Your Fleet
-
-You work alongside 9 other agents in the fleet. Each is a top-tier expert.
-
-| Agent | Role | How You Interact |
-|-------|------|-----------------|"
-
-    # List all colleagues
+    local content="# Fleet Awareness — $display_name
+"
+    # For each colleague
     for colleague in $(yq -r '.agents | keys | .[]' "$IDENTITIES"); do
         [[ "$colleague" == "$agent_name" ]] && continue
+
         local col_display
         col_display=$(yq -r ".agents.\"$colleague\".display_name // \"$colleague\"" "$IDENTITIES")
 
-        # Find synergy relationships
-        local interaction="Fleet colleague"
-
+        # Find what they contribute to me
+        local contributes_to_me=""
         for entry in "${SYNERGY_MATRIX[@]}"; do
-            local target contrib_role contrib_type
-            target="${entry%%|*}"
-            local rest="${entry#*|}"
-            contrib_role="${rest%%|*}"
-            contrib_type="${rest#*|}"
-
+            IFS='|' read -r target contrib_role contrib_type desc <<< "$entry"
             if [[ "$target" == "$agent_name" && "$contrib_role" == "$colleague" ]]; then
-                interaction="Contributes $contrib_type to your tasks"
-            elif [[ "$target" == "$colleague" && "$contrib_role" == "$agent_name" ]]; then
-                interaction="You contribute to their tasks"
+                contributes_to_me="$contrib_type ($desc)"
             fi
         done
 
+        # Find what I contribute to them
+        local i_contribute=""
+        for entry in "${SYNERGY_MATRIX[@]}"; do
+            IFS='|' read -r target contrib_role contrib_type desc <<< "$entry"
+            if [[ "$target" == "$colleague" && "$contrib_role" == "$agent_name" ]]; then
+                i_contribute="$contrib_type ($desc)"
+            fi
+        done
+
+        # Get mention guidance
+        local mention="${MENTION_GUIDANCE[$colleague]:-"When their expertise is needed"}"
+
         content="$content
-| $col_display | $colleague | $interaction |"
+### $col_display — $colleague
+**Contributes to me:** ${contributes_to_me:-"(no direct contribution — fleet colleague)"}
+**I contribute to them:** ${i_contribute:-"(no direct contribution)"}
+**When to @mention:** $mention
+"
     done
-
-    # Add contribution sections
-    local receives=""
-    local provides=""
-
-    for entry in "${SYNERGY_MATRIX[@]}"; do
-        local target contrib_role contrib_type
-        target="${entry%%|*}"
-        local rest="${entry#*|}"
-        contrib_role="${rest%%|*}"
-        contrib_type="${rest#*|}"
-
-        if [[ "$target" == "$agent_name" ]]; then
-            local col_display
-            col_display=$(yq -r ".agents.\"$contrib_role\".display_name // \"$contrib_role\"" "$IDENTITIES")
-            receives="$receives
-- **$contrib_type** from $col_display ($contrib_role)"
-        elif [[ "$contrib_role" == "$agent_name" ]]; then
-            local tgt_display
-            tgt_display=$(yq -r ".agents.\"$target\".display_name // \"$target\"" "$IDENTITIES")
-            provides="$provides
-- **$contrib_type** to $tgt_display ($target)"
-        fi
-    done
-
-    if [[ -n "$receives" ]]; then
-        content="$content
-
-## Contributions You Receive
-$receives"
-    fi
-
-    if [[ -n "$provides" ]]; then
-        content="$content
-
-## Contributions You Provide
-$provides"
-    fi
-
-    content="$content
-
-## Communication
-
-Use \`fleet_chat\` with @mentions to communicate with colleagues.
-Contributions arrive in your context under **INPUTS FROM COLLEAGUES**."
 
     # Write if changed
     local agents_path="$agent_dir/AGENTS.md"
@@ -138,12 +114,12 @@ Contributions arrive in your context under **INPUTS FROM COLLEAGUES**."
         local existing
         existing=$(cat "$agents_path")
         if [[ "$existing" == "$content" ]]; then
-            echo -e "  ${YELLOW}[skip]${NC} $agent_name: AGENTS.md unchanged"
+            echo -e "  ${YELLOW}[skip]${NC} $agent_name: unchanged"
             return
         fi
-        echo -e "  ${GREEN}[updated]${NC} $agent_name: AGENTS.md"
+        echo -e "  ${GREEN}[updated]${NC} $agent_name"
     else
-        echo -e "  ${GREEN}[created]${NC} $agent_name: AGENTS.md"
+        echo -e "  ${GREEN}[created]${NC} $agent_name"
     fi
 
     echo "$content" > "$agents_path"
@@ -152,7 +128,7 @@ Contributions arrive in your context under **INPUTS FROM COLLEAGUES**."
 # ─── Main ────────────────────────────────────────────────────────────
 
 echo "═══════════════════════════════════════════════════════"
-echo "  Generate AGENTS.md per agent (synergy matrix)"
+echo "  Generate synergy-aware AGENTS.md per agent"
 echo "═══════════════════════════════════════════════════════"
 echo ""
 

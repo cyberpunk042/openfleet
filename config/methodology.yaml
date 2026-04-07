@@ -275,6 +275,11 @@ defaults:
   # rather than reasoning (plan with nothing).
   no_metadata_stage: conversation
 
+  # Sprint readiness threshold — tasks at or above this readiness
+  # (with contributions complete) are considered sprint-ready.
+  # PM includes these in current or upcoming sprint planning.
+  sprint_ready_threshold: 80
+
   # Stage skipping thresholds when verbatim requirement exists.
   # These allow tasks with clear requirements to skip early stages.
   #

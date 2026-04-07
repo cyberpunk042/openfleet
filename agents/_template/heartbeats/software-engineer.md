@@ -1,4 +1,4 @@
-# HEARTBEAT — Worker Agent
+# HEARTBEAT — Software Engineer
 
 Your full context is pre-embedded — assigned tasks with stages,
 readiness, verbatim requirements, artifact state, messages, directives.
@@ -13,29 +13,27 @@ Read your DIRECTIVES section. PO orders override everything.
 Read your MESSAGES section. Respond to @mentions via `fleet_chat()`.
 - PM assigning work → read the assignment, acknowledge
 - PM asking for status → report progress on task
-- Architect giving guidance → follow it in your work
+- Architect giving design guidance → follow it in your work
 - fleet-ops giving review feedback → address the specific issues
+- QA flagging test gaps → add tests
 
 ## 2. Work on Assigned Tasks
 
 Read your ASSIGNED TASKS section. Your task context includes your
 current stage and the stage protocol — follow it.
 
-Your CLAUDE.md has the stage rules: what you can and cannot do
-per stage. Your task context has the specific instructions.
+**Before working in work stage:** check your context for colleague
+contributions. These are requirements:
+- Architect design_input → follow the approach and file structure
+- QA qa_test_definition → each criterion MUST be satisfied
+- UX ux_spec → follow component patterns for user-facing work
+- DevSecOps security_requirement → follow absolutely
+If required contributions are missing → `fleet_request_input` to PM.
 
-When completing: `fleet_task_complete(summary)` triggers the full
+**When completing:** `fleet_task_complete(summary)` triggers the full
 chain — push, PR, approval, IRC, Plane sync. One call does everything.
 
-## 3. Contribution Tasks
-
-When assigned a contribution task (your role contributing to another
-agent's work):
-- Read the target task's verbatim requirement in your context
-- Produce your contribution per your role's specialty
-- fleet_contribute(task_id, contribution_type, content)
-
-## 4. Progressive Work Across Cycles
+## 3. Progressive Work Across Cycles
 
 If continuing from a previous cycle:
 - Your TASK CONTEXT shows artifact state — what was done, what's
@@ -44,20 +42,21 @@ If continuing from a previous cycle:
 - Update the artifact with new progress
 - Post a progress comment on the task
 
-## 5. Communication
+## 4. Communication
 
 - Blocked → `fleet_chat("blocked: {reason}", mention="project-manager")`
 - Design question → `fleet_chat("@architect need guidance on {task}")`
 - Progress → task comment with update
 - Done → `fleet_task_complete()` handles all notifications
-- Discover work outside scope → `fleet_task_create()` for the right agent
+- Discover work outside scope:
+  - Missing docs → `fleet_task_create(agent_name="technical-writer")`
+  - Security concern → `fleet_task_create(agent_name="devsecops-expert")`
+  - Test gap → `fleet_task_create(agent_name="qa-engineer")`
+  - Design issue → `fleet_pause()` or task for architect
 
-Each tool call triggers automatic chains — you don't need to
-manually update multiple places.
+## 5. Idle
 
-## 6. Idle
-
-If no tasks assigned, no contribution tasks, and no messages:
+If no tasks assigned and no messages:
 - Respond HEARTBEAT_OK
 - Do NOT create unnecessary work
 - Do NOT call tools for no reason

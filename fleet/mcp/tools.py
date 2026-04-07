@@ -991,6 +991,35 @@ def register_tools(server: FastMCP) -> None:
         except Exception:
             pass
 
+        # Chain propagation — ntfy for critical/high, trail, events
+        try:
+            from fleet.core.event_chain import build_alert_chain
+            from fleet.core.chain_runner import ChainRunner
+
+            alert_chain = build_alert_chain(
+                agent_name=ctx.agent_name or "agent",
+                severity=severity,
+                title=title,
+                details=details,
+                category=category,
+                project=ctx.project_name or "",
+            )
+            runner = ChainRunner(
+                mc=ctx.mc, irc=ctx.irc,
+                ntfy=None,  # ntfy initialized below if needed
+                board_id=board_id,
+            )
+            # Initialize ntfy for critical/high alerts
+            if severity in ("critical", "high"):
+                try:
+                    from fleet.infra.ntfy_client import NtfyClient
+                    runner._ntfy = NtfyClient()
+                except Exception:
+                    pass
+            await runner.run(alert_chain)
+        except Exception:
+            pass  # Chain execution is best-effort
+
         return {"ok": True, "severity": severity, "channel": channel}
 
     @server.tool()

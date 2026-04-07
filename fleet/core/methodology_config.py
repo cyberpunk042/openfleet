@@ -56,6 +56,7 @@ class MethodologyConfig:
     task_types: dict[str, TaskTypeDefinition] = field(default_factory=dict)
     no_type_stages: tuple[str, ...] = ("reasoning", "work")
     no_metadata_stage: str = "conversation"
+    sprint_ready_threshold: int = 80
     verbatim_skip: list[VerbatimSkipRule] = field(default_factory=list)
     valid_readiness: list[int] = field(default_factory=lambda: [0, 5, 10, 20, 30, 50, 70, 80, 90, 95, 99, 100])
 
@@ -170,6 +171,7 @@ def load_methodology_config(path: Optional[Path] = None) -> MethodologyConfig:
     no_type = defaults.get("no_type_stages", ["reasoning", "work"])
     config.no_type_stages = tuple(no_type)
     config.no_metadata_stage = defaults.get("no_metadata_stage", "conversation")
+    config.sprint_ready_threshold = defaults.get("sprint_ready_threshold", 80)
 
     for rule in defaults.get("verbatim_skip", []):
         config.verbatim_skip.append(VerbatimSkipRule(

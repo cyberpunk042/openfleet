@@ -474,3 +474,349 @@ def build_sprint_complete_chain(
     }, required=False)
 
     return chain
+
+
+# ─── New Chain Builders — Elevated Tool Trees ───────────────────────────
+
+
+def build_comment_chain(
+    agent_name: str,
+    task_id: str = "",
+    content: str = "",
+    mention: str = "",
+    channel: str = "#fleet",
+) -> EventChain:
+    """Build the event chain for fleet_chat — comment propagation.
+
+    Board memory + IRC + Plane comment + events + trail.
+    If @po or @human mentioned, also fires ntfy.
+    """
+    chain = EventChain(
+        operation="chat_message",
+        source_agent=agent_name,
+        task_id=task_id,
+    )
+
+    # Board memory — already done by tool as primary action
+    # IRC — already done by tool as primary action
+    # Chain handles: Plane propagation, trail, ntfy for PO mentions
+
+    # Plane — comment on linked issue (if task has one)
+    if task_id:
+        mention_prefix = f"@{mention} " if mention else ""
+        chain.add(EventSurface.PLANE, "post_comment", {
+            "issue_id": "",  # filled by caller if Plane issue exists
+            "project_id": "",
+            "comment": f"[{agent_name}] {mention_prefix}{content[:200]}",
+        }, required=False)
+
+    # ntfy — if mentioning PO/human
+    if mention in ("human", "po", "PO"):
+        chain.add(EventSurface.NOTIFY, "ntfy_publish", {
+            "title": f"Fleet chat from {agent_name}",
+            "message": content[:300],
+            "priority": "important",
+            "event_type": "review_needed",
+        }, required=False)
+
+    # Trail
+    if task_id:
+        chain.events.append(_trail_event(
+            task_id, "chat_message",
+            f"Chat by {agent_name}" + (f" @{mention}" if mention else "") + f": {content[:80]}",
+            agent=agent_name,
+        ))
+
+    return chain
+
+
+def build_accept_chain(
+    agent_name: str,
+    task_id: str,
+    task_title: str,
+    plan_summary: str = "",
+) -> EventChain:
+    """Build the event chain for fleet_task_accept — plan acceptance propagation.
+
+    IRC + Plane state/comment + events + trail.
+    Primary action (MC update_task + post_comment) done by tool directly.
+    """
+    chain = EventChain(
+        operation="task_accept",
+        source_agent=agent_name,
+        task_id=task_id,
+    )
+
+    # Plane — update state + post plan comment
+    chain.add(EventSurface.PLANE, "post_comment", {
+        "issue_id": "",
+        "project_id": "",
+        "comment": f"[{agent_name}] Plan accepted: {plan_summary[:150]}",
+    }, required=False)
+
+    # Trail
+    chain.events.append(_trail_event(
+        task_id, "plan_accepted",
+        f"Plan accepted by {agent_name}: {plan_summary[:100]}",
+        agent=agent_name,
+    ))
+
+    return chain
+
+
+def build_commit_chain(
+    agent_name: str,
+    task_id: str,
+    message: str,
+    sha: str = "",
+    files: list[str] | None = None,
+) -> EventChain:
+    """Build the event chain for fleet_commit — commit propagation.
+
+    MC comment + Plane comment + events + trail + methodology verify.
+    Primary action (git add + git commit) done by tool directly.
+    """
+    chain = EventChain(
+        operation="task_commit",
+        source_agent=agent_name,
+        task_id=task_id,
+    )
+
+    # MC — post commit summary as task comment
+    file_summary = ", ".join((files or [])[:5])
+    if files and len(files) > 5:
+        file_summary += f" (+{len(files) - 5} more)"
+    chain.add(EventSurface.INTERNAL, "post_comment", {
+        "task_id": task_id,
+        "comment": f"**Commit** `{sha[:7] if sha else '???'}`: {message}\nFiles: {file_summary}",
+    }, required=False)
+
+    # Plane — commit summary on linked issue
+    chain.add(EventSurface.PLANE, "post_comment", {
+        "issue_id": "",
+        "project_id": "",
+        "comment": f"[{agent_name}] Commit: {message}",
+    }, required=False)
+
+    # Trail
+    chain.events.append(_trail_event(
+        task_id, "commit",
+        f"Commit by {agent_name}: {message} ({sha[:7] if sha else 'no-sha'})",
+        agent=agent_name,
+    ))
+
+    return chain
+
+
+def build_task_create_chain(
+    creator: str,
+    task_id: str,
+    task_title: str,
+    parent_task_id: str = "",
+    agent_name: str = "",
+    task_type: str = "",
+    project: str = "",
+) -> EventChain:
+    """Build the event chain for fleet_task_create — task creation propagation.
+
+    Parent comment + IRC + Plane create_issue + events + trail.
+    Primary action (mc.create_task) done by tool directly.
+    """
+    chain = EventChain(
+        operation="task_create",
+        source_agent=creator,
+        task_id=task_id,
+    )
+
+    # MC — comment on parent task (if parent exists)
+    if parent_task_id:
+        chain.add(EventSurface.INTERNAL, "post_comment", {
+            "task_id": parent_task_id,
+            "comment": (
+                f"**Subtask created** by {creator}: {task_title}\n"
+                f"Type: {task_type or 'task'} → {agent_name or 'unassigned'}"
+            ),
+        }, required=False)
+
+    # Plane — create linked issue (if project configured)
+    if project:
+        chain.add(EventSurface.PLANE, "create_issue", {
+            "project_id": "",  # filled by caller if Plane project mapped
+            "title": task_title,
+            "description": f"Created by {creator} from OCMC. Type: {task_type or 'task'}.",
+            "priority": "medium",
+        }, required=False)
+
+    # IRC — already done by tool as primary action
+
+    # Trail
+    chain.events.append(_trail_event(
+        task_id, "task_created",
+        f"Task created by {creator}: {task_title}. "
+        f"Parent: {parent_task_id[:8] if parent_task_id else 'none'}. "
+        f"Agent: {agent_name or 'unassigned'}.",
+        agent=creator,
+    ))
+
+    return chain
+
+
+def build_pause_chain(
+    agent_name: str,
+    task_id: str,
+    task_title: str,
+    reason: str,
+    needed: str = "",
+) -> EventChain:
+    """Build the event chain for fleet_pause — blocker propagation.
+
+    Board memory (PM mention) + Plane comment + events + trail.
+    Primary action (MC post_comment + IRC) done by tool directly.
+    """
+    chain = EventChain(
+        operation="task_paused",
+        source_agent=agent_name,
+        task_id=task_id,
+    )
+
+    # Board memory — mention PM so they see the blocker
+    chain.add(EventSurface.INTERNAL, "post_board_memory", {
+        "content": (
+            f"**BLOCKED** — {agent_name} on {task_title[:40]}:\n"
+            f"Reason: {reason}\n"
+            f"Needed: {needed}"
+        ),
+        "tags": ["blocked", f"task:{task_id}", f"mention:project-manager",
+                 f"agent:{agent_name}"],
+    }, required=False)
+
+    # Plane — comment on linked issue
+    chain.add(EventSurface.PLANE, "post_comment", {
+        "issue_id": "",
+        "project_id": "",
+        "comment": f"[{agent_name}] BLOCKED: {reason}. Needed: {needed}",
+    }, required=False)
+
+    # Trail
+    chain.events.append(_trail_event(
+        task_id, "task_paused",
+        f"Paused by {agent_name}. Reason: {reason[:80]}. Needed: {needed[:80]}.",
+        agent=agent_name,
+    ))
+
+    return chain
+
+
+def build_escalation_chain(
+    agent_name: str,
+    task_id: str,
+    title: str,
+    details: str,
+    question: str = "",
+) -> EventChain:
+    """Build the event chain for fleet_escalate — escalation propagation.
+
+    Plane comment + events + trail.
+    Primary action (board memory + IRC + ntfy) done by tool directly.
+    """
+    chain = EventChain(
+        operation="escalation",
+        source_agent=agent_name,
+        task_id=task_id or "",
+    )
+
+    # Plane — comment on linked issue
+    if task_id:
+        chain.add(EventSurface.PLANE, "post_comment", {
+            "issue_id": "",
+            "project_id": "",
+            "comment": f"[{agent_name}] ESCALATED: {title}. {details[:150]}",
+        }, required=False)
+
+    # Trail
+    if task_id:
+        chain.events.append(_trail_event(
+            task_id, "escalated",
+            f"Escalated by {agent_name}: {title}. {question[:60] if question else ''}",
+            agent=agent_name,
+        ))
+
+    return chain
+
+
+def build_progress_chain(
+    agent_name: str,
+    task_id: str,
+    task_title: str,
+    done: str = "",
+    next_step: str = "",
+    blockers: str = "none",
+    progress_pct: int = 0,
+) -> EventChain:
+    """Build the event chain for fleet_task_progress — progress propagation.
+
+    Plane labels/comment + IRC at checkpoints + events + trail.
+    Primary action (MC post_comment + update custom field) done by tool directly.
+    """
+    chain = EventChain(
+        operation="task_progress",
+        source_agent=agent_name,
+        task_id=task_id,
+    )
+
+    # Plane — comment with progress summary
+    chain.add(EventSurface.PLANE, "post_comment", {
+        "issue_id": "",
+        "project_id": "",
+        "comment": (
+            f"[{agent_name}] Progress {progress_pct}%: {done[:100]}"
+            + (f"\nNext: {next_step[:80]}" if next_step else "")
+        ),
+    }, required=False)
+
+    # IRC — only at significant checkpoints (50%, 90%)
+    if progress_pct in (50, 90):
+        chain.add(EventSurface.CHANNEL, "notify_irc", {
+            "channel": "#fleet",
+            "message": f"[{agent_name}] {task_title[:40]} — {progress_pct}% complete",
+        }, required=False)
+
+    # Trail
+    chain.events.append(_trail_event(
+        task_id, "progress_update",
+        f"Progress by {agent_name}: {progress_pct}%. Done: {done[:60]}.",
+        agent=agent_name,
+    ))
+
+    return chain
+
+
+def build_artifact_chain(
+    agent_name: str,
+    task_id: str,
+    artifact_type: str,
+    field: str = "",
+    completeness_pct: int = 0,
+    operation: str = "artifact_updated",
+) -> EventChain:
+    """Build the event chain for fleet_artifact_create/update — artifact propagation.
+
+    Events + trail. Plane HTML already updated by tool directly via transpose.
+    MC comment already posted by tool directly.
+    """
+    chain = EventChain(
+        operation=operation,
+        source_agent=agent_name,
+        task_id=task_id,
+    )
+
+    # Trail
+    detail = f"field={field}" if field else "created"
+    chain.events.append(_trail_event(
+        task_id, operation,
+        f"Artifact {operation} by {agent_name}: {artifact_type} ({detail}). "
+        f"Completeness: {completeness_pct}%.",
+        agent=agent_name,
+    ))
+
+    return chain
