@@ -18,13 +18,25 @@ if [[ ! -f "$TEMPLATE" ]]; then
     exit 1
 fi
 
-# Resolve paths for this machine
+# Resolve paths for this machine — find stable bin directory.
+# fnm creates ephemeral shell directories (/run/user/.../fnm_multishells/NNN_*)
+# that disappear when the terminal closes. The service needs a stable path.
 VENDOR_BIN=$(command -v "$VENDOR_CLI" 2>/dev/null || echo "")
 if [[ -z "$VENDOR_BIN" ]]; then
     echo "ERROR: $VENDOR_NAME not found in PATH" >&2
     exit 1
 fi
+# If the binary is in an fnm_multishells ephemeral dir, resolve to the
+# stable fnm installation dir (e.g. ~/.local/share/fnm/node-versions/.../bin/).
 VENDOR_BIN_DIR=$(dirname "$VENDOR_BIN")
+if [[ "$VENDOR_BIN_DIR" == *fnm_multishells* ]]; then
+    NODE_VER=$(node --version 2>/dev/null || true)
+    FNM_STABLE="$HOME/.local/share/fnm/node-versions/$NODE_VER/installation/bin"
+    if [[ -n "$NODE_VER" && -x "$FNM_STABLE/$VENDOR_CLI" ]]; then
+        VENDOR_BIN="$FNM_STABLE/$VENDOR_CLI"
+        VENDOR_BIN_DIR="$FNM_STABLE"
+    fi
+fi
 
 echo "=== Installing $VENDOR_NAME Fleet Service ==="
 echo "  Fleet dir:    $FLEET_DIR"

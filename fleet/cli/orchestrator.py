@@ -194,6 +194,27 @@ async def run_orchestrator_cycle(
                             # Refresh orchestrator's cached intervals to match gateway
                             new_intervals = read_agent_intervals()
                             _fleet_lifecycle.load_intervals(new_intervals)
+                            # Sync new intervals to MC heartbeat_config via DB
+                            import subprocess as _sync_sp
+                            _sync_dir = os.environ.get("FLEET_DIR", str(Path(__file__).resolve().parent.parent.parent))
+                            for a in agents:
+                                if "Gateway" in a.name:
+                                    continue
+                                interval_sec = new_intervals.get(a.name, 0)
+                                if interval_sec:
+                                    every = f"{interval_sec // 60}m"
+                                    try:
+                                        _sync_sp.run(
+                                            ["docker", "compose", "exec", "-T", "db",
+                                             "psql", "-U", "postgres", "-d", "mission_control", "-c",
+                                             f"UPDATE agents SET heartbeat_config = jsonb_set("
+                                             f"COALESCE(heartbeat_config, '{{}}')::jsonb, "
+                                             f"'{{every}}', '\"{every}\"') "
+                                             f"WHERE id = '{a.id}'"],
+                                            capture_output=True, timeout=5, cwd=_sync_dir,
+                                        )
+                                    except Exception:
+                                        pass
                             state.notes.append(
                                 f"CRON tempo updated: {updated} agents "
                                 f"(multiplier={mode.tempo_multiplier:.2f})"
@@ -333,6 +354,20 @@ async def run_orchestrator_cycle(
             state.notes.append(
                 f"CRON: {len(cron_agents)} agents fired, hb_sent={hb_ok}, hb_fail={hb_fail}"
             )
+        # Gateway agent keepalive — not part of fleet brain eval, just liveness.
+        # Touch every 8 minutes to stay under MC's OFFLINE_AFTER.
+        for a in agents:
+            if "Gateway" in a.name:
+                gw_state = _fleet_lifecycle.get_or_create(a.name)
+                if gw_state.cron_interval == 0:
+                    gw_state.cron_interval = 8 * 60  # 8 minutes
+                if gw_state.needs_heartbeat(now):
+                    try:
+                        await mc.heartbeat_agent(a.id)
+                        gw_state.mark_heartbeat_sent(now)
+                    except Exception:
+                        pass
+
         # Log brain summary
         if brain_results:
             silent_count = sum(1 for e in brain_results.values() if e.decision.value == "silent")
@@ -1438,6 +1473,71 @@ async def run_orchestrator_daemon(interval: int = 30) -> None:
         print(f"[orchestrator] Agent CRON intervals loaded: {len(agent_intervals)} agents", flush=True)
         for name, secs in sorted(agent_intervals.items()):
             print(f"  {name}: {secs // 60}m", flush=True)
+
+    # Seed last_heartbeat_at from MC's last_seen_at so we don't re-fire
+    # immediately after setup's heartbeat touch. Without this, the daemon's
+    # first cycle fires all 10 agents (last_heartbeat_at=None → needs_heartbeat=True)
+    # creating duplicate entries on top of setup's touch.
+    try:
+        _seed_mc = MCClient(token=token)
+        resp = await _seed_mc._client.get("/api/v1/agents")
+        raw_agents = resp.json()
+        items = raw_agents.get("items", raw_agents) if isinstance(raw_agents, dict) else raw_agents
+        seeded = 0
+        for a in items:
+            name = a.get("name", "")
+            if "Gateway" in name or not name:
+                continue
+            last_seen = a.get("last_seen_at")
+            if last_seen:
+                st = _fleet_lifecycle.get_or_create(name)
+                # MC stores UTC (naive, no Z). Attach UTC zone, convert to local.
+                from datetime import timezone as _tz
+                utc_dt = datetime.fromisoformat(last_seen).replace(tzinfo=_tz.utc)
+                local_dt = utc_dt.astimezone().replace(tzinfo=None)
+                st.last_heartbeat_at = local_dt
+                seeded += 1
+        # Sync staggered intervals to MC's heartbeat_config via direct DB update.
+        # Do NOT use the PATCH /agents/{id} endpoint — it triggers gateway
+        # lifecycle provisioning (agents.update RPC) which fails if gateway
+        # is still starting, leaving agents stuck in "updating" status.
+        synced = 0
+        needs_sync = {}
+        for a in items:
+            name = a.get("name", "")
+            if "Gateway" in name or not name:
+                continue
+            interval_sec = agent_intervals.get(name, 0)
+            if not interval_sec:
+                continue
+            new_every = f"{interval_sec // 60}m"
+            mc_every = (a.get("heartbeat_config") or {}).get("every", "")
+            if mc_every != new_every:
+                needs_sync[a["id"]] = new_every
+        if needs_sync:
+            import subprocess
+            fleet_dir = os.environ.get("FLEET_DIR", str(Path(__file__).resolve().parent.parent.parent))
+            for agent_id, every in needs_sync.items():
+                try:
+                    subprocess.run(
+                        ["docker", "compose", "exec", "-T", "db",
+                         "psql", "-U", "postgres", "-d", "mission_control", "-c",
+                         f"UPDATE agents SET heartbeat_config = jsonb_set("
+                         f"COALESCE(heartbeat_config, '{{}}')::jsonb, "
+                         f"'{{every}}', '\"{every}\"') "
+                         f"WHERE id = '{agent_id}'"],
+                        capture_output=True, timeout=5, cwd=fleet_dir,
+                    )
+                    synced += 1
+                except Exception:
+                    pass
+            if synced:
+                print(f"[orchestrator] Synced heartbeat_config to MC DB: {synced} agents", flush=True)
+
+        await _seed_mc.close()
+        print(f"[orchestrator] Seeded heartbeat timestamps from MC: {seeded} agents", flush=True)
+    except Exception as e:
+        print(f"[orchestrator] WARN: Could not seed timestamps from MC: {e}", flush=True)
 
     while True:
         # Check if we should run this cycle (outage/backoff)

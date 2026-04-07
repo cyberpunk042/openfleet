@@ -1,0 +1,13 @@
+{
+  "OCF Gateway Gateway Agent": "30m",
+  "accountability-generator": "28m",
+  "architect": "14m",
+  "devops": "22m",
+  "devsecops-expert": "16m",
+  "fleet-ops": "10m",
+  "project-manager": "12m",
+  "qa-engineer": "20m",
+  "software-engineer": "18m",
+  "technical-writer": "24m",
+  "ux-designer": "26m"
+}

@@ -325,12 +325,21 @@ def check_cron_circuit_breaker(max_consecutive_errors: int = 5) -> int:
         return 0
 
 
+def _base_intervals_path() -> Path:
+    """Path to the fleet's base interval cache (survives budget mode changes)."""
+    from pathlib import Path as _P
+    fleet_dir = os.environ.get("FLEET_DIR", "")
+    if fleet_dir:
+        return _P(fleet_dir) / ".fleet-base-intervals.json"
+    return _P.home() / ".fleet-base-intervals.json"
+
+
 def update_cron_tempo(tempo_multiplier: float) -> int:
     """Update HeartbeatRunner intervals in openarms.json based on budget_mode.
 
-    Applies tempo_multiplier to each agent's base heartbeat interval.
-    The base interval is stored in heartbeat.baseEvery (set on first tempo change).
-    The gateway hot-reloads config and restarts HeartbeatRunner with new intervals.
+    Applies tempo_multiplier to each agent's base interval. Base intervals
+    are cached in .fleet-base-intervals.json (fleet state, not gateway config).
+    The gateway config only contains valid heartbeat keys.
 
     Returns number of agents updated.
     """
@@ -348,18 +357,29 @@ def update_cron_tempo(tempo_multiplier: float) -> int:
     except Exception:
         return 0
 
+    # Load or initialize base intervals cache
+    base_path = _base_intervals_path()
+    base_cache: dict[str, str] = {}
+    if base_path.exists():
+        try:
+            base_cache = _json.loads(base_path.read_text())
+        except Exception:
+            pass
+
     agents = cfg.get("agents", {}).get("list", [])
     updated = 0
     for agent in agents:
+        name = agent.get("name", "")
         hb = agent.get("heartbeat", {})
         every = hb.get("every", "")
-        if not every:
+        if not every or not name:
             continue
-        # Store original interval as base on first tempo change
-        base_every = hb.get("baseEvery", every)
-        if "baseEvery" not in hb:
-            hb["baseEvery"] = base_every
-        # Parse "Nm" to minutes
+
+        # Use cached base, or current value as base (first tempo change)
+        base_every = base_cache.get(name, every)
+        if name not in base_cache:
+            base_cache[name] = base_every
+
         match = _re.match(r"(\d+)m", base_every)
         if not match:
             continue
@@ -377,6 +397,13 @@ def update_cron_tempo(tempo_multiplier: float) -> int:
                 _json.dump(cfg, f, indent=2)
         except Exception:
             return 0
+
+    # Persist base cache
+    try:
+        base_path.write_text(_json.dumps(base_cache, indent=2))
+    except Exception:
+        pass
+
     return updated
 
 

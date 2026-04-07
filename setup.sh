@@ -397,17 +397,13 @@ for a in items:
     if not os.path.exists(os.path.join(ws, '.mcp.json')):
         print(a['id'])
 " 2>/dev/null); do
-        # Force reprovision by resetting status to provisioning then heartbeating
+        # Reset to provisioning so template sync re-provisions the workspace.
+        # Don't call heartbeat here — the liveness touch loop below handles that.
         curl -sf -m 30 -X PATCH \
             -H "Authorization: Bearer $LOCAL_AUTH_TOKEN" \
             -H "Content-Type: application/json" \
             "http://localhost:8000/api/v1/agents/${AGENT_ID}" \
-            -d '{"status":"provisioning"}' >/dev/null 2>&1 || true
-        curl -sf -m 30 -X POST \
-            -H "Authorization: Bearer $LOCAL_AUTH_TOKEN" \
-            -H "Content-Type: application/json" \
-            "http://localhost:8000/api/v1/agents/${AGENT_ID}/heartbeat" \
-            -d '{}' >/dev/null 2>&1 && REPROV=$((REPROV + 1)) || true
+            -d '{"status":"provisioning"}' >/dev/null 2>&1 && REPROV=$((REPROV + 1)) || true
     done
     if [[ $REPROV -gt 0 ]]; then
         echo "  Reprovisioned $REPROV agents, waiting for gateway..."
