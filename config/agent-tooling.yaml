@@ -49,6 +49,8 @@ agents:
       - context7              # library/framework documentation
       - superpowers           # TDD, writing-plans, brainstorming, systematic-debugging (132K stars)
       - adversarial-spec      # multi-LLM debate for spec refinement (518 stars)
+      - skill-creator         # create/improve/eval SKILL.md files (Phase D enabler)
+      - claude-code-setup     # codebase analysis, recommend automations
     sub_agents:
       - pattern-analyzer      # architecture patterns, anti-patterns, coupling
       - dependency-mapper     # import graphs, circular deps, change impact
@@ -79,6 +81,7 @@ agents:
       - context7
       - superpowers           # TDD, systematic-debugging, verification (132K stars)
       - pyright-lsp           # Python type error detection
+      - skill-creator         # create/improve/eval SKILL.md files
     sub_agents:
       - test-runner           # run tests, structured results
     skills:
@@ -135,6 +138,7 @@ agents:
     plugins:
       - hookify               # natural-language hook creation (official Anthropic)
       - commit-commands        # git commit workflows (official Anthropic)
+      - claude-code-setup     # codebase analysis, recommend automations
     sub_agents:
       - container-inspector   # Docker health, config audit, resource usage
     skills:
@@ -180,6 +184,7 @@ agents:
         package: "@modelcontextprotocol/server-github"
     plugins:
       - pr-review-toolkit      # 5 parallel Sonnet review agents (official Anthropic)
+      - claude-md-management   # CLAUDE.md quality audit, learning capture
     sub_agents:
       - trail-reconstructor   # audit trail reconstruction (haiku, lightweight)
     skills:
@@ -226,6 +231,7 @@ agents:
     plugins:
       - context7              # library/framework documentation for accurate writing
       - ars-contexta          # knowledge systems from conversation (3K stars)
+      - elements-of-style     # 18 Strunk writing rules for documentation quality
     skills:
       - feature-document
       - pm-changelog
@@ -248,7 +254,8 @@ agents:
       - name: filesystem
         package: "@modelcontextprotocol/server-filesystem"
         args: ["{{WORKSPACE}}"]
-    plugins: []
+    plugins:
+      - claude-md-management   # CLAUDE.md quality audit for compliance
     sub_agents:
       - trail-reconstructor   # audit trail reconstruction (shared with fleet-ops)
     skills:

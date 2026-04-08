@@ -188,21 +188,21 @@
 
 ## Honest Status Per Phase (2026-04-07 final)
 
-**Phase A (~75%):** Building blocks built+tested. 16 elevated generic tools. 12 chain builders. Context system has phase standards, contribution status, AND dynamic skill recommendations. Preembed includes skill recommendations (task dispatch) and standing orders (heartbeat). 2 new modules: skill_recommendations.py, standing_orders.py. Remaining: edge case tests, chain builder enrichment.
+**Phase A (~80%):** Building blocks built+tested. 16 elevated generic tools with 93 behavioral tests (stage regression, readiness events, security_hold, contributor notification, task transitions). 12 chain builders. Context system has phase standards, contribution status, AND dynamic skill recommendations. Preembed includes skill recommendations (task dispatch) and standing orders (heartbeat). 2 new modules: skill_recommendations.py, standing_orders.py. Remaining: chain builder enrichment.
 
 **Phase B (~40%):** Config fixed. pytest-mcp phantom removed, semgrep installed. Per-agent mcp.json regenerated. Remaining: plugin install needs running gateway.
 
-**Phase C (~70%):** 36 group calls across 10 roles. 65 tests (36 registration + 29 behavioral — all 10 roles covered). Chain docs in tool-chains.yaml for all 36 group calls. Remaining: more edge case behavioral tests.
+**Phase C (~80%):** 36 group calls across 10 roles. 89 tests (36 registration + 53 behavioral — all 10 roles with deep coverage). Chain docs in tool-chains.yaml for all 36 group calls. Behavioral coverage: PM 8, fleet-ops 4, architect 3, devsecops 4, devops 7, engineer 5, QA 8, writer 5, UX 4, accountability 3. Remaining: more complex interaction tests.
 
 **Phase D (~50%):** 30 workspace skills (7 gateway + 13 broad + 10 deep). skill-stage-mapping.yaml (140 entries, all refs verified). Dynamic skill recommendations wired into context_assembly + preembed. Remaining: plugin ecosystem evaluation/install, more granular skills.
 
 **Phase E (~35%):** 17 CRONs in agent-crons.yaml. sync-agent-crons.sh (dry-run verified). 14 standing orders in standing-orders.yaml. Standing orders wired into heartbeat preembed runtime. Remaining: CRON deployment (needs gateway), PO authority_level review.
 
-**Phase F (~25%):** 12 sub-agents (all read-only, model-appropriate). Role-aware sub-agent deployment via push-soul.sh + agent-tooling.yaml. Hook configs + deployment via configure-agent-settings.sh. Remaining: Agent Teams evaluation, stage-aware effort, monitoring hooks.
+**Phase F (~30%):** 12 sub-agents (all read-only, model-appropriate). Role-aware sub-agent deployment via push-soul.sh + agent-tooling.yaml. Hook configs + deployment via configure-agent-settings.sh. Stage-aware effort integrated into model_selection.py (_STAGE_EFFORT_FLOOR + _apply_stage_adjustment). Dispatch fix: Claude backends use model_config (stage-aware) for dispatch record. Remaining: Agent Teams evaluation, monitoring hooks.
 
 **Phase G (~70%):** generate-tools-md.py (Python) reads 7 layers + tool-roles.yaml + role_tools chain docs. "Always Available" + per-stage skills with dedup. _cross_role_tools for 10 previously unassigned tools. TOOLS.md (270-324 lines) generated for all 10 agents, deployed to 7 workspaces. Remaining: minor enrichment.
 
-**Phase H (~35%):** validate-tooling-configs.py: 0 errors, 3 warnings (3 unprovisioned workspaces). 52 pipeline integration tests + 29 behavioral + 18 skill recs + 12 standing orders + 2 context integration = 113 new tests this session. STATUS-TRACKER.md + MASTER-INDEX.md updated. Test suite: **2107 passed, 0 failed, 19 skipped.** Remaining: per-agent smoke test (needs gateway).
+**Phase H (~50%):** validate-tooling-configs.py: 0 errors, 3 warnings (3 unprovisioned workspaces). 98 pipeline + 53 behavioral + 18 skill recs + 12 standing orders + 10 model selection stage + 3 dispatch stage + 19 cross-flow + 9 edge cases + 2 context integration = 224 new tests this session. STATUS-TRACKER.md + MASTER-INDEX.md updated. Test suite: **2218 passed, 0 failed, 19 skipped.** Remaining: per-agent smoke test (needs gateway).
 
 ---
 
@@ -317,7 +317,7 @@ scripts/push-soul.sh                    — UPDATED: role-aware sub-agent symlin
 scripts/push-agent-framework.sh         — UPDATED: deploys generated TOOLS.md
 scripts/reprovision-agents.sh           — UPDATED: includes push-soul.sh
 
-# Tests (2107 passed, 0 failures, 19 skipped)
+# Tests (2218 passed, 0 failures, 19 skipped)
 fleet/tests/core/test_phase_standards.py      — 41 tests
 fleet/tests/core/test_plan_verbatim.py        — 20 tests
 fleet/tests/core/test_contributions.py        — 17 tests
@@ -325,10 +325,13 @@ fleet/tests/core/test_building_blocks.py      — 16 tests
 fleet/tests/core/test_new_chain_builders.py   — 17 tests
 fleet/tests/core/test_skill_recommendations.py — NEW: 18 tests
 fleet/tests/core/test_standing_orders.py      — NEW: 12 tests
+fleet/tests/core/test_model_selection.py      — UPDATED: +10 stage tests (20 total)
 fleet/tests/core/test_context_assembly.py     — UPDATED: +2 tests (skill recs)
-fleet/tests/mcp/test_tool_operations.py       — 84 tests
-fleet/tests/mcp/test_role_tools.py            — 65 tests (36 reg + 29 behavioral)
-fleet/tests/integration/test_tooling_pipeline.py — NEW: 52 tests
+fleet/tests/mcp/test_tool_operations.py       — 93 tests (+9 Phase A edge cases)
+fleet/tests/mcp/test_role_tools.py            — 89 tests (36 reg + 53 behavioral)
+fleet/tests/integration/test_tooling_pipeline.py — NEW: 98 tests
+fleet/tests/integration/test_flow_dispatch.py — UPDATED: +3 stage-aware tests (8 total)
+fleet/tests/integration/test_flow_contributions.py — NEW: 19 cross-flow tests
 ```
 
 ---

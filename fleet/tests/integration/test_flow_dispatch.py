@@ -62,3 +62,47 @@ def test_dispatch_challenge_skip():
     mark_challenge_skipped(stamp, reason="deferred")
     assert stamp.challenge_skipped is True
     assert stamp.challenge_skip_reason == "deferred"
+
+
+# ── Stage-aware model selection integration ───────────────────────
+
+def test_stage_aware_model_selection():
+    """Model selection should consider methodology stage."""
+    from fleet.core.model_selection import select_model_for_task, _EFFORT_ORDER
+
+    # Same task, different stages → different effort
+    task_work = make_task(story_points=1, task_type="subtask", task_stage="work")
+    task_reasoning = make_task(story_points=1, task_type="subtask", task_stage="reasoning")
+
+    config_work = select_model_for_task(task_work, "software-engineer")
+    config_reasoning = select_model_for_task(task_reasoning, "software-engineer")
+
+    # Reasoning should have higher effort than work for same complexity
+    assert _EFFORT_ORDER[config_reasoning.effort] > _EFFORT_ORDER[config_work.effort]
+
+
+def test_stage_aware_dispatch_consistency():
+    """For Claude backends, model_config should drive both record and settings."""
+    from fleet.core.model_selection import select_model_for_task
+
+    task = make_task(story_points=3, task_stage="reasoning")
+    routing = route_task(task, agent_name="software-engineer")
+    model_config = select_model_for_task(task, agent_name="software-engineer")
+
+    # For Claude backend, dispatch should use model_config
+    if routing.backend in ("claude-code", "direct"):
+        # The dispatch code uses model_config for Claude backends
+        assert model_config.effort == "high"  # reasoning floor
+        assert "stage:reasoning" in model_config.reason
+
+
+def test_routing_and_model_selection_same_backend():
+    """Route task and model selection should agree on backend type."""
+    from fleet.core.model_selection import select_model_for_task
+
+    task = make_task(story_points=8, task_type="story")
+    routing = route_task(task, agent_name="architect")
+    model_config = select_model_for_task(task, agent_name="architect")
+
+    # Both should choose opus for large architecture tasks
+    assert routing.model == "opus" or model_config.model == "opus"

@@ -108,20 +108,33 @@ async def _run_dispatch(
         backend_mode=backend_mode,
         localai_available=localai_available,
     )
-    print(f"Backend:  {routing.backend} (tier={routing.confidence_tier})")
-    print(f"Model:    {routing.model} (effort={routing.effort})")
-    print(f"          {routing.reason}")
 
+    # Stage-aware model/effort selection (includes methodology stage adjustment)
     model_config = select_model_for_task(task, agent_name=agent_name, backend_mode=backend_mode)
+
+    # For Claude backends, use model_config (stage-aware) for model/effort.
+    # For non-Claude backends (localai, openrouter), use routing's model.
+    if routing.backend in ("claude-code", "direct"):
+        dispatch_model = model_config.model
+        dispatch_effort = model_config.effort
+        dispatch_reason = model_config.reason
+    else:
+        dispatch_model = routing.model
+        dispatch_effort = routing.effort
+        dispatch_reason = routing.reason
+
+    print(f"Backend:  {routing.backend} (tier={routing.confidence_tier})")
+    print(f"Model:    {dispatch_model} (effort={dispatch_effort})")
+    print(f"          {dispatch_reason}")
 
     # Record dispatch intent — the provenance chain starts here
     dispatch_record = DispatchRecord(
         task_id=task_id,
         agent_name=agent_name,
         backend=routing.backend,
-        model=routing.model,
-        effort=routing.effort,
-        selection_reason=routing.reason,
+        model=dispatch_model,
+        effort=dispatch_effort,
+        selection_reason=dispatch_reason,
         skills=[],  # Populated when skill system is integrated
     )
 

@@ -2363,3 +2363,268 @@ def test_approve_reject_calls_chain_runner():
 
                     assert "rejection" in chain_ran, \
                         f"ChainRunner should have been called with rejection chain. Ran: {chain_ran}"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Phase A edge cases — behavioral contracts not yet verified
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_progress_emits_readiness_changed_event():
+    """fleet_task_progress at >0% should emit readiness_changed event."""
+    ctx, task = make_mock_ctx()
+    events = []
+
+    with patch("fleet.mcp.tools._get_ctx", return_value=ctx):
+        with patch("fleet.mcp.tools._emit_event", side_effect=lambda *a, **kw: events.append(a[0] if a else "")):
+            from fleet.mcp.tools import register_tools
+            from mcp.server.fastmcp import FastMCP
+            server = FastMCP(name="test")
+            register_tools(server)
+            progress_fn = server._tool_manager._tools["fleet_task_progress"].fn
+
+            run_async(progress_fn(done="Some work", next_step="More work", progress_pct=30))
+
+            readiness_events = [e for e in events if "readiness_changed" in str(e)]
+            assert len(readiness_events) >= 1, \
+                f"Progress at 30% should emit readiness_changed event. Events: {events}"
+
+
+def test_reject_regresses_stage_to_reasoning():
+    """fleet_approve (reject) should regress task stage to reasoning."""
+    ctx, task = make_mock_ctx(agent_name="fleet-ops")
+    task.custom_fields.agent_name = "software-engineer"
+    task.custom_fields.task_readiness = 99
+    task.custom_fields.task_stage = "work"
+
+    with patch("fleet.mcp.tools._get_ctx", return_value=ctx):
+        with patch("fleet.core.agent_roles.can_agent_reject", return_value=True):
+            with patch("fleet.core.agent_roles.should_create_fix_task", return_value=False):
+                from fleet.mcp.tools import register_tools
+                from mcp.server.fastmcp import FastMCP
+                server = FastMCP(name="test")
+                register_tools(server)
+                approve_fn = server._tool_manager._tools["fleet_approve"].fn
+
+                result = run_async(approve_fn(
+                    approval_id="approval-123",
+                    decision="rejected",
+                    comment="Missing tests for edge cases.",
+                ))
+
+                assert result["ok"] is True
+                assert result["regressed_stage"] == "reasoning"
+                assert result["regressed_readiness"] <= 99
+                assert result["task_status"] == "inbox (rework)"
+
+
+def test_reject_regresses_readiness_by_20_from_current():
+    """fleet_approve (reject) should regress readiness by ~20% but not below 80."""
+    ctx, task = make_mock_ctx(agent_name="fleet-ops")
+    task.custom_fields.agent_name = "software-engineer"
+    task.custom_fields.task_readiness = 95
+
+    with patch("fleet.mcp.tools._get_ctx", return_value=ctx):
+        with patch("fleet.core.agent_roles.can_agent_reject", return_value=True):
+            with patch("fleet.core.agent_roles.should_create_fix_task", return_value=False):
+                from fleet.mcp.tools import register_tools
+                from mcp.server.fastmcp import FastMCP
+                server = FastMCP(name="test")
+                register_tools(server)
+                approve_fn = server._tool_manager._tools["fleet_approve"].fn
+
+                result = run_async(approve_fn(
+                    approval_id="approval-123",
+                    decision="rejected",
+                    comment="Incorrect implementation.",
+                ))
+
+                assert result["ok"] is True
+                # 95 - 20 = 75, but min is 80
+                assert result["regressed_readiness"] == 80
+
+
+def test_notify_contributors_posts_mention():
+    """notify_contributors should post @mention board memory for each contributor."""
+    from fleet.core.contributor_notify import notify_contributors
+
+    mc = AsyncMock()
+    contrib_comment = MagicMock()
+    contrib_comment.message = "**Contribution (design_input)** from architect:\n\nUse adapter pattern."
+    qa_comment = MagicMock()
+    qa_comment.message = "**Contribution (qa_test_definition)** from qa-engineer:\n\nTC-001: Test auth."
+    mc.list_comments = AsyncMock(return_value=[contrib_comment, qa_comment])
+    mc.post_memory = AsyncMock()
+
+    notified = run_async(notify_contributors(
+        task_id="task-12345678",
+        task_title="Implement auth middleware",
+        mc=mc,
+        board_id="board-123",
+    ))
+
+    assert notified == 2
+
+    # Verify both contributors were notified via board memory
+    memory_calls = mc.post_memory.call_args_list
+    architect_notified = any(
+        "mention:architect" in str(call.kwargs.get("tags", []))
+        for call in memory_calls
+    )
+    qa_notified = any(
+        "mention:qa-engineer" in str(call.kwargs.get("tags", []))
+        for call in memory_calls
+    )
+    assert architect_notified, "Architect should be notified"
+    assert qa_notified, "QA engineer should be notified"
+
+
+def test_progress_gate_request_includes_ntfy():
+    """fleet_task_progress at >=90% should attempt ntfy notification to PO."""
+    ctx, task = make_mock_ctx()
+    ntfy_called = []
+
+    # Mock the NtfyClient import to track calls
+    mock_ntfy = MagicMock()
+    mock_ntfy.publish = AsyncMock(return_value=True)
+    mock_ntfy.close = AsyncMock()
+
+    with patch("fleet.mcp.tools._get_ctx", return_value=ctx):
+        with patch("fleet.mcp.tools.NtfyClient", return_value=mock_ntfy, create=True) as ntfy_cls:
+            with patch("fleet.infra.ntfy_client.NtfyClient", return_value=mock_ntfy, create=True):
+                from fleet.mcp.tools import register_tools
+                from mcp.server.fastmcp import FastMCP
+                server = FastMCP(name="test")
+                register_tools(server)
+                progress_fn = server._tool_manager._tools["fleet_task_progress"].fn
+
+                run_async(progress_fn(done="Nearly done", next_step="PO review", progress_pct=95))
+
+                # Gate request should be in board memory
+                memory_calls = ctx.mc.post_memory.call_args_list
+                gate_posted = any(
+                    "GATE REQUEST" in str(call.kwargs.get("content", ""))
+                    for call in memory_calls
+                )
+                assert gate_posted, "95% should trigger gate request"
+
+
+def test_approve_sets_task_to_done_with_sprint_update():
+    """fleet_approve (approved) should set task status to done and attempt sprint update."""
+    ctx, task = make_mock_ctx(agent_name="fleet-ops")
+    task.custom_fields.agent_name = "software-engineer"
+    task.custom_fields.plan_id = "sprint-2"
+    task.status = MagicMock(value="review")
+
+    with patch("fleet.mcp.tools._get_ctx", return_value=ctx):
+        with patch("fleet.core.agent_roles.can_agent_reject", return_value=True):
+            with patch("fleet.core.agent_roles.should_create_fix_task", return_value=False):
+                from fleet.mcp.tools import register_tools
+                from mcp.server.fastmcp import FastMCP
+                server = FastMCP(name="test")
+                register_tools(server)
+                approve_fn = server._tool_manager._tools["fleet_approve"].fn
+
+                result = run_async(approve_fn(
+                    approval_id="approval-123",
+                    decision="approved",
+                    comment="All requirements met. Tests comprehensive.",
+                ))
+
+                assert result["ok"] is True
+                assert result.get("task_status") == "done"
+
+                # Task should have been updated to done
+                update_calls = ctx.mc.update_task.call_args_list
+                done_set = any(
+                    call.kwargs.get("status") == "done"
+                    for call in update_calls
+                )
+                assert done_set
+
+
+def test_alert_security_hold_sets_custom_field():
+    """fleet_alert with security category should set security_hold on the task."""
+    ctx, task = make_mock_ctx(task_id="task-sec-456")
+
+    with patch("fleet.mcp.tools._get_ctx", return_value=ctx):
+        from fleet.mcp.tools import register_tools
+        from mcp.server.fastmcp import FastMCP
+        server = FastMCP(name="test")
+        register_tools(server)
+        alert_fn = server._tool_manager._tools["fleet_alert"].fn
+
+        result = run_async(alert_fn(
+            severity="critical",
+            title="SQL injection vulnerability",
+            details="Found in user input handler",
+            category="security",
+        ))
+
+        assert result["ok"] is True
+        assert result.get("security_hold") is True
+
+        # Verify security_hold custom field was set on the task
+        update_calls = ctx.mc.update_task.call_args_list
+        hold_set = any(
+            call.kwargs.get("custom_fields", {}).get("security_hold") == "true"
+            for call in update_calls
+        )
+        assert hold_set, "security_hold should be set to 'true' on the task"
+
+
+def test_complete_sets_task_to_review():
+    """fleet_task_complete should transition task from in_progress to review."""
+    ctx, task = make_mock_ctx(task_stage="work")
+    ctx.worktree = ""
+
+    import os
+    with patch("fleet.mcp.tools._get_ctx", return_value=ctx):
+        with patch.dict(os.environ, {"FLEET_DIR": "/tmp/nonexistent"}, clear=False):
+            from fleet.mcp.tools import register_tools
+            from mcp.server.fastmcp import FastMCP
+            server = FastMCP(name="test")
+            register_tools(server)
+            complete_fn = server._tool_manager._tools["fleet_task_complete"].fn
+
+            result = run_async(complete_fn(
+                summary="Implemented all requirements with tests.",
+            ))
+
+            assert result["ok"] is True
+            assert result["status"] == "review"
+
+            # Verify task was updated to review status
+            update_calls = ctx.mc.update_task.call_args_list
+            review_set = any(
+                call.kwargs.get("status") == "review"
+                for call in update_calls
+            )
+            assert review_set, "Task should be set to review on completion"
+
+
+def test_accept_sets_task_in_progress():
+    """fleet_task_accept should transition task to in_progress."""
+    ctx, task = make_mock_ctx(task_stage="reasoning")
+    task.title = "Implement feature X"
+
+    with patch("fleet.mcp.tools._get_ctx", return_value=ctx):
+        from fleet.mcp.tools import register_tools
+        from mcp.server.fastmcp import FastMCP
+        server = FastMCP(name="test")
+        register_tools(server)
+        accept_fn = server._tool_manager._tools["fleet_task_accept"].fn
+
+        result = run_async(accept_fn(
+            plan="Step 1: Review codebase. Step 2: Implement. Step 3: Test.",
+        ))
+
+        assert result["ok"] is True
+
+        # Verify task was updated to in_progress
+        update_calls = ctx.mc.update_task.call_args_list
+        in_progress_set = any(
+            call.kwargs.get("status") == "in_progress"
+            for call in update_calls
+        )
+        assert in_progress_set, "Task should be set to in_progress on accept"

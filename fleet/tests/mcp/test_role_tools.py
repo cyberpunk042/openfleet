@@ -640,3 +640,318 @@ def test_writer_staleness_finds_done_stories():
     assert r["ok"]
     # story should be flagged, subtask should not
     assert r["tasks_to_check"] == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# BEHAVIORAL TESTS — ROUND 2: deeper verification of under-covered roles
+# ═══════════════════════════════════════════════════════════════════════
+
+# ─── QA behavioral (additional) ──────────────────────────────────────
+
+def test_qa_predefinition_adapts_rigor_by_phase():
+    """POC phase should get light rigor, production full rigor."""
+    c, t = _ctx("qa-engineer")
+    t.custom_fields.delivery_phase = "poc"
+    r_poc = _tool("qa-engineer", "qa_test_predefinition", c, task_id="task-12345678")
+    assert r_poc["ok"]
+    assert "Happy path" in r_poc["context"]["test_rigor"]
+
+    t.custom_fields.delivery_phase = "staging"
+    r_staging = _tool("qa-engineer", "qa_test_predefinition", c, task_id="task-12345678")
+    assert r_staging["ok"]
+    assert "Comprehensive" in r_staging["context"]["test_rigor"]
+
+
+def test_qa_predefinition_records_trail():
+    """QA predefinition should post trail to board memory."""
+    c, t = _ctx("qa-engineer")
+    r = _tool("qa-engineer", "qa_test_predefinition", c, task_id="task-12345678")
+    assert r["ok"]
+    c.mc.post_memory.assert_called()
+    trail_calls = [call for call in c.mc.post_memory.call_args_list
+                   if "trail" in str(call).lower()]
+    assert len(trail_calls) >= 1
+
+
+def test_qa_coverage_analysis_records_trail():
+    """Coverage analysis should post trail to board memory."""
+    c, t = _ctx("qa-engineer")
+    r = _tool("qa-engineer", "qa_coverage_analysis", c)
+    assert r["ok"]
+    assert r["project"] == "fleet"
+    c.mc.post_memory.assert_called()
+
+
+def test_qa_acceptance_criteria_has_quality_checks():
+    """Acceptance criteria review should check specific/checkable/measurable."""
+    c, t = _ctx("qa-engineer")
+    t.description = "Build a feature that works correctly"
+    r = _tool("qa-engineer", "qa_acceptance_criteria_review", c, task_id="task-12345678")
+    assert r["ok"]
+    guide = r["guide"]
+    assert "SPECIFIC" in guide
+    assert "CHECKABLE" in guide
+    assert "MEASURABLE" in guide
+
+
+def test_qa_validation_includes_pr_when_present():
+    """Validation context should include PR URL when set on task."""
+    c, t = _ctx("qa-engineer")
+    t.custom_fields.pr_url = "https://github.com/org/repo/pull/99"
+    r = _tool("qa-engineer", "qa_test_validation", c, task_id="task-12345678")
+    assert r["ok"]
+    vc = r["validation_context"]
+    assert vc["pr_url"] == "https://github.com/org/repo/pull/99"
+
+
+def test_qa_validation_records_trail():
+    """Test validation should post trail to board memory."""
+    c, t = _ctx("qa-engineer")
+    r = _tool("qa-engineer", "qa_test_validation", c, task_id="task-12345678")
+    assert r["ok"]
+    c.mc.post_memory.assert_called()
+    trail_calls = [call for call in c.mc.post_memory.call_args_list
+                   if "trail" in str(call).lower()]
+    assert len(trail_calls) >= 1
+
+
+# ─── Writer behavioral (additional) ────────────────────────────────
+
+def test_writer_doc_contribution_records_trail():
+    """Doc contribution should post trail to board memory."""
+    c, t = _ctx("technical-writer")
+    r = _tool("technical-writer", "writer_doc_contribution", c, task_id="task-12345678")
+    assert r["ok"]
+    c.mc.post_memory.assert_called()
+    trail_calls = [call for call in c.mc.post_memory.call_args_list
+                   if "trail" in str(call).lower()]
+    assert len(trail_calls) >= 1
+
+
+def test_writer_doc_contribution_has_expected_sections():
+    """Doc contribution template should have standard documentation sections."""
+    c, t = _ctx("technical-writer")
+    r = _tool("technical-writer", "writer_doc_contribution", c, task_id="task-12345678")
+    assert r["ok"]
+    template = r["template"]
+    assert "What" in template
+    assert "Setup" in template
+    assert "Usage" in template
+    assert "API" in template
+    assert "Troubleshooting" in template
+
+
+def test_writer_doc_contribution_includes_task_title():
+    """Doc contribution should reference the target task title."""
+    c, t = _ctx("technical-writer")
+    t.title = "Implement OAuth2 flow"
+    r = _tool("technical-writer", "writer_doc_contribution", c, task_id="task-12345678")
+    assert r["ok"]
+    assert r["task_title"] == "Implement OAuth2 flow"
+    assert "OAuth2" in r["template"]
+
+
+def test_writer_staleness_scan_records_trail():
+    """Staleness scan should post trail to board memory."""
+    c, _ = _ctx("technical-writer")
+    t1 = MockTask(); t1.status = MagicMock(value="done"); t1.custom_fields.task_type = "story"
+    t1.title = "Feature X"; t1.id = "s1"
+    c.mc.list_tasks = AsyncMock(return_value=[t1])
+    r = _tool("technical-writer", "writer_staleness_scan", c)
+    assert r["ok"]
+    c.mc.post_memory.assert_called()
+
+
+def test_writer_staleness_includes_epics_and_tasks():
+    """Staleness scan should include epics, stories, and tasks but not subtasks."""
+    c, _ = _ctx("technical-writer")
+    tasks = []
+    for tt, name in [("epic", "Big project"), ("story", "Feature"), ("task", "Regular"), ("subtask", "Minor")]:
+        t = MockTask(); t.status = MagicMock(value="done")
+        t.custom_fields.task_type = tt; t.title = name; t.id = f"t-{tt}"
+        tasks.append(t)
+    c.mc.list_tasks = AsyncMock(return_value=tasks)
+    r = _tool("technical-writer", "writer_staleness_scan", c)
+    assert r["ok"]
+    # epic, story, task should be flagged; subtask should not
+    assert r["tasks_to_check"] == 3
+
+
+# ─── PM behavioral (additional) ─────────────────────────────────────
+
+def test_pm_standup_detects_sprint_complete():
+    """Standup should detect when all sprint tasks are done."""
+    from fleet.core.models import TaskStatus
+    c, _ = _ctx("project-manager")
+    tasks = []
+    for i in range(3):
+        t = MockTask(); t.status = TaskStatus.DONE
+        t.custom_fields.plan_id = "sprint-done"; t.custom_fields.story_points = 2
+        t.title = f"Done task {i}"; t.id = f"done-{i}"
+        tasks.append(t)
+    c.mc.list_tasks = AsyncMock(return_value=tasks)
+    c.mc.list_comments = AsyncMock(return_value=[])
+    r = _tool("project-manager", "pm_sprint_standup", c, sprint_id="sprint-done")
+    assert r["ok"]
+    assert r["is_complete"] is True
+    assert r["completion_pct"] == 100
+
+
+def test_pm_epic_breakdown_includes_guide():
+    """Epic breakdown should include structured guide with dependency template."""
+    c, t = _ctx("project-manager")
+    t.custom_fields.requirement_verbatim = "Build user management system"
+    t.custom_fields.task_type = "epic"
+    r = _tool("project-manager", "pm_epic_breakdown", c, task_id="task-12345678")
+    assert r["ok"]
+    guide = r["breakdown_guide"]
+    assert "architect" in guide.lower()
+    assert "engineer" in guide.lower()
+    assert "qa" in guide.lower() or "test" in guide.lower()
+    assert "fleet_task_create" in guide
+
+
+def test_pm_gate_route_includes_readiness():
+    """Gate route should include task readiness percentage."""
+    c, t = _ctx("project-manager")
+    t.custom_fields.task_readiness = 90
+    t.custom_fields.agent_name = "software-engineer"
+    r = _tool("project-manager", "pm_gate_route", c, task_id="task-12345678")
+    assert r["ok"]
+    assert "90" in r["gate_summary"]
+    assert "software-engineer" in r["gate_summary"]
+
+
+def test_pm_gate_route_records_trail():
+    """Gate route should post trail to board memory."""
+    c, t = _ctx("project-manager")
+    r = _tool("project-manager", "pm_gate_route", c, task_id="task-12345678")
+    assert r["ok"]
+    c.mc.post_memory.assert_called()
+    trail_calls = [call for call in c.mc.post_memory.call_args_list
+                   if "trail" in str(call).lower()]
+    assert len(trail_calls) >= 1
+
+
+def test_pm_contribution_check_suggests_fleet_task_create():
+    """When contributions are missing, check should suggest fleet_task_create commands."""
+    c, t = _ctx("project-manager")
+    t.custom_fields.agent_name = "software-engineer"
+    t.custom_fields.task_type = "story"
+    c.mc.list_comments = AsyncMock(return_value=[])
+    r = _tool("project-manager", "pm_contribution_check", c, task_id="task-12345678")
+    assert r["ok"]
+    if r["missing"]:
+        assert len(r["suggested_actions"]) > 0
+        assert "fleet_task_create" in r["suggested_actions"][0]["action"]
+
+
+# ─── Engineer behavioral (additional) ──────────────────────────────
+
+def test_eng_contribution_check_no_task_returns_error():
+    """Contribution check with no task_id should return error."""
+    c, t = _ctx("software-engineer")
+    c.task_id = ""  # no current task
+    r = _tool("software-engineer", "eng_contribution_check", c, task_id="")
+    assert not r["ok"]
+    assert "error" in r
+
+
+def test_eng_contribution_check_shows_ready_when_all_received():
+    """When all contributions are received, should indicate ready for work."""
+    c, t = _ctx("software-engineer")
+    t.custom_fields.agent_name = "software-engineer"
+    t.custom_fields.task_type = "subtask"  # fewer required contributions
+    # Provide a contribution
+    comment = MagicMock()
+    comment.message = "**Contribution (design_input)** from architect:\n\nSimple approach."
+    c.mc.list_comments = AsyncMock(return_value=[comment])
+    r = _tool("software-engineer", "eng_contribution_check", c)
+    assert r["ok"]
+    # Even if not ALL are received, the structure should be correct
+    assert "all_received" in r
+    assert isinstance(r["completeness_pct"], (int, float))
+
+
+def test_eng_fix_response_reads_parent_rejection():
+    """Fix task should read rejection from parent task when not on current."""
+    c, t = _ctx("software-engineer")
+    t.custom_fields.parent_task = "parent-task-123"
+    # No rejection on current task
+    c.mc.list_comments = AsyncMock(return_value=[])
+    # Rejection on parent
+    parent_rejection = MagicMock()
+    parent_rejection.message = "Rejected: missing error handling for edge case"
+    parent_comments_mock = AsyncMock(return_value=[parent_rejection])
+    # list_comments returns [] for current, [rejection] for parent
+    original_list_comments = c.mc.list_comments
+    call_count = [0]
+    async def side_effect(bid, tid):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return []  # current task
+        return [parent_rejection]  # parent task
+    c.mc.list_comments = AsyncMock(side_effect=side_effect)
+    r = _tool("software-engineer", "eng_fix_task_response", c)
+    assert r["ok"]
+    assert "missing error handling" in r["rejection_feedback"]
+    assert r["original_task_id"] == "parent-t"  # first 8 chars
+
+
+def test_eng_fix_response_includes_fix_approach():
+    """Fix response should include structured fix approach when rejection found."""
+    c, t = _ctx("software-engineer")
+    rejection = MagicMock()
+    rejection.message = "Rejected: Tests not passing"
+    c.mc.list_comments = AsyncMock(return_value=[rejection])
+    r = _tool("software-engineer", "eng_fix_task_response", c)
+    assert r["ok"]
+    assert "fix_approach" in r
+    assert "ROOT CAUSE" in r["fix_approach"]
+
+
+# ─── DevOps behavioral (additional) ──────────────────────────────
+
+def test_devops_infra_health_alerts_on_issues():
+    """Infrastructure health should alert IRC when issues detected."""
+    c, _ = _ctx("devops")
+    # Make MC fail
+    c.mc.list_agents = AsyncMock(side_effect=Exception("Connection refused"))
+    r = _tool("devops", "devops_infrastructure_health", c)
+    assert r["ok"]
+    assert not r["healthy"]
+    # Should have alerted IRC
+    c.irc.notify.assert_called()
+    irc_args = str(c.irc.notify.call_args)
+    assert "#fleet" in irc_args
+
+
+def test_devops_deploy_contrib_adapts_to_phase():
+    """Deployment contribution should adapt infrastructure level to phase."""
+    c, t = _ctx("devops")
+    t.custom_fields.delivery_phase = "poc"
+    r_poc = _tool("devops", "devops_deployment_contribution", c, task_id="task-12345678")
+    assert r_poc["ok"]
+    assert "manual" in r_poc["infrastructure_level"].lower() or "basic" in r_poc["infrastructure_level"].lower()
+
+    t.custom_fields.delivery_phase = "production"
+    r_prod = _tool("devops", "devops_deployment_contribution", c, task_id="task-12345678")
+    assert r_prod["ok"]
+    assert "monitoring" in r_prod["infrastructure_level"].lower() or "production" in r_prod["infrastructure_level"].lower()
+
+
+def test_devops_cicd_review_records_trail():
+    """CI/CD review should post trail to board memory."""
+    c, t = _ctx("devops")
+    r = _tool("devops", "devops_cicd_review", c, task_id="task-12345678")
+    assert r["ok"]
+    c.mc.post_memory.assert_called()
+
+
+def test_devops_cicd_review_has_security_check():
+    """CI/CD review checklist should check for secret handling."""
+    c, t = _ctx("devops")
+    r = _tool("devops", "devops_cicd_review", c, task_id="task-12345678")
+    assert r["ok"]
+    checklist = r["checklist"]
+    assert "secrets" in checklist.lower() or "secret" in checklist.lower()

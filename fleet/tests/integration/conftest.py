@@ -10,6 +10,7 @@ def make_task(
     task_type: str = "task",
     complexity: str = "medium",
     agent_name: str = "worker",
+    task_stage: str = "",
 ) -> Task:
     """Create a Task with common defaults for integration testing."""
     return Task(
@@ -22,6 +23,7 @@ def make_task(
             task_type=task_type,
             complexity=complexity,
             agent_name=agent_name,
+            task_stage=task_stage,
         ),
     )
 

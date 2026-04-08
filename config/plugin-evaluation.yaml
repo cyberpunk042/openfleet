@@ -1,0 +1,159 @@
+# Plugin Evaluation — Install/Skip/Defer decisions
+#
+# Evaluated: 2026-04-07
+# Context: 13 plugins flagged in skill-stage-mapping.yaml evaluate section
+# Source: skills-and-plugins-ecosystem-research.md, phase-b-mcp-plugin-findings.md
+#
+# Already installed (via agent-tooling.yaml):
+#   ALL: claude-mem, safety-net
+#   architect: context7, superpowers, adversarial-spec
+#   software-engineer: context7, superpowers, pyright-lsp
+#   qa-engineer: superpowers
+#   devops: hookify, commit-commands
+#   devsecops-expert: security-guidance, sage
+#   fleet-ops: pr-review-toolkit
+#   project-manager: plannotator
+#   technical-writer: context7, ars-contexta
+#
+# Decision criteria:
+#   INSTALL — clear value, no conflicts, acceptable context cost
+#   DEFER — value but needs the gateway running or more research
+#   SKIP — low value, conflicts, or already covered by custom tooling
+
+# ─── HIGH PRIORITY ───────────────────────────────────────────────────
+
+feature-dev:
+  decision: DEFER
+  agents: [architect, software-engineer]
+  rationale: |
+    3 sub-agents (code-explorer, code-architect, code-reviewer) overlap
+    with our custom sub-agents (code-explorer, pattern-analyzer, dependency-mapper).
+    Our custom agents are fleet-aware (read FLEET_DIR, know fleet conventions).
+    feature-dev agents are generic. Install AFTER testing whether the generic
+    agents add value on top of our custom ones. Risk of duplication.
+  action: "Install in architect workspace only. Test code-architect (we don't have equivalent). If useful, expand."
+
+code-review:
+  decision: DEFER
+  agents: [fleet-ops, qa-engineer]
+  rationale: |
+    Confidence-based scoring adds a lens that pr-review-toolkit doesn't have.
+    pr-review-toolkit has 6 specialized agents (code-reviewer, simplifier, comment-analyzer,
+    test-analyzer, silent-failure-hunter, type-analyzer). code-review adds confidence scoring.
+    Value is additive, not duplicative. But fleet-ops already has 7 plugin skills —
+    context cost needs monitoring.
+  action: "Install in fleet-ops workspace. Monitor context usage. If pr-review-toolkit is sufficient, skip."
+
+skill-creator:
+  decision: INSTALL
+  agents: [architect, software-engineer]
+  rationale: |
+    Essential for Phase D — building fleet skills at scale. No overlap with anything
+    we have. Create, improve, evaluate, benchmark SKILL.md files. Low context cost.
+    Should be one of the first plugins installed when gateway is available.
+  action: "Install immediately when gateway available. Use to build remaining ~35 skills."
+
+claude-code-setup:
+  decision: INSTALL
+  agents: [architect, devops]
+  rationale: |
+    Analyzes codebase and recommends hooks, skills, MCP servers, sub-agents.
+    Useful for validating our manual setup. Could catch things we missed.
+    Low risk — it recommends, doesn't act. Use as validation tool.
+  action: "Install in architect workspace. Run analysis. Compare recommendations to what we built."
+
+claude-md-management:
+  decision: INSTALL
+  agents: [fleet-ops, accountability-generator]
+  rationale: |
+    Audits CLAUDE.md quality across agents. Captures learnings. Maintains memory.
+    Fleet-ops needs this for quality monitoring. Accountability needs it for compliance.
+    No overlap — we don't have CLAUDE.md quality tooling. Low context cost.
+  action: "Install in fleet-ops and accountability workspaces."
+
+# ─── MEDIUM PRIORITY ────────────────────────────────────────────────
+
+episodic-memory:
+  decision: DEFER
+  agents: [all]
+  rationale: |
+    Semantic search over conversations. We already have claude-mem for cross-session
+    memory. episodic-memory operates at conversation level (vs claude-mem's observation
+    level). Could be valuable but risks context bloat if both are active.
+    Need to understand the interaction between episodic-memory and claude-mem.
+  action: "Install in one test agent. Evaluate interaction with claude-mem. If additive, expand."
+
+double-shot-latte:
+  decision: SKIP
+  agents: []
+  rationale: |
+    Auto-continuation sounds useful but fleet agents are controlled by the gateway.
+    The gateway manages session lifecycle. Auto-continuation could interfere with
+    heartbeat intervals and task boundaries. The orchestrator controls when agents
+    work — not the agent deciding to "continue." Risk of runaway sessions.
+  action: "Skip. Fleet agents should respect session boundaries, not auto-continue."
+
+elements-of-style:
+  decision: INSTALL
+  agents: [technical-writer]
+  rationale: |
+    18 Strunk writing rules. Low context cost. Writer-specific value.
+    No conflicts. Improves documentation quality systematically.
+    Only 1 agent needs it.
+  action: "Install in technical-writer workspace when gateway available."
+
+serena:
+  decision: DEFER
+  agents: [architect, software-engineer]
+  rationale: |
+    Semantic code analysis via LSP. Deeper than grep, different from feature-dev's
+    code-explorer. Could be very valuable for architect's codebase assessments.
+    But LSP integration needs verification (does it work in WSL2?
+    Does it handle the fleet Python codebase correctly?). Context cost unknown.
+  action: "Install in architect workspace. Test with fleet codebase. If LSP works, expand to engineer."
+
+frontend-design:
+  decision: SKIP
+  agents: []
+  rationale: |
+    Production-grade frontend design. Fleet's frontend is Mission Control UI
+    (maintained by MC vendor, not by fleet agents). No fleet agent does frontend
+    development. The UX designer provides specs, not implementations.
+    Would be valuable if fleet built its own UI — not needed now.
+  action: "Skip until fleet does frontend development."
+
+# ─── LOW PRIORITY ────────────────────────────────────────────────────
+
+claude-session-driver:
+  decision: SKIP
+  agents: []
+  rationale: |
+    Multi-session worker control via tmux. The gateway already manages agent
+    sessions. The orchestrator dispatches tasks. claude-session-driver would
+    create a parallel session management layer that conflicts with the gateway.
+    Interesting for non-fleet use cases, but wrong for this architecture.
+  action: "Skip. Gateway + orchestrator handle session management."
+
+superpowers-chrome:
+  decision: DEFER
+  agents: [qa-engineer, software-engineer]
+  rationale: |
+    Chrome DevTools access. Already have playwright MCP for browser automation.
+    superpowers-chrome adds raw DevTools Protocol which is useful for debugging
+    but not primary workflow. Low priority until agents are actually doing
+    browser testing workflows.
+  action: "Defer. Install when QA is actively testing web interfaces."
+
+# ─── SUMMARY ────────────────────────────────────────────────────────
+#
+# INSTALL (3): skill-creator, claude-code-setup, claude-md-management, elements-of-style
+# DEFER (4): feature-dev, code-review, episodic-memory, serena, superpowers-chrome
+# SKIP (3): double-shot-latte, frontend-design, claude-session-driver
+#
+# Install order when gateway available:
+#   1. skill-creator (architect, engineer) — enables Phase D skill building
+#   2. claude-md-management (fleet-ops, accountability) — quality monitoring
+#   3. claude-code-setup (architect, devops) — setup validation
+#   4. elements-of-style (writer) — documentation quality
+#
+# Total new plugins: 4 immediate + 5 deferred for evaluation

@@ -71,7 +71,7 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 - 16 state-modifying tools elevated with full operations matching fleet-elevation/24
 - Chain builders evolved (Plane state/labels/comments, IRC at checkpoints, trail)
 - Context assembly + preembed updated with phase standards + contribution status
-- 2107 tests total: building blocks (94), chain builders (42), tool operations (84), role tools (65), skill recommendations (18), standing orders (12), context assembly (17), tooling pipeline (52), + others
+- 2218 tests total: building blocks (94), chain builders (42), tool operations (93), role tools (89), skill recommendations (18), standing orders (12), model selection (20), context assembly (17), tooling pipeline (98), dispatch integration (8), contribution flow (19), + others
 - Tests verify BEHAVIORAL outcomes: security_hold, verbatim warnings, readiness regression, doctor signaling, auto-gate at 90%, ChainRunner invocation, stage gate blocking, contribution completeness, context packaging, cascade limits, plan scoring, mention routing, trail recording
 - 6 pre-existing test failures fixed (backend count, stage enforcement, path, imports)
 - Remaining: more chain builder operations, some edge cases
@@ -84,11 +84,11 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 
 **Phase E: ~35% done.** 17 CRONs, 14 standing orders. Standing orders wired into heartbeat preembed via standing_orders.py. Remaining: gateway CRON deployment, PO authority review.
 
-**Phase F: ~25% done.** 12 sub-agents with role-aware deployment. Hook configs + deployment. Remaining: Agent Teams eval, stage-aware effort.
+**Phase F: ~30% done.** 12 sub-agents with role-aware deployment. Hook configs + deployment. Stage-aware effort in model_selection.py (floor + adjustment). Dispatch fix: Claude backends use model_config for dispatch record. Remaining: Agent Teams eval, monitoring hooks.
 
 **Phase G: ~70% done.** generate-tools-md.py reads 7 layers + tool-roles.yaml + role_tools chain docs. TOOLS.md per agent deployed. tool-chains.yaml has chain docs for all 56 tools. Remaining: minor enrichment.
 
-**Phase H: ~35% done.** validate-tooling-configs.py (0 errors). 52 pipeline + 30 skill/orders + 2 context tests. STATUS-TRACKER + MASTER-INDEX updated. 2107 tests passing. Remaining: per-agent smoke test (needs gateway).
+**Phase H: ~50% done.** validate-tooling-configs.py (0 errors). 98 pipeline + 53 behavioral + 30 skill/orders + 10 model selection stage + 3 dispatch stage + 19 cross-flow + 9 edge cases + 2 context tests. STATUS-TRACKER + MASTER-INDEX updated. 2218 tests passing. Remaining: per-agent smoke test (needs gateway).
 
 ---
 
@@ -183,7 +183,7 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 - F2: Agent Teams evaluation (complement or conflict with orchestrator?)
 - F3: ✅ Per-role hook configurations — config/agent-hooks.yaml (defaults + 3 role-specific: engineer test warning, fleet-ops review enforcement, devsecops security_hold reminder)
 - F3b: ✅ Hook deployment — configure-agent-settings.sh reads YAML, generates JSON with hooks, deployed to 7 workspaces
-- F4: Stage-aware effort system (connect brain decisions to session effort)
+- F4: ✅ Stage-aware effort system — _STAGE_EFFORT_FLOOR in model_selection.py, _apply_stage_adjustment raises effort floor per methodology stage (conversation→medium, analysis→medium, investigation→high, reasoning→high, work→low). Dispatch fix: Claude backends use model_config (stage-aware) for dispatch record in dispatch.py. 10 model selection + 3 dispatch integration tests.
 - F5: Monitoring hooks (PO observation stream — documented but needs service)
 - F6: Security hook content detection fix
 - F7: More sub-agents per role (each role should have 1-3 specialized sub-agents)
