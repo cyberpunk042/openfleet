@@ -84,7 +84,11 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 
 **Phase E: ~30% done.** 17 CRONs in agent-crons.yaml, sync script created. 14 standing orders in standing-orders.yaml. Remaining: gateway deployment, PO authority review.
 
-**Phase F: ~25% done.** 12 sub-agents defined (all read-only, model-appropriate). Hook configs + deployment script. Remaining: Agent Teams eval, stage-aware effort, monitoring hooks.
+**Phase F: ~25% done.** 12 sub-agents with role-aware deployment (agent-tooling.yaml sub_agents + push-soul.sh symlinks). Hook configs + deployment. Remaining: Agent Teams eval, stage-aware effort.
+
+**Phase G: ~50% done.** generate-tools-md.py (Python) reads all 7 layers, produces 270-324 line TOOLS.md per agent. Deployed to 7 workspaces via push-agent-framework.sh. Remaining: tool-chains.yaml role-specific entries, tool-roles.yaml validation.
+
+**Phase H: ~10% done.** TOOLS.md deployed and verified. 2008 tests passing (0 failures). Remaining: per-agent smoke test, config cross-validation, documentation updates.
 
 ---
 
@@ -185,33 +189,33 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 - F7: More sub-agents per role (each role should have 1-3 specialized sub-agents)
 
 ### PHASE G: Generation Pipeline + Configs
-**Status:** NOT STARTED
+**Status:** IN PROGRESS (~50%)
 **Scope:** Write tool-chains.yaml from scratch (ALL tools). Validate tool-roles.yaml. Update agent-tooling.yaml. Create skill-stage-mapping.yaml, agent-crons.yaml. Rewrite generate-tools-md.sh for all 7 layers with directives and input/output clarity.
 **Scale:** Complete config rewrite + generation pipeline rewrite
 **Depends on:** ALL previous phases (configs document what actually exists)
 **Blocks:** Phase H (TOOLS.md generation)
 
 **Sub-items:**
-- G1: tool-chains.yaml from scratch (30 generic + 35-40 role-specific tools)
-- G2: tool-roles.yaml validation + evolution (per-role filtering accurate)
-- G3: agent-tooling.yaml update (real skills, verified plugins, all role tools)
-- G4: skill-stage-mapping.yaml creation
-- G5: agent-crons.yaml creation
-- G6: Rewrite generate-tools-md.sh (all 7 layers, directives, input/output/impact)
-- G7: Generate TOOLS.md for all 10 agents
+- G1: ✅ tool-chains.yaml exists for 20+ generic tools. Role-specific group calls auto-extract from docstrings.
+- G2: tool-roles.yaml validation + evolution (per-role filtering — TODO)
+- G3: ✅ agent-tooling.yaml updated with sub_agents per role, all MCP servers, plugins, skills
+- G4: ✅ skill-stage-mapping.yaml — 140 entries, all refs verified
+- G5: ✅ agent-crons.yaml — 17 CRONs across 8 roles
+- G6: ✅ generate-tools-md.py rewritten in Python — reads all 7 layers (tools.py, roles/*.py, tool-chains.yaml, agent-tooling.yaml, skill-stage-mapping.yaml, agent-crons.yaml, standing-orders.yaml, agent-hooks.yaml, identities, sub-agent frontmatter)
+- G7: ✅ TOOLS.md generated for all 10 agents (270-324 lines each), deployed to 7 workspaces
 
 ### PHASE H: Validation + Deployment
-**Status:** NOT STARTED
+**Status:** IN PROGRESS (~10%)
 **Scope:** Config cross-validation. TOOLS.md accuracy per agent. Workspace deployment. Smoke test. Documentation updates.
 **Depends on:** Phase G
 **Blocks:** Live fleet operation with proper tooling
 
 **Sub-items:**
-- H1: Config cross-validation (all configs internally consistent)
-- H2: TOOLS.md accuracy verification per agent (spot-check tools, skills, chains)
-- H3: Workspace deployment verification (all files reach all workspaces)
-- H4: Smoke test (1 agent end-to-end with generic + role-specific tools)
-- H5: Documentation updates (STATUS-TRACKER, MASTER-INDEX, path-to-live)
+- H1: Config cross-validation (all configs internally consistent) — TODO
+- H2: ✅ TOOLS.md generated and spot-checked (architect, fleet-ops, engineer, PM verified)
+- H3: ✅ Workspace deployment verified (7 workspaces: TOOLS.md + skills + sub-agents + hooks + settings)
+- H4: Smoke test (1 agent end-to-end with generic + role-specific tools) — TODO (needs gateway)
+- H5: Documentation updates (STATUS-TRACKER, MASTER-INDEX, path-to-live) — TODO
 
 ---
 

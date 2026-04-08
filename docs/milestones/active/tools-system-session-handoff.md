@@ -200,9 +200,9 @@
 
 **Phase F (~25%):** 12 sub-agents defined (all read-only, model-appropriate, tool-restricted). Hook configs created. configure-agent-settings.sh deploys hooks to workspaces. Remaining: Agent Teams evaluation, stage-aware effort connection, monitoring hooks need service.
 
-**Phase G (0%):** tool-chains.yaml not rewritten. tool-roles.yaml not validated. generate-tools-md.sh not rewritten.
+**Phase G (~50%):** generate-tools-md.py rewritten in Python — reads all 7 layers (tools.py, roles/*.py, tool-chains.yaml, agent-tooling.yaml, skill-stage-mapping.yaml, agent-crons.yaml, standing-orders.yaml, agent-hooks.yaml, agent identities, sub-agent definitions). TOOLS.md generated for all 10 agents (270-324 lines each). Deployed to 7 workspaces via push-agent-framework.sh. Remaining: tool-chains.yaml needs role-specific entries (group calls auto-extract from docstrings for now), tool-roles.yaml validation.
 
-**Phase H (0%):** No validation or deployment verification done.
+**Phase H (~10%):** TOOLS.md deployed to workspaces and verified. Full test suite passing (2008/0/19). Remaining: per-agent smoke test, config cross-validation, documentation updates.
 
 ---
 
