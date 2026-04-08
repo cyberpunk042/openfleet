@@ -29,9 +29,9 @@ def _task(
 # ─── Backend Registry ──────────────────────────────────────────────
 
 
-def test_four_backends_registered():
-    assert len(BACKEND_REGISTRY) == 4
-    for name in ["claude-code", "localai", "openrouter-free", "direct"]:
+def test_five_backends_registered():
+    assert len(BACKEND_REGISTRY) == 5
+    for name in ["claude-code", "localai", "openrouter-free", "openrouter-qwen36plus", "direct"]:
         assert name in BACKEND_REGISTRY
 
 
@@ -48,12 +48,12 @@ def test_get_backend_unknown_returns_none():
 
 def test_list_backends_all():
     backends = list_backends()
-    assert len(backends) == 4
+    assert len(backends) == 5
 
 
 def test_list_backends_available_only():
     backends = list_backends(available_only=True)
-    assert len(backends) == 4  # All default to available
+    assert len(backends) == 5  # All default to available
 
 
 def test_list_free_backends():

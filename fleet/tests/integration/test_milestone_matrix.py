@@ -376,11 +376,15 @@ class TestE04_HeartbeatContext:
 
 class TestE06_MCPStageEnforcement:
     def test_check_function_exists(self):
-        from fleet.mcp.tools import _check_stage_allowed, WORK_ONLY_TOOLS, COMMIT_ALLOWED_STAGES
-        assert "fleet_task_complete" in WORK_ONLY_TOOLS
-        assert "fleet_commit" not in WORK_ONLY_TOOLS
-        assert "conversation" not in COMMIT_ALLOWED_STAGES
-        assert "work" in COMMIT_ALLOWED_STAGES
+        from fleet.mcp.tools import _check_stage_allowed
+        from fleet.core.methodology_config import get_methodology_config
+        cfg = get_methodology_config()
+        # fleet_task_complete blocked outside work stage (conversation blocks it)
+        assert cfg.is_tool_blocked("conversation", "fleet_task_complete")
+        # fleet_commit blocked in conversation but allowed in work
+        assert cfg.is_tool_blocked("conversation", "fleet_commit")
+        assert not cfg.is_tool_blocked("work", "fleet_commit")
+        assert not cfg.is_tool_blocked("work", "fleet_task_complete")
 
 
 # ═══ F: CONTROL SURFACE ═════════════════════════════════════════════
@@ -396,7 +400,7 @@ class TestF01_FleetConfigBackend:
 class TestF02_FleetControlBar:
     def test_component_exists(self):
         import os
-        assert os.path.exists("/home/jfortin/openclaw-fleet/patches/0005-FleetControlBar.tsx")
+        assert os.path.exists("/home/jfortin/openfleet/patches/0005-FleetControlBar.tsx")
 
 
 class TestF06_FleetStateReader:

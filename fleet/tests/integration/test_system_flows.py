@@ -132,8 +132,7 @@ class TestMethodologyMCPFlow:
     @pytest.mark.asyncio
     async def test_stage_blocks_commit(self):
         """MCP tool enforcement blocks fleet_commit during conversation."""
-        from fleet.mcp.tools import _check_stage_allowed, COMMIT_ALLOWED_STAGES
-        from fleet.mcp.tools import _ctx
+        from fleet.mcp.tools import _check_stage_allowed
 
         # Simulate: agent in conversation stage
         ctx = MagicMock()
