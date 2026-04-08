@@ -186,63 +186,64 @@
 
 ---
 
-## Honest Status Per Phase
+## Honest Status Per Phase (2026-04-07 final)
 
-**Phase A (~65-70%):** Building blocks built+tested. Tools elevated with full operations. Chain builders evolved. Context system updated. Tests cover behavioral outcomes. 6 pre-existing test failures fixed. Remaining: some edge case tests, chain builders could be richer.
+**Phase A (~75%):** Building blocks built+tested. 16 elevated generic tools. 12 chain builders. Context system has phase standards, contribution status, AND dynamic skill recommendations. Preembed includes skill recommendations (task dispatch) and standing orders (heartbeat). 2 new modules: skill_recommendations.py, standing_orders.py. Remaining: edge case tests, chain builder enrichment.
 
-**Phase B (~40%):** Config fixed and validated. Phantom pytest-mcp server removed. Semgrep installed via setup-mcp-deps.sh. Per-agent mcp.json regenerated. install-plugins.sh exists and reads from config. Remaining: plugin install execution needs running gateway.
+**Phase B (~40%):** Config fixed. pytest-mcp phantom removed, semgrep installed. Per-agent mcp.json regenerated. Remaining: plugin install needs running gateway.
 
-**Phase C (~65%):** Architecture built (role-aware registration). 36 group calls implemented across all 10 roles. 50 tests (36 registration + 14 behavioral). Real MC API work in PM, fleet-ops, engineer, accountability, QA, writer calls. Remaining: deeper behavioral tests for remaining roles.
+**Phase C (~70%):** 36 group calls across 10 roles. 65 tests (36 registration + 29 behavioral — all 10 roles covered). Chain docs in tool-chains.yaml for all 36 group calls. Remaining: more edge case behavioral tests.
 
-**Phase D (~45%):** 30 workspace skills (7 gateway + 13 broad + 10 deep role-specific). skill-stage-mapping.yaml with 140 entries. All 30 workspace skill references verified. Remaining: plugin ecosystem evaluation/install, Codex/adversarial-review integration, more granular per-operation skills.
+**Phase D (~50%):** 30 workspace skills (7 gateway + 13 broad + 10 deep). skill-stage-mapping.yaml (140 entries, all refs verified). Dynamic skill recommendations wired into context_assembly + preembed. Remaining: plugin ecosystem evaluation/install, more granular skills.
 
-**Phase E (~30%):** 17 CRONs defined in agent-crons.yaml. sync-agent-crons.sh created and dry-run verified. 14 standing orders in standing-orders.yaml. Remaining: actual gateway deployment (needs running gateway), PO authority_level review.
+**Phase E (~35%):** 17 CRONs in agent-crons.yaml. sync-agent-crons.sh (dry-run verified). 14 standing orders in standing-orders.yaml. Standing orders wired into heartbeat preembed runtime. Remaining: CRON deployment (needs gateway), PO authority_level review.
 
-**Phase F (~25%):** 12 sub-agents defined (all read-only, model-appropriate, tool-restricted). Hook configs created. configure-agent-settings.sh deploys hooks to workspaces. Remaining: Agent Teams evaluation, stage-aware effort connection, monitoring hooks need service.
+**Phase F (~25%):** 12 sub-agents (all read-only, model-appropriate). Role-aware sub-agent deployment via push-soul.sh + agent-tooling.yaml. Hook configs + deployment via configure-agent-settings.sh. Remaining: Agent Teams evaluation, stage-aware effort, monitoring hooks.
 
-**Phase G (~65%):** generate-tools-md.py reads all 7 layers + tool-roles.yaml role-specific descriptions (merged with chain info). "Always Available" skills section + per-stage with dedup. _cross_role_tools section added for 10 previously unassigned tools (fleet_task_progress, fleet_notify_human, fleet_task_context, fleet_heartbeat_context, fleet_artifact_read, 5 Plane tools). TOOLS.md generated for all 10 agents, deployed to 7 workspaces. Remaining: minor tool-chains.yaml enrichment.
+**Phase G (~70%):** generate-tools-md.py (Python) reads 7 layers + tool-roles.yaml + role_tools chain docs. "Always Available" + per-stage skills with dedup. _cross_role_tools for 10 previously unassigned tools. TOOLS.md (270-324 lines) generated for all 10 agents, deployed to 7 workspaces. Remaining: minor enrichment.
 
-**Phase H (~35%):** validate-tooling-configs.py: 0 errors, 3 warnings. 52 integration tests in test_tooling_pipeline.py. 29 behavioral tests across all 10 roles in test_role_tools.py (up from 14). Test suite: 2075 passed, 0 failed, 19 skipped. Remaining: per-agent smoke test (needs gateway), documentation updates.
+**Phase H (~35%):** validate-tooling-configs.py: 0 errors, 3 warnings (3 unprovisioned workspaces). 52 pipeline integration tests + 29 behavioral + 18 skill recs + 12 standing orders + 2 context integration = 113 new tests this session. STATUS-TRACKER.md + MASTER-INDEX.md updated. Test suite: **2107 passed, 0 failed, 19 skipped.** Remaining: per-agent smoke test (needs gateway).
 
 ---
 
 ## What the Next Session Needs to Do
 
-1. Read tools-system-session-index.md FIRST — it's the map
-2. Read this handoff document for honest status
-3. The 8-phase trajectory is in the session index
-4. Phase A and C have substantial code — verify it with `python -c "import fleet.mcp.tools; print('OK')"`
-5. Run full test suite: see test file list above
-6. Continue with Phase D (skills) or deepen Phase A/C testing
-7. Remember the PO's instruction: "no rush. we take our time. we never at any point start rushing or doing quickfix or cutting corners or short circuiting the investigations and research or forgetting there is a journey and a bigger picture."
+1. Read `tools-system-session-index.md` FIRST — the 8-phase map
+2. Read this handoff for honest status per phase
+3. Validate: `python scripts/validate-tooling-configs.py` (should be 0 errors)
+4. Run tests: `.venv/bin/python -m pytest fleet/tests/ -q` (should be 2107+ passed)
+5. Import check: `python -c "from fleet.core.skill_recommendations import get_skill_recommendations; print('OK')"`
+6. **Gateway-blocked work** (when gateway available): plugin install (B), CRON deployment (E), smoke test (H)
+7. **Unblocked remaining work**: edge case tests (A/C), plugin evaluation research (D), Agent Teams evaluation (F), stage-aware effort (F)
+8. PO instruction: "no rush. we take our time. we never at any point start rushing or doing quickfix or cutting corners."
 
 ---
 
-## Key Files Modified This Session
+## Key Files — Complete List
 
 ```
-# Phase A — Foundation
+# Phase A — Foundation (code)
 fleet/core/phases.py                    — check_phase_standards
-fleet/core/plan_quality.py              — check_plan_references_verbatim  
+fleet/core/plan_quality.py              — check_plan_references_verbatim
 fleet/core/contributor_notify.py        — NEW
 fleet/core/transfer_context.py          — NEW
 fleet/core/context_writer.py            — append_contribution_to_task_context
 fleet/core/velocity.py                  — update_sprint_progress_for_task
 fleet/core/doctor.py                    — signal_rejection
-fleet/core/context_assembly.py          — phase + contribution sections
-fleet/core/preembed.py                  — phase standards + contributions
+fleet/core/context_assembly.py          — phase + contribution + skill_recommendations sections
+fleet/core/preembed.py                  — phase standards + contributions + skill recs + standing orders
 fleet/core/event_chain.py               — 8 new builders + evolution
 fleet/core/chain_runner.py              — 3 new handler actions
+fleet/core/skill_recommendations.py     — NEW: stage+role skill lookup (cached YAML)
+fleet/core/standing_orders.py           — NEW: per-role authority + orders (cached YAML)
 fleet/mcp/tools.py                      — 16 tools elevated + fleet_phase_advance
 fleet/mcp/server.py                     — two-phase registration
 
-# Phase B — MCP + plugins
-config/agent-tooling.yaml               — package fixes + lightrag conditional
+# Phase B — MCP + plugins (config)
+config/agent-tooling.yaml               — package fixes + sub_agents per role + _cross_role_tools
 scripts/setup-mcp-deps.sh              — removed pytest-mcp, added semgrep
-agents/software-engineer/mcp.json      — regenerated (5→4 servers)
-agents/qa-engineer/mcp.json            — regenerated (4→3 servers)
 
-# Phase C — Role-specific group calls
+# Phase C — Role-specific group calls (code)
 fleet/mcp/roles/__init__.py             — NEW: role-aware registration
 fleet/mcp/roles/pm.py                   — 5 group calls
 fleet/mcp/roles/fleet_ops.py            — 4 group calls
@@ -255,53 +256,89 @@ fleet/mcp/roles/writer.py               — 2 group calls
 fleet/mcp/roles/ux.py                   — 2 group calls
 fleet/mcp/roles/accountability.py       — 3 group calls
 
-# Phase D — Skills
-config/skill-stage-mapping.yaml         — NEW: 97 entries (stages × roles × skills)
-.claude/skills/fleet-methodology-guide  — NEW
-.claude/skills/fleet-contribution       — NEW
-.claude/skills/fleet-completion-checklist — NEW
-.claude/skills/fleet-qa-predefinition   — NEW
-.claude/skills/fleet-design-contribution — NEW
-.claude/skills/fleet-security-contribution — NEW
-.claude/skills/fleet-ops-review-protocol — NEW
-.claude/skills/fleet-engineer-workflow  — NEW
-.claude/skills/fleet-pm-orchestration   — NEW
-.claude/skills/fleet-devops-iac         — NEW
-.claude/skills/fleet-doc-lifecycle      — NEW
-.claude/skills/fleet-ux-every-level     — NEW
-.claude/skills/fleet-accountability-trail — NEW
+# Phase D — Skills (30 workspace skills)
+config/skill-stage-mapping.yaml         — 140 entries (stages × roles × skills)
+.claude/skills/fleet-methodology-guide  — stage awareness
+.claude/skills/fleet-contribution       — synergy system
+.claude/skills/fleet-completion-checklist — 8-point pre-completion
+.claude/skills/fleet-qa-predefinition   — TC-XXX, boundary values
+.claude/skills/fleet-design-contribution — pattern selection, SRP
+.claude/skills/fleet-security-contribution — STRIDE, actionable controls
+.claude/skills/fleet-ops-review-protocol — 10-step REAL review
+.claude/skills/fleet-engineer-workflow  — TDD, contribution consumption
+.claude/skills/fleet-pm-orchestration   — triage ALL fields, PO routing
+.claude/skills/fleet-devops-iac         — IaC principles
+.claude/skills/fleet-doc-lifecycle      — staleness, living docs
+.claude/skills/fleet-ux-every-level     — UX beyond UI
+.claude/skills/fleet-accountability-trail — trail, compliance, patterns
+.claude/skills/fleet-epic-breakdown     — epic decomposition
+.claude/skills/fleet-sprint-planning    — capacity, velocity, commitment
+.claude/skills/fleet-trail-verification — audit trail verification
+.claude/skills/fleet-threat-modeling    — STRIDE threat modeling
+.claude/skills/fleet-adr-creation       — Architecture Decision Records
+.claude/skills/fleet-boundary-value-analysis — systematic edge cases
+.claude/skills/fleet-phase-testing      — POC/MVP/staging/production rigor
+.claude/skills/fleet-cicd-pipeline      — CI/CD design
+.claude/skills/fleet-api-documentation  — API docs
+.claude/skills/fleet-accessibility-audit — WCAG accessibility
 
-# Phase E — CRONs + Standing Orders
-config/agent-crons.yaml                 — NEW: 17 CRON jobs across 8 roles
-scripts/sync-agent-crons.sh            — NEW: deploys CRONs to gateway
-config/standing-orders.yaml             — NEW: 14 standing orders across 10 roles
+# Phase E — CRONs + Standing Orders (config)
+config/agent-crons.yaml                 — 17 CRON jobs across 8 roles
+scripts/sync-agent-crons.sh            — CRON deployment to gateway
+config/standing-orders.yaml             — 14 standing orders across 10 roles
 
-# Phase F — Sub-agents + Hooks
-.claude/agents/code-explorer.md         — NEW: read-only codebase nav
-.claude/agents/test-runner.md           — NEW: run tests and report
-.claude/agents/trail-reconstructor.md   — NEW: audit trail reconstruction
-.claude/agents/dependency-scanner.md    — NEW: vulnerability scanning
-config/agent-hooks.yaml                 — NEW: per-role hook configs
-scripts/configure-agent-settings.sh     — REWRITTEN: reads hooks YAML, deploys to workspaces
+# Phase F — Sub-agents + Hooks (12 sub-agents)
+.claude/agents/code-explorer.md         — codebase nav (sonnet)
+.claude/agents/test-runner.md           — run tests (sonnet)
+.claude/agents/trail-reconstructor.md   — audit trail (haiku)
+.claude/agents/dependency-scanner.md    — vuln scanning (sonnet)
+.claude/agents/sprint-analyzer.md       — sprint data (haiku)
+.claude/agents/pattern-analyzer.md      — arch patterns (haiku)
+.claude/agents/dependency-mapper.md     — import graphs (sonnet)
+.claude/agents/secret-detector.md       — leaked creds (sonnet)
+.claude/agents/security-auditor.md      — OWASP audit (sonnet)
+.claude/agents/container-inspector.md   — Docker health (haiku)
+.claude/agents/regression-checker.md    — targeted regression (sonnet)
+.claude/agents/coverage-analyzer.md     — coverage gaps (sonnet)
+config/agent-hooks.yaml                 — 5 hooks (2 default + 3 role-specific)
 
-# Deployment
-scripts/push-soul.sh                    — per-agent mcp.json + skills
+# Phase G — Generation pipeline
+scripts/generate-tools-md.py            — Python, 7 layers + tool-roles.yaml
+scripts/generate-tools-md.sh            — bash wrapper
+config/tool-chains.yaml                 — 20 generic + 36 role-specific chain docs
+config/tool-roles.yaml                  — per-role tool descriptions + _cross_role_tools
 
-# Tests (2008 passed, 0 failures, 19 skipped)
-fleet/tests/core/test_phase_standards.py      — NEW (41 tests)
-fleet/tests/core/test_plan_verbatim.py        — NEW (20 tests)
-fleet/tests/core/test_contributions.py        — NEW (17 tests)
-fleet/tests/core/test_building_blocks.py      — NEW (16 tests)
-fleet/tests/core/test_new_chain_builders.py   — NEW (17 tests)
-fleet/tests/core/test_backend_router.py       — FIXED (3 tests: 4→5 backends)
-fleet/tests/integration/test_milestone_matrix.py — FIXED (2 tests: stage enforcement + path)
-fleet/tests/integration/test_system_flows.py  — FIXED (1 test: removed deleted import)
-fleet/tests/mcp/test_tool_operations.py       — NEW (84 tests)
-fleet/tests/mcp/test_role_tools.py            — NEW (50 tests: 36 registration + 14 behavioral)
+# Phase H — Validation
+scripts/validate-tooling-configs.py     — 11 cross-checks, 0 errors
+
+# Deployment (IaC)
+scripts/configure-agent-settings.sh     — REWRITTEN: reads hooks YAML
+scripts/push-soul.sh                    — UPDATED: role-aware sub-agent symlinks
+scripts/push-agent-framework.sh         — UPDATED: deploys generated TOOLS.md
+scripts/reprovision-agents.sh           — UPDATED: includes push-soul.sh
+
+# Tests (2107 passed, 0 failures, 19 skipped)
+fleet/tests/core/test_phase_standards.py      — 41 tests
+fleet/tests/core/test_plan_verbatim.py        — 20 tests
+fleet/tests/core/test_contributions.py        — 17 tests
+fleet/tests/core/test_building_blocks.py      — 16 tests
+fleet/tests/core/test_new_chain_builders.py   — 17 tests
+fleet/tests/core/test_skill_recommendations.py — NEW: 18 tests
+fleet/tests/core/test_standing_orders.py      — NEW: 12 tests
+fleet/tests/core/test_context_assembly.py     — UPDATED: +2 tests (skill recs)
+fleet/tests/mcp/test_tool_operations.py       — 84 tests
+fleet/tests/mcp/test_role_tools.py            — 65 tests (36 reg + 29 behavioral)
+fleet/tests/integration/test_tooling_pipeline.py — NEW: 52 tests
 ```
 
 ---
 
 ## The Bigger Picture (Don't Lose This)
 
-This is a 42+ hours effort covering 1000+ skills, commands, plugins, tools, MCPs, tool chains, group calls. The full scope: 7 capability layers × 10 roles × 5 methodology stages. Each agent is a TOP-TIER EXPERT with their own tools, chains, group calls, skills, CRONs, sub-agents, hooks, standing orders, and directives — generic AND role-specific, adapted per methodology stage. What was done this session is maybe 20-25% of the total work. The remaining work is primarily: skills (Phase D — the largest remaining), CRONs (Phase E), sub-agents+hooks (Phase F), generation pipeline (Phase G), and validation (Phase H).
+This is a 42+ hours effort covering 7 capability layers × 10 roles × 5 methodology stages. Each agent is a TOP-TIER EXPERT with their own tools, chains, group calls, skills, CRONs, sub-agents, hooks, standing orders, and directives — generic AND role-specific, adapted per methodology stage.
+
+What exists now covers roughly **50%** of the total work. The system is connected end-to-end: config → generation → deployment → runtime context. Agents who start a session see: TOOLS.md with all 7 layers, preembed with stage-appropriate skill recommendations and standing orders, dynamic context with skill recs per call.
+
+**What's gateway-blocked:** plugin install (B), CRON deployment (E), per-agent smoke test (H). These are the final 20% — they need the gateway running.
+
+**What's unblocked:** edge case tests (A/C), plugin evaluation research (D), Agent Teams evaluation (F), stage-aware effort (F), more granular skills. These are depth items that improve quality but don't block operation.

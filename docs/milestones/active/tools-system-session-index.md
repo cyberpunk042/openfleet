@@ -66,12 +66,12 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 | fleet/core/preembed.py | Phase standards + required contributions in pre-embed | DONE | Agent sees quality bars and required inputs before starting |
 | fleet/tests/core/test_new_chain_builders.py | 17 tests for chain builders (all pass) | DONE | 42 total tests, 0 failures |
 
-**Phase A status: ~65-70% done.**
+**Phase A status: ~75% done.**
 - 7 building block modules built and comprehensively tested
 - 16 state-modifying tools elevated with full operations matching fleet-elevation/24
 - Chain builders evolved (Plane state/labels/comments, IRC at checkpoints, trail)
 - Context assembly + preembed updated with phase standards + contribution status
-- 270+ tests across 10 test files: building blocks (94), chain builders (42), tool operations (84), role tools (50)
+- 2107 tests total: building blocks (94), chain builders (42), tool operations (84), role tools (65), skill recommendations (18), standing orders (12), context assembly (17), tooling pipeline (52), + others
 - Tests verify BEHAVIORAL outcomes: security_hold, verbatim warnings, readiness regression, doctor signaling, auto-gate at 90%, ChainRunner invocation, stage gate blocking, contribution completeness, context packaging, cascade limits, plan scoring, mention routing, trail recording
 - 6 pre-existing test failures fixed (backend count, stage enforcement, path, imports)
 - Remaining: more chain builder operations, some edge cases
@@ -80,15 +80,15 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 
 **Phase C: ~65% done.** Role-aware registration architecture built. 36 role-specific group calls implemented across all 10 roles (PM:5, fleet-ops:4, architect:4, devsecops:6, engineer:2, devops:4, QA:4, writer:2, UX:2, accountability:3). 50 role tool tests (36 registration + 14 behavioral). Remaining: deeper behavioral tests for remaining roles.
 
-**Phase D: ~45% done.** 30 workspace skills (7 gateway + 13 broad + 10 deep). skill-stage-mapping.yaml with 140 entries (up from 97). All workspace skill refs verified. Remaining: plugin evaluation/install, Codex/adversarial-review, more granular skills.
+**Phase D: ~50% done.** 30 workspace skills. skill-stage-mapping.yaml (140 entries). Dynamic skill recommendations wired into context_assembly + preembed via skill_recommendations.py. Remaining: plugin evaluation/install, more granular skills.
 
-**Phase E: ~30% done.** 17 CRONs in agent-crons.yaml, sync script created. 14 standing orders in standing-orders.yaml. Remaining: gateway deployment, PO authority review.
+**Phase E: ~35% done.** 17 CRONs, 14 standing orders. Standing orders wired into heartbeat preembed via standing_orders.py. Remaining: gateway CRON deployment, PO authority review.
 
-**Phase F: ~25% done.** 12 sub-agents with role-aware deployment (agent-tooling.yaml sub_agents + push-soul.sh symlinks). Hook configs + deployment. Remaining: Agent Teams eval, stage-aware effort.
+**Phase F: ~25% done.** 12 sub-agents with role-aware deployment. Hook configs + deployment. Remaining: Agent Teams eval, stage-aware effort.
 
-**Phase G: ~50% done.** generate-tools-md.py (Python) reads all 7 layers, produces 270-324 line TOOLS.md per agent. Deployed to 7 workspaces via push-agent-framework.sh. Remaining: tool-chains.yaml role-specific entries, tool-roles.yaml validation.
+**Phase G: ~70% done.** generate-tools-md.py reads 7 layers + tool-roles.yaml + role_tools chain docs. TOOLS.md per agent deployed. tool-chains.yaml has chain docs for all 56 tools. Remaining: minor enrichment.
 
-**Phase H: ~10% done.** TOOLS.md deployed and verified. 2008 tests passing (0 failures). Remaining: per-agent smoke test, config cross-validation, documentation updates.
+**Phase H: ~35% done.** validate-tooling-configs.py (0 errors). 52 pipeline + 30 skill/orders + 2 context tests. STATUS-TRACKER + MASTER-INDEX updated. 2107 tests passing. Remaining: per-agent smoke test (needs gateway).
 
 ---
 

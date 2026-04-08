@@ -48,6 +48,12 @@ for mcp_file in "$FLEET_DIR"/workspace-mc-*/.mcp.json; do
     pushed=$((pushed + 1))
   fi
 
+  # Copy generated AGENTS.md (fleet awareness, from generate-agents-md.py)
+  if [[ -f "$agent_dir/AGENTS.md" ]]; then
+    cp "$agent_dir/AGENTS.md" "$workspace_dir/AGENTS.md"
+    pushed=$((pushed + 1))
+  fi
+
   # Copy generated TOOLS.md (7-layer, from generate-tools-md.py)
   # Overwrites MC-generated minimal TOOLS.md with complete version
   if [[ -f "$agent_dir/TOOLS.md" ]]; then
