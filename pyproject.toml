@@ -37,3 +37,6 @@ line-length = 100
 [tool.pytest.ini_options]
 testpaths = ["tests", "fleet/tests"]
 asyncio_mode = "auto"
+# pytest-mcp's MCPEvalSettings uses pydantic-settings which reads .env and
+# rejects fleet env vars (postgres_*, lightrag_*, auth_mode, etc.)
+addopts = "-p no:mcp_eval"
