@@ -1,0 +1,283 @@
+# Agent CRONs — scheduled operations per role
+#
+# Drives: scripts/sync-agent-crons.sh (deploys CRONs to gateway)
+# Source: tools-system-full-capability-map.md (per-role CRON needs)
+#         gateway-automation-capabilities.md (technical reference)
+#
+# All CRONs run ISOLATED sessions (no context contamination).
+# Model/thinking chosen per job — expensive CRONs use opus+high,
+# routine CRONs use sonnet+medium or haiku+low.
+#
+# CRONs respect fleet state:
+#   - Paused fleet → CRONs skip and log "skipped: fleet paused"
+#   - Over budget → CRONs skip and log "skipped: budget exceeded"
+#   - Agent offline → CRONs skip for that agent
+#
+# PO can modify schedules, models, messages. No code changes needed.
+# The sync script reads this file and creates/updates gateway CRON jobs.
+
+# ─── Fleet State Guard ────────────────────────────────────────────────
+# Every CRON message gets this prefix injected by the sync script.
+# The agent checks fleet state before doing work.
+fleet_state_guard: |
+  Before executing: check fleet state via fleet_agent_status().
+  If work_mode is "work-paused" or "emergency-only": respond with
+  "CRON skipped: fleet is {work_mode}" and stop.
+  If budget alerts exist with severity "critical": respond with
+  "CRON skipped: budget critical" and stop.
+
+# ─── PM CRONs ─────────────────────────────────────────────────────────
+project-manager:
+  - name: daily-standup
+    schedule: "0 9 * * 1-5"     # weekdays at 9am
+    timezone: "America/Toronto"
+    session: "session:pm-standup"  # persistent — builds on previous
+    model: sonnet
+    thinking: medium
+    message: |
+      Run your daily sprint standup. Call pm_sprint_standup().
+      Post the report to board memory and IRC #sprint.
+      If blockers > 2, escalate to PO.
+      If contribution gaps exist, create contribution tasks.
+    delivery: announce
+    timeout_seconds: 300
+
+  - name: backlog-grooming
+    schedule: "0 14 * * 3"       # Wednesday at 2pm
+    timezone: "America/Toronto"
+    session: isolated
+    model: sonnet
+    thinking: medium
+    message: |
+      Groom the backlog. Check inbox tasks:
+      - Any unassigned > 48h? Triage and assign.
+      - Any stale tasks (no progress > 1 week)? Flag to PO.
+      - Any tasks with missing fields? Set all fields.
+      Post summary to board memory [backlog, grooming].
+    delivery: announce
+    timeout_seconds: 300
+
+# ─── Fleet-Ops CRONs ──────────────────────────────────────────────────
+fleet-ops:
+  - name: review-queue-sweep
+    schedule: "0 */3 * * *"      # every 3 hours
+    timezone: "America/Toronto"
+    session: isolated
+    model: sonnet
+    thinking: medium
+    message: |
+      Sweep the review queue. Check for pending approvals.
+      For each pending approval > 2h old: call ops_real_review(task_id).
+      Process the review using fleet-ops-review-protocol.
+      Post findings to board memory [review, sweep].
+    delivery: none
+    timeout_seconds: 600
+
+  - name: board-health-check
+    schedule: "0 8 * * *"        # daily at 8am
+    timezone: "America/Toronto"
+    session: isolated
+    model: sonnet
+    thinking: low
+    message: |
+      Run board health check. Call ops_board_health_scan().
+      If issues found, alert PM. If critical, alert PO via ntfy.
+    delivery: announce
+    timeout_seconds: 300
+
+  - name: compliance-spot-check
+    schedule: "0 16 * * 5"       # Friday at 4pm
+    timezone: "America/Toronto"
+    session: isolated
+    model: sonnet
+    thinking: medium
+    message: |
+      Run compliance spot check. Call ops_compliance_spot_check().
+      Sample recent completed tasks. Verify trail, commits, PRs.
+      Post quality report to board memory [quality, compliance].
+    delivery: announce
+    timeout_seconds: 300
+
+  - name: budget-assessment
+    schedule: "0 10 * * *"       # daily at 10am
+    timezone: "America/Toronto"
+    session: isolated
+    model: haiku
+    thinking: low
+    message: |
+      Run budget assessment. Call ops_budget_assessment().
+      Check spending patterns. Recommend mode changes if needed.
+    delivery: none
+    timeout_seconds: 120
+
+# ─── DevSecOps CRONs ──────────────────────────────────────────────────
+devsecops-expert:
+  - name: nightly-dependency-scan
+    schedule: "0 1 * * *"        # 1am daily
+    timezone: "America/Toronto"
+    session: isolated
+    model: opus
+    thinking: high
+    message: |
+      Run nightly dependency scan. Call sec_dependency_audit().
+      For each project in config/projects.yaml:
+        Read dependency files (requirements.txt, package.json).
+        Check for known CVEs.
+        Classify findings: critical / high / medium / low.
+      For critical findings: fleet_alert(category="security", severity="critical").
+      Post summary to board memory [security, audit].
+    delivery: announce
+    timeout_seconds: 900
+
+  - name: secret-scan
+    schedule: "0 2 * * 0"        # Sunday at 2am (weekly)
+    timezone: "America/Toronto"
+    session: isolated
+    model: sonnet
+    thinking: high
+    message: |
+      Run secret scan. Call sec_secret_scan().
+      Scan all project repos for exposed credentials.
+      Any finding: fleet_alert(category="security", severity="critical").
+    delivery: announce
+    timeout_seconds: 600
+
+  - name: infrastructure-security-check
+    schedule: "0 6 * * *"        # daily at 6am
+    timezone: "America/Toronto"
+    session: isolated
+    model: haiku
+    thinking: low
+    message: |
+      Run infrastructure security check. Call sec_infrastructure_health().
+      Check MC, gateway, auth configuration.
+      Alert on any issues.
+    delivery: none
+    timeout_seconds: 120
+
+# ─── Architect CRONs ──────────────────────────────────────────────────
+architect:
+  - name: architecture-health-check
+    schedule: "0 10 * * 1"       # Monday at 10am (weekly)
+    timezone: "America/Toronto"
+    session: isolated
+    model: opus
+    thinking: high
+    message: |
+      Run architecture health check. Call arch_codebase_assessment().
+      Examine fleet/core/ for: SRP compliance, dependency direction,
+      pattern consistency, coupling, technical debt.
+      Post findings to board memory [architecture, health].
+    delivery: announce
+    timeout_seconds: 600
+
+  - name: design-contribution-backlog
+    schedule: "0 9 * * 1-5"      # weekdays at 9am
+    timezone: "America/Toronto"
+    session: isolated
+    model: haiku
+    thinking: low
+    message: |
+      Check for tasks awaiting design input.
+      Call fleet_agent_status() and look for tasks in reasoning stage
+      assigned to software-engineer that have no design_input contribution.
+      If found, post to board memory [architecture, backlog].
+    delivery: none
+    timeout_seconds: 120
+
+# ─── QA CRONs ─────────────────────────────────────────────────────────
+qa-engineer:
+  - name: test-contribution-backlog
+    schedule: "0 9 * * 1-5"      # weekdays at 9am
+    timezone: "America/Toronto"
+    session: isolated
+    model: haiku
+    thinking: low
+    message: |
+      Check for tasks awaiting QA test predefinition.
+      Look for tasks in reasoning stage assigned to software-engineer
+      that have no qa_test_definition contribution.
+      If found, post to board memory [qa, backlog].
+    delivery: none
+    timeout_seconds: 120
+
+  - name: coverage-report
+    schedule: "0 15 * * 5"       # Friday at 3pm (weekly)
+    timezone: "America/Toronto"
+    session: isolated
+    model: sonnet
+    thinking: medium
+    message: |
+      Run test coverage analysis. Call qa_coverage_analysis().
+      Run pytest with coverage for the fleet project.
+      Identify modules below 50% coverage. Identify critical untested paths.
+      Post coverage report to board memory [quality, coverage].
+    delivery: announce
+    timeout_seconds: 600
+
+# ─── Accountability CRONs ─────────────────────────────────────────────
+accountability-generator:
+  - name: sprint-compliance-report
+    schedule: "0 17 * * 5"       # Friday at 5pm (weekly)
+    timezone: "America/Toronto"
+    session: isolated
+    model: sonnet
+    thinking: medium
+    message: |
+      Run sprint compliance report. Call acct_sprint_compliance().
+      For each completed task this sprint: verify trail completeness,
+      contributions, PO gates, phase standards.
+      Produce compliance_report artifact.
+      Post to board memory [compliance, report].
+    delivery: announce
+    timeout_seconds: 600
+
+  - name: pattern-detection
+    schedule: "0 11 * * 3"       # Wednesday at 11am
+    timezone: "America/Toronto"
+    session: isolated
+    model: sonnet
+    thinking: medium
+    message: |
+      Run pattern detection. Call acct_pattern_detection().
+      Analyze compliance data across all done tasks.
+      Post patterns to board memory [compliance, pattern].
+      Feed signals to immune system.
+    delivery: announce
+    timeout_seconds: 300
+
+# ─── Technical Writer CRONs ───────────────────────────────────────────
+technical-writer:
+  - name: documentation-staleness-scan
+    schedule: "0 10 * * 1"       # Monday at 10am (weekly)
+    timezone: "America/Toronto"
+    session: isolated
+    model: sonnet
+    thinking: medium
+    message: |
+      Run documentation staleness scan. Call writer_staleness_scan().
+      Identify completed tasks without documentation.
+      Identify stale pages (code changed since last doc update).
+      Post findings to board memory [documentation, staleness].
+    delivery: announce
+    timeout_seconds: 300
+
+# ─── DevOps CRONs ─────────────────────────────────────────────────────
+devops:
+  - name: infrastructure-health-check
+    schedule: "0 */4 * * *"      # every 4 hours
+    timezone: "America/Toronto"
+    session: isolated
+    model: haiku
+    thinking: low
+    message: |
+      Run infrastructure health check. Call devops_infrastructure_health().
+      Check MC backend, gateway, agents online count.
+      If issues: alert PM and post to board memory [infrastructure, health].
+    delivery: none
+    timeout_seconds: 120
+
+# ─── Roles Without CRONs ──────────────────────────────────────────────
+# software-engineer: task-driven, no scheduled operations
+# ux-designer: contribution-driven, no scheduled operations
+# Both are reactive roles — they work when tasks/contributions arrive

@@ -105,6 +105,59 @@
   - Stage restrictions (advisory, complement methodology.yaml tools_blocked)
   - All 15 referenced local skills verified to exist
 
+### Session 2 continued — Phase D Skills
+
+**13 workspace skills created** (.claude/skills/):
+- fleet-methodology-guide: stage awareness — do/don't/tools/skills per stage
+- fleet-contribution: synergy system — produce/consume contributions
+- fleet-completion-checklist: 8-point pre-completion verification
+- fleet-qa-predefinition: pessimistic thinking, TC-XXX, boundary values
+- fleet-design-contribution: pattern selection, SRP, dependency direction
+- fleet-security-contribution: specific actionable controls (not "be secure")
+- fleet-ops-review-protocol: 10-step REAL review, anti-rubber-stamp
+- fleet-engineer-workflow: contribution consumption, TDD, conventional commits
+- fleet-pm-orchestration: task triage ALL fields, PO routing, contribution orchestration
+- fleet-devops-iac: IaC principles, everything scriptable, phase infrastructure
+- fleet-doc-lifecycle: living documentation, staleness, complementary work
+- fleet-ux-every-level: UX beyond UI — CLI, API, config, errors, events, logs
+- fleet-accountability-trail: trail reconstruction, compliance, pattern detection
+
+**config/skill-stage-mapping.yaml**: 97 entries mapping skills to methodology stages × roles
+
+### Session 2 continued — Phase E CRONs + Standing Orders
+
+**config/agent-crons.yaml**: 17 CRON jobs across 8 roles:
+- PM: daily-standup, backlog-grooming
+- Fleet-ops: review-queue-sweep (3h), board-health-check, compliance-spot-check (weekly), budget-assessment
+- DevSecOps: nightly-dependency-scan, secret-scan (weekly), infrastructure-security-check
+- Architect: architecture-health-check (weekly), design-contribution-backlog
+- QA: test-contribution-backlog, coverage-report (weekly)
+- Accountability: sprint-compliance-report (weekly), pattern-detection
+- Writer: documentation-staleness-scan (weekly)
+- DevOps: infrastructure-health-check (4h)
+- Model/effort per job. Fleet state guard prefix in all messages.
+
+**scripts/sync-agent-crons.sh**: deploys CRONs from config to gateway. --dry-run, --list, per-agent targeting. Dry-run verified: all 17 CRONs parse correctly.
+
+**config/standing-orders.yaml**: 14 standing orders across 10 roles with PO-controlled authority levels (conservative default). Escalation threshold: 2 autonomous actions without feedback. Fleet state override: all orders suspended when paused/over budget.
+
+### Session 2 continued — Phase F Sub-Agents + Hooks
+
+**4 sub-agent definitions** (.claude/agents/):
+- code-explorer.md: read-only codebase navigation (sonnet, no Edit/Write)
+- test-runner.md: run tests and report results (sonnet, no Edit/Write)
+- trail-reconstructor.md: audit trail reconstruction (haiku, no Edit/Write)
+- dependency-scanner.md: vulnerability scanning (sonnet, no Edit/Write)
+
+**config/agent-hooks.yaml**: per-role hook configs:
+- Default PreToolUse: conventional commit format enforcement on fleet_commit
+- Default PostToolUse: trail recording for state-modifying tools
+- software-engineer: warn if completing without running tests
+- fleet-ops: block short approval/rejection comments
+- devsecops-expert: security_hold verification reminder
+
+**scripts/configure-agent-settings.sh**: rewritten to read agent-hooks.yaml via Python, generate proper JSON with hooks, deploy to all workspaces. Verified: 7 workspaces configured (2 hooks baseline, 3 for fleet-ops and software-engineer).
+
 ---
 
 ## Honest Status Per Phase
@@ -115,11 +168,11 @@
 
 **Phase C (~65%):** Architecture built (role-aware registration). 36 group calls implemented across all 10 roles. 50 tests (36 registration + 14 behavioral). Real MC API work in PM, fleet-ops, engineer, accountability, QA, writer calls. Remaining: deeper behavioral tests for remaining roles.
 
-**Phase D (~10%):** Foundation skills M81-M86 already existed (gateway skills + templates). config/skill-stage-mapping.yaml created with full stage×role mapping. Marketplace skills configured in skill-assignments.yaml. Remaining: role-specific custom skills (40+ per role), ecosystem evaluation per role.
+**Phase D (~30%):** 13 custom workspace skills covering all 10 roles. skill-stage-mapping.yaml with 97 entries. Foundation skills M81-M86 pre-existed. Remaining: plugin ecosystem evaluation/install (~40+ per role), Codex/adversarial-review and other researched skills not yet mapped.
 
-**Phase E (0%):** CRONs — 0 configured. Standing orders not written. config/agent-crons.yaml not created.
+**Phase E (~30%):** 17 CRONs defined in agent-crons.yaml. sync-agent-crons.sh created and dry-run verified. 14 standing orders in standing-orders.yaml. Remaining: actual gateway deployment (needs running gateway), PO authority_level review.
 
-**Phase F (0%):** Sub-agents — 0 custom defined. Hooks — only plugin-provided. Extended thinking — static effort levels only.
+**Phase F (~15%):** 4 sub-agents defined. Hook configs created. configure-agent-settings.sh deploys hooks to workspaces. Remaining: more sub-agents per role, Agent Teams evaluation, stage-aware effort connection, monitoring hooks need service.
 
 **Phase G (0%):** tool-chains.yaml not rewritten. tool-roles.yaml not validated. generate-tools-md.sh not rewritten.
 
@@ -142,6 +195,7 @@
 ## Key Files Modified This Session
 
 ```
+# Phase A — Foundation
 fleet/core/phases.py                    — check_phase_standards
 fleet/core/plan_quality.py              — check_plan_references_verbatim  
 fleet/core/contributor_notify.py        — NEW
@@ -155,6 +209,14 @@ fleet/core/event_chain.py               — 8 new builders + evolution
 fleet/core/chain_runner.py              — 3 new handler actions
 fleet/mcp/tools.py                      — 16 tools elevated + fleet_phase_advance
 fleet/mcp/server.py                     — two-phase registration
+
+# Phase B — MCP + plugins
+config/agent-tooling.yaml               — package fixes + lightrag conditional
+scripts/setup-mcp-deps.sh              — removed pytest-mcp, added semgrep
+agents/software-engineer/mcp.json      — regenerated (5→4 servers)
+agents/qa-engineer/mcp.json            — regenerated (4→3 servers)
+
+# Phase C — Role-specific group calls
 fleet/mcp/roles/__init__.py             — NEW: role-aware registration
 fleet/mcp/roles/pm.py                   — 5 group calls
 fleet/mcp/roles/fleet_ops.py            — 4 group calls
@@ -166,15 +228,50 @@ fleet/mcp/roles/qa.py                   — 4 group calls
 fleet/mcp/roles/writer.py               — 2 group calls
 fleet/mcp/roles/ux.py                   — 2 group calls
 fleet/mcp/roles/accountability.py       — 3 group calls
+
+# Phase D — Skills
+config/skill-stage-mapping.yaml         — NEW: 97 entries (stages × roles × skills)
+.claude/skills/fleet-methodology-guide  — NEW
+.claude/skills/fleet-contribution       — NEW
+.claude/skills/fleet-completion-checklist — NEW
+.claude/skills/fleet-qa-predefinition   — NEW
+.claude/skills/fleet-design-contribution — NEW
+.claude/skills/fleet-security-contribution — NEW
+.claude/skills/fleet-ops-review-protocol — NEW
+.claude/skills/fleet-engineer-workflow  — NEW
+.claude/skills/fleet-pm-orchestration   — NEW
+.claude/skills/fleet-devops-iac         — NEW
+.claude/skills/fleet-doc-lifecycle      — NEW
+.claude/skills/fleet-ux-every-level     — NEW
+.claude/skills/fleet-accountability-trail — NEW
+
+# Phase E — CRONs + Standing Orders
+config/agent-crons.yaml                 — NEW: 17 CRON jobs across 8 roles
+scripts/sync-agent-crons.sh            — NEW: deploys CRONs to gateway
+config/standing-orders.yaml             — NEW: 14 standing orders across 10 roles
+
+# Phase F — Sub-agents + Hooks
+.claude/agents/code-explorer.md         — NEW: read-only codebase nav
+.claude/agents/test-runner.md           — NEW: run tests and report
+.claude/agents/trail-reconstructor.md   — NEW: audit trail reconstruction
+.claude/agents/dependency-scanner.md    — NEW: vulnerability scanning
+config/agent-hooks.yaml                 — NEW: per-role hook configs
+scripts/configure-agent-settings.sh     — REWRITTEN: reads hooks YAML, deploys to workspaces
+
+# Deployment
 scripts/push-soul.sh                    — per-agent mcp.json + skills
-config/agent-tooling.yaml               — package fixes + lightrag conditional
+
+# Tests (2008 passed, 0 failures, 19 skipped)
 fleet/tests/core/test_phase_standards.py      — NEW (41 tests)
 fleet/tests/core/test_plan_verbatim.py        — NEW (20 tests)
 fleet/tests/core/test_contributions.py        — NEW (17 tests)
 fleet/tests/core/test_building_blocks.py      — NEW (16 tests)
 fleet/tests/core/test_new_chain_builders.py   — NEW (17 tests)
+fleet/tests/core/test_backend_router.py       — FIXED (3 tests: 4→5 backends)
+fleet/tests/integration/test_milestone_matrix.py — FIXED (2 tests: stage enforcement + path)
+fleet/tests/integration/test_system_flows.py  — FIXED (1 test: removed deleted import)
 fleet/tests/mcp/test_tool_operations.py       — NEW (84 tests)
-fleet/tests/mcp/test_role_tools.py            — NEW (36 tests)
+fleet/tests/mcp/test_role_tools.py            — NEW (50 tests: 36 registration + 14 behavioral)
 ```
 
 ---

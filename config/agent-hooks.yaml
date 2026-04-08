@@ -1,0 +1,155 @@
+# Agent Hooks — per-role structural enforcement via Claude Code hooks
+#
+# Hooks fire on lifecycle events (PreToolUse, PostToolUse, SessionStart, etc.)
+# and enforce behavior structurally — the agent cannot bypass them.
+#
+# This config drives: scripts/configure-agent-settings.sh
+# The script reads this file and writes hooks into each agent's
+# .claude/settings.json alongside permissions and effort.
+#
+# Hook types:
+#   command — runs a shell command. Exit code 0=allow, 1=warn, 2=block
+#   http — POSTs payload to URL (async, non-blocking)
+#
+# Sources:
+#   tools-system-directives-and-usage.md (Type 7: hook directives)
+#   strategic-agent-capabilities-research.md (hook monitoring)
+#   fleet-elevation/20-ai-behavior.md (anti-corruption Line 1)
+#
+# Plugins provide additional hooks:
+#   security-guidance: 9 PreToolUse patterns (devsecops)
+#   safety-net: destructive command detection (all agents)
+#   superpowers: SessionStart skill injection (agents with superpowers)
+
+# ─── Default Hooks (all agents) ───────────────────────────────────────
+
+defaults:
+  PreToolUse:
+    # Conventional commit format enforcement
+    - matcher: "fleet_commit"
+      type: command
+      command: |
+        echo "$TOOL_INPUT" | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        msg = data.get('message', '')
+        import re
+        pattern = r'^(feat|fix|refactor|test|docs|chore|ci|style|perf)\(.+\): .+ \[task:[a-f0-9]{8}\]$'
+        if not re.match(pattern, msg):
+            print('Commit message does not match conventional format.')
+            print('Expected: type(scope): description [task:XXXXXXXX]')
+            print(f'Got: {msg}')
+            sys.exit(2)  # block
+        "
+      description: "Enforce conventional commit format on fleet_commit"
+
+  PostToolUse:
+    # Trail recording — every state-modifying tool call gets a trail event
+    # This ensures trail completeness even if individual tools forget to record
+    - matcher: "fleet_task_complete|fleet_commit|fleet_approve|fleet_contribute|fleet_task_accept"
+      type: command
+      command: |
+        echo "trail:$(date -Iseconds):$TOOL_NAME:${FLEET_AGENT:-unknown}" >> "${FLEET_DIR:-.}/.fleet-trail.log"
+      description: "Record trail events for state-modifying tool calls"
+
+# ─── Role-Specific Hooks ──────────────────────────────────────────────
+
+roles:
+  software-engineer:
+    PreToolUse:
+      # Prevent completing without running tests
+      - matcher: "fleet_task_complete"
+        type: command
+        command: |
+          # Check if tests were run in this session by looking at recent trail
+          TRAIL_LOG="${FLEET_DIR:-.}/.fleet-trail.log"
+          if [[ -f "$TRAIL_LOG" ]]; then
+            TASK_SHORT="${FLEET_TASK_ID:0:8}"
+            if grep -q "pytest\|test_" "$TRAIL_LOG" 2>/dev/null; then
+              exit 0  # tests were run
+            fi
+          fi
+          echo "Warning: No test execution detected in this session."
+          echo "Run tests before completing: .venv/bin/python -m pytest fleet/tests/ -v"
+          exit 1  # warn but don't block (exit 2 would block)
+        description: "Warn if completing without running tests"
+
+  fleet-ops:
+    PreToolUse:
+      # Prevent rubber-stamp approvals — require meaningful comment
+      - matcher: "fleet_approve"
+        type: command
+        command: |
+          echo "$TOOL_INPUT" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          comment = data.get('comment', '')
+          decision = data.get('decision', '')
+          if decision == 'approved' and len(comment) < 20:
+              print('Approval comment too short. Fleet-ops must provide specific feedback.')
+              print('Explain WHAT was verified, not just \"looks good\".')
+              sys.exit(2)  # block
+          if decision == 'rejected' and len(comment) < 30:
+              print('Rejection must include specific feedback: what failed, what to fix.')
+              sys.exit(2)  # block
+          "
+        description: "Enforce meaningful review comments on approvals/rejections"
+
+  devsecops-expert:
+    PreToolUse:
+      # Security-hold check — warn before approving tasks with active security_hold
+      - matcher: "fleet_approve"
+        type: command
+        command: |
+          echo "$TOOL_INPUT" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          # This is a structural reminder — the MCP tool also checks
+          print('Reminder: verify security_hold is cleared before approving.')
+          sys.exit(0)  # allow — the tool itself enforces the actual check
+          "
+        description: "Remind to verify security_hold before approval"
+
+# ─── Monitoring Hooks (Future — PO Observation Stream) ────────────────
+# When a monitoring service is available, enable these to stream
+# agent activity to a dashboard.
+#
+# monitoring:
+#   PostToolUse:
+#     - matcher: ".*"
+#       type: http
+#       url: "http://localhost:XXXX/agent-feed"
+#       async: true
+#       description: "Stream all tool calls to monitoring dashboard"
+#
+#   SessionStart:
+#     - type: http
+#       url: "http://localhost:XXXX/agent-session"
+#       async: true
+#       description: "Record session start events"
+
+# ─── Hook Deployment Notes ────────────────────────────────────────────
+#
+# Hooks are written to .claude/settings.json per agent workspace.
+# The settings file structure:
+#
+# {
+#   "permissions": { "allow": [...], "deny": [...] },
+#   "hooks": {
+#     "PreToolUse": [
+#       {
+#         "matcher": "fleet_commit",
+#         "hooks": [
+#           {
+#             "type": "command",
+#             "command": "..."
+#           }
+#         ]
+#       }
+#     ],
+#     "PostToolUse": [...]
+#   }
+# }
+#
+# Note: Claude Code hooks use a nested structure —
+# each matcher has a list of hooks under it.

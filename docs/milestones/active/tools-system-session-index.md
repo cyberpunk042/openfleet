@@ -66,18 +66,25 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 | fleet/core/preembed.py | Phase standards + required contributions in pre-embed | DONE | Agent sees quality bars and required inputs before starting |
 | fleet/tests/core/test_new_chain_builders.py | 17 tests for chain builders (all pass) | DONE | 42 total tests, 0 failures |
 
-**Phase A status: ~60-70% done.**
+**Phase A status: ~65-70% done.**
 - 7 building block modules built and comprehensively tested
 - 16 state-modifying tools elevated with full operations matching fleet-elevation/24
 - Chain builders evolved (Plane state/labels/comments, IRC at checkpoints, trail)
 - Context assembly + preembed updated with phase standards + contribution status
-- 220 tests across 7 test files: building blocks (94), chain builders (42), tool operations (84)
+- 270+ tests across 10 test files: building blocks (94), chain builders (42), tool operations (84), role tools (50)
 - Tests verify BEHAVIORAL outcomes: security_hold, verbatim warnings, readiness regression, doctor signaling, auto-gate at 90%, ChainRunner invocation, stage gate blocking, contribution completeness, context packaging, cascade limits, plan scoring, mention routing, trail recording
-- Remaining: more chain builder operations, some edge cases, role-specific tool registration tested
+- 6 pre-existing test failures fixed (backend count, stage enforcement, path, imports)
+- Remaining: more chain builder operations, some edge cases
 
-**Phase B: ~30% done.** Config fixed, MCP packages verified, deployed to 7/10 workspaces. Plugins + 3 missing workspaces blocked on running gateway.
+**Phase B: ~40% done.** Config fixed, MCP packages verified, deployed to 7/10 workspaces. Phantom pytest-mcp removed, semgrep installed. Plugins + 3 missing workspaces blocked on running gateway.
 
-**Phase C: ~55% done.** Role-aware registration architecture built. 36 role-specific group calls implemented across all 10 roles (PM:5, fleet-ops:4, architect:4, devsecops:6, engineer:2, devops:4, QA:4, writer:2, UX:2, accountability:3). 36 role tool tests pass. Remaining: deeper behavioral tests, more complex operations within some calls.
+**Phase C: ~65% done.** Role-aware registration architecture built. 36 role-specific group calls implemented across all 10 roles (PM:5, fleet-ops:4, architect:4, devsecops:6, engineer:2, devops:4, QA:4, writer:2, UX:2, accountability:3). 50 role tool tests (36 registration + 14 behavioral). Remaining: deeper behavioral tests for remaining roles.
+
+**Phase D: ~30% done.** 13 workspace skills covering all 10 roles. skill-stage-mapping.yaml with 97 entries. Foundation skills M81-M86 pre-existed. Remaining: plugin ecosystem evaluation/install, Codex/adversarial-review integration.
+
+**Phase E: ~30% done.** 17 CRONs in agent-crons.yaml, sync script created. 14 standing orders in standing-orders.yaml. Remaining: gateway deployment, PO authority review.
+
+**Phase F: ~15% done.** 4 sub-agents defined. Hook configs in agent-hooks.yaml. configure-agent-settings.sh deploys hooks to workspaces. Remaining: more sub-agents, Agent Teams eval, stage-aware effort, monitoring hooks.
 
 ---
 
@@ -132,7 +139,7 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 - C11: Accountability group calls (~3: trail reconstruction, sprint compliance, pattern detection)
 
 ### PHASE D: Skills
-**Status:** NOT STARTED
+**Status:** IN PROGRESS (~30%)
 **Scope:** Ecosystem evaluation per role. Build foundation skills (M81-M86). Build/install generic methodology skills. Build/install role-specific skills (40+ per role). Stage-aware mapping.
 **Scale:** 10-20 generic + 80-100 role-specific skills (many from ecosystem, some custom)
 **Depends on:** Phase B (plugin skills available), Phase C (group calls exist to reference)
@@ -140,38 +147,41 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 
 **Sub-items:**
 - D1: Ecosystem evaluation per role (1000+ available → what fits?)
-- D2: Foundation skills (M81-M86: URLs, templates, PR, comments, memory, IRC)
-- D3: Generic methodology skills (10-20 shared)
-- D4: Role-specific skills (40+ per role × 10 roles, phased by priority)
-- D5: Stage-aware mapping (config/skill-stage-mapping.yaml)
+- D2: ✅ Foundation skills (M81-M86: URLs, templates, PR, comments, memory, IRC) — pre-existed
+- D3: ✅ 13 workspace skills covering all 10 roles (methodology-guide, contribution, completion-checklist, qa-predefinition, design-contribution, security-contribution, ops-review-protocol, engineer-workflow, pm-orchestration, devops-iac, doc-lifecycle, ux-every-level, accountability-trail)
+- D4: Role-specific skills remaining (Codex, adversarial-review, plugin-provided skills — 40+ per role)
+- D5: ✅ Stage-aware mapping (config/skill-stage-mapping.yaml — 97 entries)
 
 ### PHASE E: CRONs + Standing Orders
-**Status:** NOT STARTED
+**Status:** IN PROGRESS (~30%)
 **Scope:** Design standing orders per role (PO input needed). Design CRONs per role. Config + sync script. Fleet state integration.
 **Scale:** ~20-25 CRONs + 10 standing order programs
 **Depends on:** Phase C (group calls that CRONs invoke), Phase D (skills that CRONs reference)
 **Blocks:** Phase G (CRONs documented in TOOLS.md)
 
 **Sub-items:**
-- E1: Standing order design per role (requires PO input on autonomous authority)
-- E2: CRON design per role (schedules, models, effort, delivery)
-- E3: config/agent-crons.yaml + scripts/sync-agent-crons.sh
-- E4: Fleet state integration (pause/budget awareness)
+- E1: ✅ Standing order design per role — config/standing-orders.yaml (14 orders, 10 roles, conservative defaults, PO REVIEW markers)
+- E2: ✅ CRON design per role — config/agent-crons.yaml (17 jobs, 8 roles, model/effort/schedule per job)
+- E3: ✅ scripts/sync-agent-crons.sh — deploys CRONs from config to gateway (dry-run verified)
+- E4: ✅ Fleet state integration — guard prefix in CRON messages, standing orders suspended when paused/over budget
+- E5: BLOCKED — Actual gateway deployment needs running gateway
 
 ### PHASE F: Sub-Agents + Hooks + Thinking
-**Status:** NOT STARTED
+**Status:** IN PROGRESS (~15%)
 **Scope:** Custom sub-agent definitions per role. Agent Teams evaluation. Per-role hook configurations. Stage-aware effort. Monitoring hooks.
 **Scale:** ~10-15 sub-agents + per-role hook configs + effort system + monitoring
 **Depends on:** Phase B (plugin sub-agents available), Phase D (skills sub-agents reference)
 **Blocks:** Phase G (sub-agents/hooks in TOOLS.md)
 
 **Sub-items:**
-- F1: Custom sub-agent definitions per role
+- F1: ✅ 4 sub-agent definitions — code-explorer, test-runner, trail-reconstructor, dependency-scanner (read-only, model-appropriate, tool-restricted)
 - F2: Agent Teams evaluation (complement or conflict with orchestrator?)
-- F3: Per-role hook configurations (quality enforcement, behavioral, session)
+- F3: ✅ Per-role hook configurations — config/agent-hooks.yaml (defaults + 3 role-specific: engineer test warning, fleet-ops review enforcement, devsecops security_hold reminder)
+- F3b: ✅ Hook deployment — configure-agent-settings.sh reads YAML, generates JSON with hooks, deployed to 7 workspaces
 - F4: Stage-aware effort system (connect brain decisions to session effort)
-- F5: Monitoring hooks (PO observation stream)
+- F5: Monitoring hooks (PO observation stream — documented but needs service)
 - F6: Security hook content detection fix
+- F7: More sub-agents per role (each role should have 1-3 specialized sub-agents)
 
 ### PHASE G: Generation Pipeline + Configs
 **Status:** NOT STARTED
