@@ -34,6 +34,8 @@ defaults:
     - safety-net          # PreToolUse hook catches destructive commands
   skills:
     - fleet-communicate   # ALL agents: communication surface guide (IRC/ntfy/board/Plane)
+  sub_agents:
+    - code-explorer       # ALL agents: read-only codebase navigation
 
 agents:
   architect:
@@ -47,6 +49,9 @@ agents:
       - context7              # library/framework documentation
       - superpowers           # TDD, writing-plans, brainstorming, systematic-debugging (132K stars)
       - adversarial-spec      # multi-LLM debate for spec refinement (518 stars)
+    sub_agents:
+      - pattern-analyzer      # architecture patterns, anti-patterns, coupling
+      - dependency-mapper     # import graphs, circular deps, change impact
     skills:
       - architecture-propose
       - architecture-review
@@ -74,6 +79,8 @@ agents:
       - context7
       - superpowers           # TDD, systematic-debugging, verification (132K stars)
       - pyright-lsp           # Python type error detection
+    sub_agents:
+      - test-runner           # run tests, structured results
     skills:
       - feature-implement
       - feature-plan
@@ -97,6 +104,10 @@ agents:
       #   args: ["-m", "pytest_mcp_server"]
     plugins:
       - superpowers           # TDD, systematic-debugging (132K stars)
+    sub_agents:
+      - test-runner           # run tests, structured results
+      - regression-checker    # targeted regression after changes
+      - coverage-analyzer     # coverage gaps, uncovered paths
     skills:
       - quality-coverage
       - quality-audit
@@ -124,6 +135,8 @@ agents:
     plugins:
       - hookify               # natural-language hook creation (official Anthropic)
       - commit-commands        # git commit workflows (official Anthropic)
+    sub_agents:
+      - container-inspector   # Docker health, config audit, resource usage
     skills:
       - foundation-docker
       - foundation-ci
@@ -150,6 +163,10 @@ agents:
     plugins:
       - security-guidance      # 9 security patterns via hooks (official Anthropic)
       - sage                   # Agent Detection and Response — ADR (162 stars)
+    sub_agents:
+      - dependency-scanner    # vulnerability scanning (pip audit, npm audit, semgrep)
+      - secret-detector       # leaked credentials, secret patterns, git history
+      - security-auditor      # full OWASP-based security audit
     skills:
       - infra-security
       - quality-audit
@@ -163,6 +180,8 @@ agents:
         package: "@modelcontextprotocol/server-github"
     plugins:
       - pr-review-toolkit      # 5 parallel Sonnet review agents (official Anthropic)
+    sub_agents:
+      - trail-reconstructor   # audit trail reconstruction (haiku, lightweight)
     skills:
       - pm-assess
       - quality-audit
@@ -182,6 +201,8 @@ agents:
         # Official Plane MCP (0.1.5): issues, cycles, modules.
     plugins:
       - plannotator            # visual plan/diff annotation, team feedback (4K stars)
+    sub_agents:
+      - sprint-analyzer       # sprint data aggregation, velocity, blockers
     skills:
       - pm-plan
       - pm-assess
@@ -228,6 +249,8 @@ agents:
         package: "@modelcontextprotocol/server-filesystem"
         args: ["{{WORKSPACE}}"]
     plugins: []
+    sub_agents:
+      - trail-reconstructor   # audit trail reconstruction (shared with fleet-ops)
     skills:
       - quality-audit
       - quality-debt

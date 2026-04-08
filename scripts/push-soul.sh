@@ -59,8 +59,12 @@ skipped=0
 for workspace in "$FLEET_DIR"/workspace-mc-*; do
     [[ -d "$workspace" ]] || continue
 
-    # Extract agent name from TOOLS.md
+    # Extract agent name — try TOOLS.md first, fallback to .mcp.json
     agent_name=$(grep 'AGENT_NAME=' "$workspace/TOOLS.md" 2>/dev/null | sed 's/.*`AGENT_NAME=//' | sed 's/`//' | tr -d '[:space:]' || true)
+    if [[ -z "$agent_name" ]]; then
+        # Fallback: read from .mcp.json FLEET_AGENT env var
+        agent_name=$(python3 -c "import json; print(json.load(open('$workspace/.mcp.json'))['mcpServers']['fleet']['env']['FLEET_AGENT'])" 2>/dev/null || true)
+    fi
     if [[ -z "$agent_name" ]]; then
         skipped=$((skipped + 1))
         continue
@@ -83,11 +87,11 @@ for workspace in "$FLEET_DIR"/workspace-mc-*; do
         cat "$WORKFLOW"
     } > "$workspace/SOUL.md"
 
-    # Ensure Claude Code permissions
+    # Ensure .claude directory exists
+    # NOTE: settings.json is managed by configure-agent-settings.sh (with hooks)
+    # Do NOT overwrite it here — that script reads agent-hooks.yaml and
+    # generates proper JSON with effort, permissions, and hooks.
     mkdir -p "$workspace/.claude"
-    if [[ -f "$TEMPLATE_SETTINGS" ]]; then
-        cp "$TEMPLATE_SETTINGS" "$workspace/.claude/settings.json"
-    fi
 
     # Deploy .mcp.json — prefer per-agent (has role MCP servers), fallback to template
     AGENT_MCP="$AGENTS_DIR/$agent_name/mcp.json"
@@ -132,7 +136,55 @@ for workspace in "$FLEET_DIR"/workspace-mc-*; do
         fi
     fi
 
-    echo "OK: $agent_name"
+    # Deploy role-aware sub-agents from config/agent-tooling.yaml
+    # Each agent gets default sub-agents + their role-specific ones
+    FLEET_AGENTS_SRC="$FLEET_DIR/.claude/agents"
+    TOOLING_YAML="$FLEET_DIR/config/agent-tooling.yaml"
+    if [[ -d "$FLEET_AGENTS_SRC" && -f "$TOOLING_YAML" ]]; then
+        AGENT_SUBAGENTS_DIR="$workspace/.claude/agents"
+        mkdir -p "$AGENT_SUBAGENTS_DIR"
+
+        # Get the list of sub-agents for this role (defaults + role-specific)
+        SUBAGENT_LIST=$("$FLEET_DIR/.venv/bin/python" - "$agent_name" "$TOOLING_YAML" << 'PYSUBAGENTS'
+import sys, yaml
+
+agent_name = sys.argv[1]
+tooling_file = sys.argv[2]
+
+with open(tooling_file) as f:
+    config = yaml.safe_load(f) or {}
+
+# Collect default + role-specific sub-agents
+agents = []
+for sa in config.get("defaults", {}).get("sub_agents", []):
+    agents.append(sa)
+for sa in config.get("agents", {}).get(agent_name, {}).get("sub_agents", []):
+    if sa not in agents:
+        agents.append(sa)
+
+for a in agents:
+    print(a)
+PYSUBAGENTS
+        )
+
+        # Clean existing symlinks (remove stale ones)
+        for existing in "$AGENT_SUBAGENTS_DIR"/*.md; do
+            [[ -L "$existing" ]] && rm "$existing"
+        done 2>/dev/null
+
+        # Create symlinks for each sub-agent
+        sa_count=0
+        while IFS= read -r sa_name; do
+            [[ -z "$sa_name" ]] && continue
+            SA_SRC="$FLEET_AGENTS_SRC/$sa_name.md"
+            if [[ -f "$SA_SRC" ]]; then
+                ln -sf "$SA_SRC" "$AGENT_SUBAGENTS_DIR/$sa_name.md"
+                sa_count=$((sa_count + 1))
+            fi
+        done <<< "$SUBAGENT_LIST"
+    fi
+
+    echo "OK: $agent_name (sub-agents: ${sa_count:-0})"
     updated=$((updated + 1))
 done
 

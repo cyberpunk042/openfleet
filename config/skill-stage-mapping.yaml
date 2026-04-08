@@ -151,6 +151,12 @@ roles:
       - skill: fleet-plan
         source: workspace
         why: "Epic breakdown and sprint planning"
+      - skill: fleet-epic-breakdown
+        source: workspace
+        why: "Decompose epics — seams, dependency chains, contribution requirements, estimation"
+      - skill: fleet-sprint-planning
+        source: workspace
+        why: "Sprint capacity, contribution tax, velocity tracking, realistic commitment"
     plugin_skills:
       - skill: annotate
         plugin: plannotator
@@ -173,6 +179,10 @@ roles:
       - skill: fleet-ops-review-protocol
         source: workspace
         why: "10-step REAL review — verbatim match, trail, contributions, phase standards"
+    work:
+      - skill: fleet-trail-verification
+        source: workspace
+        why: "Verify audit trails during review — completeness, authenticity, quality"
     plugin_skills:
       # pr-review-toolkit provides 6 parallel sub-agents
       - skill: code-reviewer
@@ -214,6 +224,9 @@ roles:
       - skill: fleet-design-contribution
         source: workspace
         why: "How to produce design_input — pattern selection, SRP, dependency direction"
+      - skill: fleet-adr-creation
+        source: workspace
+        why: "Architecture Decision Records — context, options, rationale for future agents"
     plugin_skills:
       - skill: brainstorming
         plugin: superpowers
@@ -297,6 +310,10 @@ roles:
         why: "Fetch current library docs — training data may be stale"
 
   qa-engineer:
+    all_stages:
+      - skill: fleet-phase-testing
+        source: workspace
+        why: "Phase-appropriate testing — POC vs MVP vs staging vs production rigor levels"
     reasoning:
       - skill: fleet-test
         source: workspace
@@ -304,6 +321,9 @@ roles:
       - skill: fleet-qa-predefinition
         source: workspace
         why: "Pessimistic thinking — boundary values, sad paths, phase-appropriate rigor"
+      - skill: fleet-boundary-value-analysis
+        source: workspace
+        why: "Systematic edge case identification — off-by-one, state transitions, combination boundaries"
     work:
       - skill: fleet-test
         source: workspace
@@ -330,6 +350,10 @@ roles:
       - skill: fleet-security-contribution
         source: workspace
         why: "Specific actionable controls — auth, input validation, deps, secrets"
+    analysis:
+      - skill: fleet-threat-modeling
+        source: workspace
+        why: "STRIDE threat modeling — attack surface, trust boundaries, specific requirements"
     plugin_skills:
       # security-guidance provides 9 PreToolUse hooks (not skills, but structural enforcement)
       # sage provides Agent Detection and Response
@@ -347,6 +371,10 @@ roles:
       - skill: fleet-devops-iac
         source: workspace
         why: "IaC principles, everything scriptable, phase-appropriate infrastructure"
+    reasoning:
+      - skill: fleet-cicd-pipeline
+        source: workspace
+        why: "CI/CD pipeline design — build, test, deploy stages, phase-gated deployments"
     plugin_skills:
       - skill: hookify
         plugin: hookify
@@ -378,6 +406,10 @@ roles:
       - skill: fleet-doc-lifecycle
         source: workspace
         why: "Living documentation — staleness detection, proactive maintenance, complementary work"
+    work:
+      - skill: fleet-api-documentation
+        source: workspace
+        why: "API docs — endpoint reference, examples, error codes, the context that makes a guide"
     plugin_skills:
       - skill: writing-plans
         plugin: superpowers
@@ -399,6 +431,9 @@ roles:
       - skill: fleet-gap
         source: gateway
         why: "UX gap analysis across all levels (UI, CLI, API, config, errors)"
+      - skill: fleet-accessibility-audit
+        source: workspace
+        why: "WCAG audit — keyboard nav, screen reader, contrast, non-visual UX"
     plugin_skills:
       - skill: brainstorming
         plugin: superpowers

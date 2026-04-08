@@ -124,6 +124,32 @@
 
 **config/skill-stage-mapping.yaml**: 97 entries mapping skills to methodology stages × roles
 
+**10 deeper role-specific skills added** (.claude/skills/):
+- fleet-epic-breakdown (PM): decompose epics — seams, dependency chains, contribution requirements
+- fleet-sprint-planning (PM): capacity awareness, contribution tax, velocity, realistic commitment
+- fleet-trail-verification (fleet-ops): audit trail verification during review — completeness, authenticity
+- fleet-threat-modeling (devsecops): STRIDE threat modeling — attack surface, trust boundaries
+- fleet-adr-creation (architect): Architecture Decision Records — context, options, rationale
+- fleet-boundary-value-analysis (QA): systematic edge cases — off-by-one, state transitions, combinations
+- fleet-phase-testing (QA): phase-appropriate rigor — POC vs MVP vs staging vs production
+- fleet-cicd-pipeline (devops): CI/CD design — build/test/deploy, phase-gated, rollback strategy
+- fleet-api-documentation (writer): API docs — endpoint reference, examples, error codes
+- fleet-accessibility-audit (UX): WCAG audit — keyboard, screen reader, contrast, non-visual UX
+
+**config/skill-stage-mapping.yaml updated**: 140 entries (up from 97) with all new skills registered
+
+### Session 2 continued — Phase F Sub-Agents (expanded)
+
+**8 additional sub-agents** (.claude/agents/) — 12 total:
+- sprint-analyzer (PM, haiku): sprint data aggregation, velocity, blockers
+- pattern-analyzer (architect, haiku): architecture patterns, anti-patterns, coupling
+- dependency-mapper (architect, sonnet): import graphs, circular deps, change impact
+- secret-detector (devsecops, sonnet): leaked credentials, secret patterns, git history
+- security-auditor (devsecops, sonnet): full OWASP-based security audit
+- container-inspector (devops, haiku): Docker health, config audit, resource usage
+- regression-checker (QA, sonnet): targeted regression after changes
+- coverage-analyzer (QA, sonnet): coverage gaps, uncovered paths, distribution
+
 ### Session 2 continued — Phase E CRONs + Standing Orders
 
 **config/agent-crons.yaml**: 17 CRON jobs across 8 roles:
@@ -168,11 +194,11 @@
 
 **Phase C (~65%):** Architecture built (role-aware registration). 36 group calls implemented across all 10 roles. 50 tests (36 registration + 14 behavioral). Real MC API work in PM, fleet-ops, engineer, accountability, QA, writer calls. Remaining: deeper behavioral tests for remaining roles.
 
-**Phase D (~30%):** 13 custom workspace skills covering all 10 roles. skill-stage-mapping.yaml with 97 entries. Foundation skills M81-M86 pre-existed. Remaining: plugin ecosystem evaluation/install (~40+ per role), Codex/adversarial-review and other researched skills not yet mapped.
+**Phase D (~45%):** 30 workspace skills (7 gateway + 13 broad + 10 deep role-specific). skill-stage-mapping.yaml with 140 entries. All 30 workspace skill references verified. Remaining: plugin ecosystem evaluation/install, Codex/adversarial-review integration, more granular per-operation skills.
 
 **Phase E (~30%):** 17 CRONs defined in agent-crons.yaml. sync-agent-crons.sh created and dry-run verified. 14 standing orders in standing-orders.yaml. Remaining: actual gateway deployment (needs running gateway), PO authority_level review.
 
-**Phase F (~15%):** 4 sub-agents defined. Hook configs created. configure-agent-settings.sh deploys hooks to workspaces. Remaining: more sub-agents per role, Agent Teams evaluation, stage-aware effort connection, monitoring hooks need service.
+**Phase F (~25%):** 12 sub-agents defined (all read-only, model-appropriate, tool-restricted). Hook configs created. configure-agent-settings.sh deploys hooks to workspaces. Remaining: Agent Teams evaluation, stage-aware effort connection, monitoring hooks need service.
 
 **Phase G (0%):** tool-chains.yaml not rewritten. tool-roles.yaml not validated. generate-tools-md.sh not rewritten.
 

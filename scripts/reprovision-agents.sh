@@ -12,6 +12,9 @@ set -euo pipefail
 # - agents/*/CLAUDE.md or HEARTBEAT.md (agent instructions)
 # - agents/_template/* (shared framework)
 # - .claude/skills/* (new skills)
+# - .claude/agents/* (sub-agents)
+# - config/agent-hooks.yaml (hook configurations)
+# - config/agent-tooling.yaml (sub-agent assignments)
 # - scripts/configure-agent-settings.sh (settings changes)
 
 FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,12 +22,17 @@ FLEET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 echo "=== Reprovisioning Fleet Agents ==="
 echo ""
 
-# Step 1: Push framework files
+# Step 1: Push framework files (STANDARDS.md, MC_WORKFLOW.md, CLAUDE.md, HEARTBEAT.md)
 echo "Step 1: Pushing framework files..."
 bash "$FLEET_DIR/scripts/push-agent-framework.sh"
 echo ""
 
-# Step 2: Update Claude Code settings
+# Step 1b: Push SOUL.md, mcp.json, skills, sub-agents
+echo "Step 1b: Pushing SOUL + skills + sub-agents..."
+bash "$FLEET_DIR/scripts/push-soul.sh"
+echo ""
+
+# Step 2: Update Claude Code settings (effort, permissions, hooks from agent-hooks.yaml)
 echo "Step 2: Updating agent settings..."
 bash "$FLEET_DIR/scripts/configure-agent-settings.sh"
 echo ""

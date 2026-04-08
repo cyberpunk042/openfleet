@@ -80,11 +80,11 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 
 **Phase C: ~65% done.** Role-aware registration architecture built. 36 role-specific group calls implemented across all 10 roles (PM:5, fleet-ops:4, architect:4, devsecops:6, engineer:2, devops:4, QA:4, writer:2, UX:2, accountability:3). 50 role tool tests (36 registration + 14 behavioral). Remaining: deeper behavioral tests for remaining roles.
 
-**Phase D: ~30% done.** 13 workspace skills covering all 10 roles. skill-stage-mapping.yaml with 97 entries. Foundation skills M81-M86 pre-existed. Remaining: plugin ecosystem evaluation/install, Codex/adversarial-review integration.
+**Phase D: ~45% done.** 30 workspace skills (7 gateway + 13 broad + 10 deep). skill-stage-mapping.yaml with 140 entries (up from 97). All workspace skill refs verified. Remaining: plugin evaluation/install, Codex/adversarial-review, more granular skills.
 
 **Phase E: ~30% done.** 17 CRONs in agent-crons.yaml, sync script created. 14 standing orders in standing-orders.yaml. Remaining: gateway deployment, PO authority review.
 
-**Phase F: ~15% done.** 4 sub-agents defined. Hook configs in agent-hooks.yaml. configure-agent-settings.sh deploys hooks to workspaces. Remaining: more sub-agents, Agent Teams eval, stage-aware effort, monitoring hooks.
+**Phase F: ~25% done.** 12 sub-agents defined (all read-only, model-appropriate). Hook configs + deployment script. Remaining: Agent Teams eval, stage-aware effort, monitoring hooks.
 
 ---
 
@@ -148,9 +148,10 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 **Sub-items:**
 - D1: Ecosystem evaluation per role (1000+ available → what fits?)
 - D2: ✅ Foundation skills (M81-M86: URLs, templates, PR, comments, memory, IRC) — pre-existed
-- D3: ✅ 13 workspace skills covering all 10 roles (methodology-guide, contribution, completion-checklist, qa-predefinition, design-contribution, security-contribution, ops-review-protocol, engineer-workflow, pm-orchestration, devops-iac, doc-lifecycle, ux-every-level, accountability-trail)
-- D4: Role-specific skills remaining (Codex, adversarial-review, plugin-provided skills — 40+ per role)
-- D5: ✅ Stage-aware mapping (config/skill-stage-mapping.yaml — 97 entries)
+- D3: ✅ 13 broad workspace skills covering all 10 roles (methodology-guide, contribution, completion-checklist, qa-predefinition, design-contribution, security-contribution, ops-review-protocol, engineer-workflow, pm-orchestration, devops-iac, doc-lifecycle, ux-every-level, accountability-trail)
+- D3b: ✅ 10 deep role-specific skills (epic-breakdown, sprint-planning, trail-verification, threat-modeling, adr-creation, boundary-value-analysis, phase-testing, cicd-pipeline, api-documentation, accessibility-audit)
+- D4: Role-specific skills remaining (Codex, adversarial-review, plugin-provided skills)
+- D5: ✅ Stage-aware mapping (config/skill-stage-mapping.yaml — 140 entries, all refs verified)
 
 ### PHASE E: CRONs + Standing Orders
 **Status:** IN PROGRESS (~30%)
@@ -174,7 +175,7 @@ The PO's direction: this is 42+ hours of work. No minimizing. No disconnected pi
 **Blocks:** Phase G (sub-agents/hooks in TOOLS.md)
 
 **Sub-items:**
-- F1: ✅ 4 sub-agent definitions — code-explorer, test-runner, trail-reconstructor, dependency-scanner (read-only, model-appropriate, tool-restricted)
+- F1: ✅ 12 sub-agent definitions — code-explorer, test-runner, trail-reconstructor, dependency-scanner, sprint-analyzer, pattern-analyzer, dependency-mapper, secret-detector, security-auditor, container-inspector, regression-checker, coverage-analyzer (all read-only, model-appropriate, tool-restricted)
 - F2: Agent Teams evaluation (complement or conflict with orchestrator?)
 - F3: ✅ Per-role hook configurations — config/agent-hooks.yaml (defaults + 3 role-specific: engineer test warning, fleet-ops review enforcement, devsecops security_hold reminder)
 - F3b: ✅ Hook deployment — configure-agent-settings.sh reads YAML, generates JSON with hooks, deployed to 7 workspaces

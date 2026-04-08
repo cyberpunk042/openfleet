@@ -50,7 +50,9 @@
       "Bash(python3 -c \" import sys,json data=json.loads\\(sys.stdin.read\\(\\)\\) for x in data.get\\('items',[]\\): print\\(f\\\\\"{x['full_name']} | stars: {x['stargazers_count']} | {x.get\\('description',''\\)}\\\\\"\\) \" echo \"---\" curl -sL \"https://api.github.com/search/repositories?q=%22agent+detection+and+response%22&sort=stars&per_page=5\")",
       "Bash(curl -sL \"https://raw.githubusercontent.com/obra/superpowers-marketplace/main/.claude-plugin/marketplace.json\")",
       "Bash(.venv/bin/python -m pytest fleet/tests/core/test_event_chain.py fleet/tests/core/test_chain_runner.py -x -q)",
-      "Bash(.venv/bin/python -c ':*)"
+      "Bash(.venv/bin/python -c ':*)",
+      "Edit(/.claude/skills/fleet-threat-modeling/**)",
+      "Edit(/.claude/skills/fleet-phase-testing/**)"
     ]
   }
 }
