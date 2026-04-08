@@ -133,6 +133,35 @@ def build_task_preembed(task: Task, completeness_summary: str = "") -> str:
     except Exception:
         pass
 
+    # Skill recommendations for this stage
+    agent_name = cf.agent_name or ""
+    if stage and agent_name:
+        try:
+            from fleet.core.skill_recommendations import get_skill_recommendations
+            recs = get_skill_recommendations(agent_name, stage)
+
+            if recs["always"] or recs["stage"]:
+                lines.append("")
+                lines.append(f"## Skills for This Stage ({stage})")
+
+                if recs["always"]:
+                    lines.append("Always available:")
+                    for s in recs["always"]:
+                        lines.append(f"  - /{s['skill']} — {s.get('why', '')}")
+
+                if recs["stage"]:
+                    lines.append(f"Recommended at {stage}:")
+                    for s in recs["stage"]:
+                        plugin = f" ({s['plugin']})" if s.get("plugin") else ""
+                        lines.append(f"  - /{s['skill']}{plugin} — {s.get('why', '')}")
+
+                if recs["blocked"]:
+                    lines.append(f"Blocked at {stage}:")
+                    blocked_str = ", ".join(f"/{b}" for b in recs["blocked"][:5])
+                    lines.append(f"  {blocked_str}")
+        except Exception:
+            pass
+
     return "\n".join(lines)
 
 
@@ -206,6 +235,25 @@ def build_heartbeat_preembed(
             else:
                 lines.append(f"- {key}: {value}")
         lines.append("")
+
+    # Standing orders (autonomous authority)
+    if agent_name:
+        try:
+            from fleet.core.standing_orders import get_standing_orders
+            so = get_standing_orders(agent_name)
+            if so["orders"]:
+                lines.append(f"## STANDING ORDERS (authority: {so['authority_level']})")
+                lines.append(f"Escalation threshold: {so['escalation_threshold']} autonomous actions without feedback.")
+                lines.append("")
+                for order in so["orders"]:
+                    lines.append(f"- **{order['name']}**: {order['description']}")
+                    if order["when"]:
+                        lines.append(f"  When: {order['when']}")
+                    if order["boundary"]:
+                        lines.append(f"  Boundary: {order['boundary']}")
+                lines.append("")
+        except Exception:
+            pass
 
     # Events
     if events:

@@ -85,6 +85,38 @@ class TestAssembleTaskContext:
         assert result["methodology"]["stage_instructions"]  # not empty
 
     @pytest.mark.asyncio
+    async def test_skill_recommendations_included(self):
+        """Task context should include stage-aware skill recommendations."""
+        task = _make_task(task_stage="reasoning", agent_name="architect")
+        mc = _mock_mc()
+        mc.list_tasks = AsyncMock(return_value=[task])
+        clear_context_cache()
+
+        result = await assemble_task_context(task, mc, "board-1")
+
+        recs = result.get("skill_recommendations")
+        assert recs is not None, "skill_recommendations should be present"
+        assert recs["stage_name"] == "reasoning"
+        # Always-available should include generic skills
+        always_skills = [s["skill"] for s in recs["always"]]
+        assert "fleet-methodology-guide" in always_skills
+        # Stage-specific should include reasoning skills
+        stage_skills = [s["skill"] for s in recs["stage"]]
+        assert "fleet-design-contribution" in stage_skills
+
+    @pytest.mark.asyncio
+    async def test_skill_recommendations_none_for_unknown_stage(self):
+        """Unknown stage should produce None skill recommendations."""
+        task = _make_task(task_stage="unknown", agent_name="architect")
+        mc = _mock_mc()
+        mc.list_tasks = AsyncMock(return_value=[task])
+        clear_context_cache()
+
+        result = await assemble_task_context(task, mc, "board-1")
+
+        assert result.get("skill_recommendations") is None
+
+    @pytest.mark.asyncio
     async def test_comments_included(self):
         task = _make_task()
         mc = _mock_mc()

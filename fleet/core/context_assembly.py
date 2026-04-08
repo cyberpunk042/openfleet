@@ -87,11 +87,11 @@ async def assemble_task_context(
     }
 
     # ── Methodology ─────────────────────────────────────────────
+    stage = cf.task_stage or "unknown"
     try:
         from fleet.core.methodology import get_required_stages, get_next_stage, Stage
         from fleet.core.stage_context import get_stage_instructions, get_stage_summary
 
-        stage = cf.task_stage or "unknown"
         task_type = cf.task_type or "task"
         required = get_required_stages(task_type)
         next_stage = get_next_stage(stage, required) if stage != "unknown" else None
@@ -105,7 +105,19 @@ async def assemble_task_context(
             "next_stage": next_stage.value if next_stage else None,
         }
     except Exception:
-        result["methodology"] = {"stage": cf.task_stage or "unknown", "readiness": cf.task_readiness}
+        result["methodology"] = {"stage": stage, "readiness": cf.task_readiness}
+
+    # ── Skill Recommendations ────────────────────────────────────
+    # Stage-aware recommendations from config/skill-stage-mapping.yaml
+    result["skill_recommendations"] = None
+    if stage != "unknown":
+        try:
+            from fleet.core.skill_recommendations import get_skill_recommendations
+            agent_name = cf.agent_name or ""
+            if agent_name:
+                result["skill_recommendations"] = get_skill_recommendations(agent_name, stage)
+        except Exception:
+            pass
 
     # ── Phase & Standards ─────────────────────────────────────────
     result["phase"] = None
