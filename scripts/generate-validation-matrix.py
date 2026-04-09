@@ -23,6 +23,9 @@ os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pathlib import Path
 from fleet.core.models import Task, TaskStatus, TaskCustomFields
 from fleet.core.preembed import build_task_preembed, build_heartbeat_preembed
+from fleet.core.tier_renderer import TierRenderer
+
+EXPERT_RENDERER = TierRenderer("expert")
 
 OUT_DIR = Path("validation-matrix")
 if OUT_DIR.exists():
@@ -148,6 +151,7 @@ hb = build_heartbeat_preembed(
     agent_name="software-engineer", role="software-engineer",
     assigned_tasks=[], agents_online=8, agents_total=10,
     fleet_mode="full-autonomous", fleet_phase="execution", fleet_backend="claude",
+    renderer=EXPERT_RENDERER,
 )
 write_scenario("HB-01-idle-no-tasks.md",
     "Heartbeat: Engineer idle, no tasks assigned",
@@ -169,10 +173,11 @@ hb2 = build_heartbeat_preembed(
     assigned_tasks=[task_work], agents_online=9, agents_total=10,
     fleet_mode="full-autonomous", fleet_phase="execution", fleet_backend="claude",
     role_data={"my_tasks_count": 1, "contribution_tasks": [],
-        "contributions_received": {"task-a1b": [
+        "contributions_received": [
             {"type": "design_input", "from": "architect", "status": "done"},
             {"type": "qa_test_definition", "from": "qa-engineer", "status": "done"},
-        ]}, "in_review": []},
+        ], "in_review": []},
+    renderer=EXPERT_RENDERER,
 )
 write_scenario("HB-02-has-work-task.md",
     "Heartbeat: Engineer has in-progress task (work stage)",
@@ -190,6 +195,7 @@ hb3 = build_heartbeat_preembed(
     messages=[
         {"from": "project-manager", "content": "Assigned you task-xyz: Implement fleet controls sidebar. Story points: 3. Stage: reasoning."},
     ],
+    renderer=EXPERT_RENDERER,
 )
 write_scenario("HB-03-has-messages.md",
     "Heartbeat: Engineer has message from PM (new assignment)",
@@ -214,6 +220,7 @@ hb4 = build_heartbeat_preembed(
         ],
         "offline_agents": ["ux-designer"],
     },
+    renderer=EXPERT_RENDERER,
 )
 write_scenario("HB-04-fleet-ops-reviews.md",
     "Heartbeat: Fleet-ops with 2 pending reviews",
@@ -238,6 +245,7 @@ hb5 = build_heartbeat_preembed(
         "progress": "12/25 done (48%)",
         "inbox_count": 5,
     },
+    renderer=EXPERT_RENDERER,
 )
 write_scenario("HB-05-pm-unassigned.md",
     "Heartbeat: PM with 3 unassigned inbox tasks + 1 blocker",
@@ -255,8 +263,12 @@ print("TASK MODE:")
 # ═══════════════════════════════════════════════════════════
 
 def render_task_scenario(filename, title, task, injection="full",
-                         contribs="", nav="", notes=""):
-    base = build_task_preembed(task, injection_level=injection)
+                         contribs="", nav="", notes="",
+                         renderer=None, rejection_feedback="", target_task=None):
+    r = renderer or EXPERT_RENDERER
+    base = build_task_preembed(task, injection_level=injection,
+                                renderer=r, rejection_feedback=rejection_feedback,
+                                target_task=target_task)
     if contribs:
         base = base.replace("## INPUTS FROM COLLEAGUES",
             f"## INPUTS FROM COLLEAGUES\n\n{contribs}", 1)
@@ -343,10 +355,21 @@ render_task_scenario("TK-06-rejection-rework.md",
     )),
     contribs=ARCH_CONTRIB + "\n" + QA_CONTRIB,
     nav=NAV_WORK,
-    notes="Second attempt after rejection. Should show iteration 2. Agent should use eng_fix_task_response().",
+    notes="Second attempt after rejection. Should show iteration 2, rejection feedback, eng_fix_task_response().",
+    rejection_feedback="REJECTED by fleet-ops: Missing test for TC-003 (TaskPipeline segments). Add integration test verifying segment sum equals total count.",
 )
 
 # TK-07: Architect contribution task
+TARGET_TASK = Task(id="task-a1b2c3d4", board_id="b1",
+    title="Add fleet health dashboard to MC frontend",
+    status=TaskStatus.IN_PROGRESS, priority="high",
+    description="Dashboard with agent grid, task pipeline, storm, budget",
+    custom_fields=TaskCustomFields(
+        requirement_verbatim="Add a health dashboard showing: agent grid (online/idle/sleeping/offline), task pipeline (inbox/progress/review/done counts), storm indicator with severity color, budget gauge with percentage",
+        delivery_phase="mvp", task_stage="work", task_readiness=99,
+        agent_name="software-engineer",
+    ))
+
 render_task_scenario("TK-07-architect-contribution.md",
     "Task: Architect producing design_input contribution",
     Task(id="task-contrib99", board_id="b1",
@@ -358,7 +381,8 @@ render_task_scenario("TK-07-architect-contribution.md",
             agent_name="architect", task_type="subtask",
             contribution_type="design_input", contribution_target="task-a1b2c3d4",
         )),
-    notes="Architect examining codebase for design. Should produce analysis_document, then design_input.",
+    notes="Architect examining codebase for design. Should show CONTRIBUTION TASK section with target task verbatim, fleet_contribute() reference.",
+    target_task=TARGET_TASK,
 )
 
 # TK-08: QA predefinition contribution
@@ -403,6 +427,18 @@ render_task_scenario("TK-10-nearly-complete.md",
     contribs=ARCH_CONTRIB + "\n" + QA_CONTRIB,
     nav=NAV_WORK,
     notes="Progress 70% = implementation done. Should run tests, then fleet_task_complete.",
+)
+
+# TK-34: Engineer role-specific reasoning
+render_task_scenario("TK-34-engineer-reasoning.md",
+    "Task: Engineer reasoning — role-specific protocol",
+    make_task(custom_fields=TaskCustomFields(
+        task_stage="reasoning", task_readiness=85,
+        requirement_verbatim="Add health dashboard with agent grid, task pipeline, storm indicator, budget gauge",
+        agent_name="software-engineer", task_type="story", story_points=5,
+    )),
+    nav=NAV_REASONING,
+    notes="Engineer reasoning should say 'implementation plan'. Compare: architect would say 'design_input'.",
 )
 
 

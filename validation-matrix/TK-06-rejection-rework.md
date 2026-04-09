@@ -1,12 +1,14 @@
 # Task: Work stage, rejection rework (iteration 2)
 
-**Expected:** Second attempt after rejection. Should show iteration 2. Agent should use eng_fix_task_response().
+**Expected:** Second attempt after rejection. Should show iteration 2, rejection feedback, eng_fix_task_response().
 
 ## task-context.md
 
 ```
 # MODE: task | injection: full
 # Your task data is pre-embedded below. fleet_read_context() only if you need fresh data or a different task.
+
+# ITERATION: 2 (rework after rejection)
 
 # YOU ARE: software-engineer
 
@@ -57,6 +59,14 @@ Note: fleet_read_context only needed to load another task's context or refresh s
 
 Your job is to EXECUTE THE PLAN, not to redesign.
 
+## REJECTION REWORK (iteration 2)
+
+Your previous submission was rejected. Fix the ROOT CAUSE — do not paper over it.
+Use `eng_fix_task_response()` to structure your fix.
+
+**Feedback:**
+> REJECTED by fleet-ops: Missing test for TC-003 (TaskPipeline segments). Add integration test verifying segment sum equals total count.
+
 ## INPUTS FROM COLLEAGUES
 
 ## CONTRIBUTION: design_input (from architect)
@@ -95,7 +105,7 @@ If contributions are NOT shown below → `fleet_request_input()`. Do NOT proceed
 - **security:** auth, validation, dep audit
 
 ## WHAT TO DO NOW
-Execute the confirmed plan. Your task data and contributions are pre-embedded above. `fleet_task_accept()` then implement. fleet_read_context() only to load a different task.
+REWORK required. Fix the root cause identified in the rejection feedback. Use `eng_fix_task_response()` to structure your approach, then implement the fix.
 
 ## WHAT HAPPENS WHEN YOU ACT
 - `fleet_commit()` → git + event + trail (one logical change per commit)

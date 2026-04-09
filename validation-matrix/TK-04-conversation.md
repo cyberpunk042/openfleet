@@ -62,7 +62,7 @@ Required contributions (received content appears below if delivered):
 If contributions are NOT shown below → `fleet_request_input()`. Do NOT proceed without required contributions in work stage.
 
 ## WHAT TO DO NOW
-Read the verbatim requirement above. Ask specific clarifying questions. Do NOT produce code or solutions.
+Ask clarifying questions. Post them to the task comments. Do NOT write code. Your job is to understand, not to build.
 
 ## WHAT HAPPENS WHEN YOU ACT
 - `fleet_artifact_create/update()` → Plane HTML + completeness check

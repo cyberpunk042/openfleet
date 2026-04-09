@@ -1,6 +1,6 @@
 # Task: Architect producing design_input contribution
 
-**Expected:** Architect examining codebase for design. Should produce analysis_document, then design_input.
+**Expected:** Architect examining codebase for design. Should show CONTRIBUTION TASK section with target task verbatim, fleet_contribute() reference.
 
 ## task-context.md
 
@@ -21,6 +21,16 @@
 
 ## VERBATIM REQUIREMENT
 > Provide design_input: approach, target files, patterns for the fleet health dashboard
+
+## CONTRIBUTION TASK
+**Type:** design_input
+**Target task:** task-a1b
+**Title:** Add fleet health dashboard to MC frontend
+**Verbatim:** Add a health dashboard showing: agent grid (online/idle/sleeping/offline), task pipeline (inbox/progress/review/done counts), storm indicator with severity color, budget gauge with percentage
+**Delivery phase:** mvp
+**Stage:** work
+
+Call `fleet_contribute()` when your contribution is ready.
 
 ## Current Stage: ANALYSIS
 
@@ -57,7 +67,7 @@ Your job is to UNDERSTAND WHAT EXISTS, not to solve the problem.
 *(No contributions required.)*
 
 ## WHAT TO DO NOW
-Examine the codebase for areas related to the requirement. Produce an analysis_document with specific file references.
+Examine the codebase. Produce an analysis document with file and line references. Do NOT produce solutions yet.
 
 ## WHAT HAPPENS WHEN YOU ACT
 - `fleet_artifact_create/update()` → Plane HTML + completeness check

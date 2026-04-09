@@ -1,6 +1,6 @@
-# Task: Reasoning stage — produce plan, NOT implement
+# Task: Engineer reasoning — role-specific protocol
 
-**Expected:** PLAN only. NO code. NO commits. Reference verbatim. fleet_commit should NOT appear in recommended actions.
+**Expected:** Engineer reasoning should say 'implementation plan'. Compare: architect would say 'design_input'.
 
 ## task-context.md
 

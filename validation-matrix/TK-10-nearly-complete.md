@@ -96,7 +96,7 @@ If contributions are NOT shown below → `fleet_request_input()`. Do NOT proceed
 - **security:** auth, validation, dep audit
 
 ## WHAT TO DO NOW
-Execute the confirmed plan. Your task data and contributions are pre-embedded above. `fleet_task_accept()` then implement. fleet_read_context() only to load a different task.
+Implementation done. Run tests. Prepare for `fleet_task_complete()`.
 
 ## WHAT HAPPENS WHEN YOU ACT
 - `fleet_commit()` → git + event + trail (one logical change per commit)

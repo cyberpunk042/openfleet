@@ -15,7 +15,14 @@ Agent: software-engineer
 Role: software-engineer
 Fleet: 9/10 online | Mode: full-autonomous | Phase: execution | Backend: claude
 
-## ASSIGNED TASKS (1)
+## PO DIRECTIVES
+None.
+
+## MESSAGES
+None.
+
+## ASSIGNED TASKS
+1 task(s):
 
 ### Add fleet health dashboard
 - ID: task-a1b
@@ -31,10 +38,12 @@ Fleet: 9/10 online | Mode: full-autonomous | Phase: execution | Backend: claude
 - Description: Dashboard with agent grid, task pipeline, storm, budget
 
 ## ROLE DATA
-- my_tasks_count: 1
-### contribution_tasks (0)
-- contributions_received: {'task-a1b': [{'type': 'design_input', 'from': 'architect', 'status': 'done'}, {'type': 'qa_test_definition', 'from': 'qa-engineer', 'status': 'done'}]}
-### in_review (0)
+**My tasks:** 1
+**Contribution tasks:** 0
+**Contributions received:** 2
+- design_input (architect, done)
+- qa_test_definition (qa-engineer, done)
+**In review:** 0
 
 ## STANDING ORDERS (authority: conservative)
 Escalation threshold: 2 autonomous actions without feedback.
@@ -42,6 +51,9 @@ Escalation threshold: 2 autonomous actions without feedback.
 - **work-assigned-tasks**: Execute confirmed plans on assigned tasks
   When: assigned task in work stage
   Boundary: Must follow confirmed plan. No scope addition. Consume contributions.
+
+## EVENTS SINCE LAST HEARTBEAT
+None.
 
 ```
 

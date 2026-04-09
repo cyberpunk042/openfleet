@@ -14,17 +14,23 @@ Agent: project-manager
 Role: project-manager
 Fleet: 9/10 online | Mode: full-autonomous | Phase: execution | Backend: claude
 
-## ASSIGNED TASKS: None
+## PO DIRECTIVES
+None.
+
+## MESSAGES
+None.
+
+## ASSIGNED TASKS
+None.
 
 ## ROLE DATA
-- unassigned_tasks: 3
-### unassigned_details (3)
-  - {'id': 'task-un1', 'title': 'Investigate memory leak in orchestrator', 'priority': 'high'}
-  - {'id': 'task-un2', 'title': 'Add changelog generation to writer CRON', 'priority': 'medium'}
-  - {'id': 'task-un3', 'title': 'Update fleet-identity config for beta', 'priority': 'low'}
-- blocked_tasks: 1
-- progress: 12/25 done (48%)
-- inbox_count: 5
+**Unassigned tasks:** 3
+- task-un1: Investigate memory leak in orchestrator (high)
+- task-un2: Add changelog generation to writer CRON (medium)
+- task-un3: Update fleet-identity config for beta (low)
+**Blocked tasks:** 1
+**Progress:** 12/25 done (48%)
+**Inbox:** 5
 
 ## STANDING ORDERS (authority: standard)
 Escalation threshold: 2 autonomous actions without feedback.
@@ -38,6 +44,9 @@ Escalation threshold: 2 autonomous actions without feedback.
 - **po-routing**: Route gate requests and escalations to PO
   When: task at readiness 90%, phase advance request, unresolvable blocker
   Boundary: Cannot approve gates. PO approval required.
+
+## EVENTS SINCE LAST HEARTBEAT
+None.
 
 ```
 

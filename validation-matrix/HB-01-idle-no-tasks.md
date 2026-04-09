@@ -15,7 +15,14 @@ Agent: software-engineer
 Role: software-engineer
 Fleet: 8/10 online | Mode: full-autonomous | Phase: execution | Backend: claude
 
-## ASSIGNED TASKS: None
+## PO DIRECTIVES
+None.
+
+## MESSAGES
+None.
+
+## ASSIGNED TASKS
+None.
 
 ## STANDING ORDERS (authority: conservative)
 Escalation threshold: 2 autonomous actions without feedback.
@@ -23,6 +30,9 @@ Escalation threshold: 2 autonomous actions without feedback.
 - **work-assigned-tasks**: Execute confirmed plans on assigned tasks
   When: assigned task in work stage
   Boundary: Must follow confirmed plan. No scope addition. Consume contributions.
+
+## EVENTS SINCE LAST HEARTBEAT
+None.
 
 ```
 

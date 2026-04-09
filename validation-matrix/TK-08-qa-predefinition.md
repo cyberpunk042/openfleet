@@ -22,13 +22,19 @@
 ## VERBATIM REQUIREMENT
 > Define structured TC-XXX test criteria for the fleet health dashboard story
 
+## CONTRIBUTION TASK
+**Type:** qa_test_definition
+**Target task:** task-a1b
+
+Call `fleet_contribute()` when your contribution is ready.
+
 ## Current Stage: REASONING
 
 You are in the reasoning protocol. Plan your approach.
 
 ### What you MUST do:
 - Decide on an approach based on requirements + analysis + investigation
-- Produce an implementation plan
+- Produce a qa_test_definition: TC-XXX structured test criteria with priority and type
 - The plan MUST reference the verbatim requirement explicitly
 - Specify target files and components
 - Map acceptance criteria to specific implementation steps
@@ -39,7 +45,7 @@ You are in the reasoning protocol. Plan your approach.
 - Do NOT call fleet_task_complete
 
 ### What you CAN produce:
-- Implementation plans with specific file/component references
+- QA test definitions structured as TC-XXX with priority and type
 - Design decisions with justification
 - Task breakdown (subtasks if needed via fleet_task_create)
 - Acceptance criteria mapping
@@ -58,7 +64,7 @@ Your job is to PLAN, not to execute.
 *(No contributions required.)*
 
 ## WHAT TO DO NOW
-Produce a plan that REFERENCES the verbatim requirement above. Specify target files and acceptance criteria mapping.
+Produce a plan. Reference the verbatim requirement explicitly. Use `fleet_task_accept()` to submit the plan for PO confirmation.
 
 ## WHAT HAPPENS WHEN YOU ACT
 - `fleet_artifact_create/update()` → Plane HTML + completeness check

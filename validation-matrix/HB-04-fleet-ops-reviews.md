@@ -14,18 +14,23 @@ Agent: fleet-ops
 Role: fleet-ops
 Fleet: 10/10 online | Mode: full-autonomous | Phase: execution | Backend: claude
 
-## ASSIGNED TASKS: None
+## PO DIRECTIVES
+None.
+
+## MESSAGES
+None.
+
+## ASSIGNED TASKS
+None.
 
 ## ROLE DATA
-- pending_approvals: 2
-### approval_details (2)
-  - {'id': 'appr-001', 'task_id': 'task-abc1', 'status': 'pending'}
-  - {'id': 'appr-002', 'task_id': 'task-def2', 'status': 'pending'}
-### review_queue (2)
-  - {'id': 'task-abc1', 'title': 'Add fleet health dashboard', 'agent': 'software-engineer'}
-  - {'id': 'task-def2', 'title': 'Fix orchestrator stage bug', 'agent': 'devops'}
-### offline_agents (1)
-  - ux-designer
+**Pending approvals:** 2
+- appr-001: task task-abc1 (pending)
+- appr-002: task task-def2 (pending)
+**Review queue:** 2
+- task-abc1: Add fleet health dashboard (software-engineer)
+- task-def2: Fix orchestrator stage bug (devops)
+**Offline agents:** ux-designer
 
 ## STANDING ORDERS (authority: standard)
 Escalation threshold: 2 autonomous actions without feedback.
@@ -36,6 +41,9 @@ Escalation threshold: 2 autonomous actions without feedback.
 - **board-health**: Monitor board health, flag issues
   When: heartbeat — continuous monitoring
   Boundary: Cannot reassign tasks. Cannot escalate to PO directly (route via PM).
+
+## EVENTS SINCE LAST HEARTBEAT
+None.
 
 ```
 

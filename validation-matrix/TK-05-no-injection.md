@@ -65,7 +65,7 @@ Required contributions (received content appears below if delivered):
 If contributions are NOT shown below → `fleet_request_input()`. Do NOT proceed without required contributions in work stage.
 
 ## WHAT TO DO NOW
-Execute the confirmed plan. Your task data and contributions are pre-embedded above. `fleet_task_accept()` then implement. fleet_read_context() only to load a different task.
+Starting work. `fleet_task_accept()` with your plan first, then implement.
 
 ## WHAT HAPPENS WHEN YOU ACT
 - `fleet_commit()` → git + event + trail (one logical change per commit)
