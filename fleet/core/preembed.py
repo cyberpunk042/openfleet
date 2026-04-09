@@ -12,8 +12,11 @@ files can be used. No practical limit on total pre-embedded data.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from fleet.core.models import Task, TaskStatus
+
+if TYPE_CHECKING:
+    from fleet.core.tier_renderer import TierRenderer
 
 
 def format_events(events: list[dict], limit: int = 10) -> str:
@@ -231,6 +234,7 @@ def build_heartbeat_preembed(
     fleet_backend: str = "",
     agents_online: int = 0,
     agents_total: int = 0,
+    renderer: Optional["TierRenderer"] = None,
 ) -> str:
     """Build FULL heartbeat pre-embed.
 
@@ -286,19 +290,19 @@ def build_heartbeat_preembed(
 
     # Role-specific data (FULL)
     if role_data:
-        lines.append("## ROLE DATA")
-        for key, value in role_data.items():
-            if isinstance(value, list):
-                lines.append(f"### {key} ({len(value)})")
-                for item in value:
-                    if isinstance(item, dict):
+        if renderer:
+            lines.append(renderer.format_role_data(role, role_data))
+        else:
+            lines.append("## ROLE DATA")
+            for key, value in role_data.items():
+                if isinstance(value, list):
+                    lines.append(f"### {key} ({len(value)})")
+                    for item in value:
                         lines.append(f"  - {item}")
-                    else:
-                        lines.append(f"  - {item}")
-            elif isinstance(value, (int, float)):
-                lines.append(f"- {key}: {value}")
-            else:
-                lines.append(f"- {key}: {value}")
+                elif isinstance(value, (int, float)):
+                    lines.append(f"- {key}: {value}")
+                else:
+                    lines.append(f"- {key}: {value}")
         lines.append("")
 
     # Standing orders (autonomous authority)
@@ -321,7 +325,10 @@ def build_heartbeat_preembed(
             pass
 
     # Events
-    if events:
+    if renderer:
+        lines.append(renderer.format_events(events or []))
+        lines.append("")
+    elif events:
         lines.append("## EVENTS SINCE LAST HEARTBEAT")
         lines.append(format_events(events))
         lines.append("")

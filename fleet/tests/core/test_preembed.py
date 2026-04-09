@@ -208,3 +208,48 @@ class TestHeartbeatPreembed:
         assert "Full message content not truncated" in text
         assert "Full directive content" in text
         assert "Full event" in text
+
+
+class TestHeartbeatWithRenderer:
+    def test_role_data_formatted_via_renderer(self):
+        """Heartbeat uses renderer for role data — no raw dicts."""
+        from fleet.core.tier_renderer import TierRenderer
+        renderer = TierRenderer("expert")
+        text = build_heartbeat_preembed(
+            agent_name="fleet-ops",
+            role="fleet-ops",
+            assigned_tasks=[],
+            role_data={
+                "pending_approvals": 2,
+                "approval_details": [
+                    {"id": "appr-001", "task_id": "task-abc1", "status": "pending"},
+                ],
+                "review_queue": [
+                    {"id": "task-abc1", "title": "Add dashboard", "agent": "software-engineer"},
+                ],
+                "offline_agents": [],
+            },
+            renderer=renderer,
+        )
+        assert "{'id'" not in text, "Raw dict still present in heartbeat output"
+        assert "appr-001" in text
+        assert "Add dashboard" in text
+
+    def test_events_always_present_with_renderer(self):
+        """A5: Events section always present even when empty."""
+        from fleet.core.tier_renderer import TierRenderer
+        renderer = TierRenderer("expert")
+        text = build_heartbeat_preembed(
+            agent_name="fleet-ops", role="fleet-ops",
+            assigned_tasks=[], renderer=renderer,
+        )
+        assert "EVENTS SINCE LAST HEARTBEAT" in text
+        assert "None." in text
+
+    def test_backward_compat_no_renderer(self):
+        """Existing code without renderer param still works."""
+        text = build_heartbeat_preembed(
+            agent_name="fleet-ops", role="fleet-ops",
+            assigned_tasks=[],
+        )
+        assert "HEARTBEAT CONTEXT" in text
