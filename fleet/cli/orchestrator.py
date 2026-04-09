@@ -865,7 +865,12 @@ async def _process_directives(
     state: OrchestratorState,
     dry_run: bool,
 ) -> None:
-    """Process PO directives from board memory."""
+    """Process PO directives and gate responses from board memory.
+
+    Handles two types:
+    1. PO directives → route to target agent via context
+    2. PO gate responses → auto-advance task readiness (deterministic bypass)
+    """
     try:
         memory = await mc.list_memory(board_id, limit=20)
         directives = parse_directives(memory)
@@ -890,6 +895,92 @@ async def _process_directives(
                 f"[directive] {urgency}{directive.source} → {target}: "
                 f"{directive.content[:80]}",
             )
+
+        # Deterministic bypass: auto-process PO gate responses
+        # When PO posts to board memory with [gate, approved] + task reference,
+        # the brain advances readiness to 99 without needing PM to notice and process.
+        for entry in memory:
+            tags = entry.tags if hasattr(entry, 'tags') else entry.get('tags', [])
+            content = entry.content if hasattr(entry, 'content') else entry.get('content', '')
+            source = entry.source if hasattr(entry, 'source') else entry.get('source', '')
+
+            if source != "human":
+                continue
+            if "gate" not in tags:
+                continue
+            if "processed" in tags:
+                continue
+
+            # PO gate response — check for approval or rejection
+            content_lower = content.lower()
+            is_approved = "approved" in tags or "approve" in content_lower or "confirmed" in content_lower
+            is_rejected = "rejected" in tags or "reject" in content_lower or "regress" in content_lower
+
+            if not is_approved and not is_rejected:
+                continue
+
+            # Find the task referenced in the gate response
+            import re
+            task_refs = re.findall(r'task[:\s]*([a-f0-9]{8})', content_lower)
+            if not task_refs:
+                continue
+
+            task_short_id = task_refs[0]
+
+            if dry_run:
+                action = "approve" if is_approved else "reject"
+                state.notes.append(f"Gate response [dry_run]: WOULD {action} task {task_short_id}")
+                continue
+
+            try:
+                # Find the full task ID
+                all_tasks = await mc.list_tasks(board_id)
+                target_task = next(
+                    (t for t in all_tasks if t.id.startswith(task_short_id)),
+                    None,
+                )
+                if not target_task:
+                    continue
+
+                if is_approved:
+                    # Advance readiness to 99 — task can now dispatch to work stage
+                    await mc.update_task(
+                        board_id, target_task.id,
+                        custom_fields={"task_readiness": 99},
+                    )
+                    state.notes.append(
+                        f"Gate auto-approved: {target_task.title[:30]} → readiness 99"
+                    )
+                    await _notify(irc, "#fleet",
+                        f"[brain] PO gate approved: {target_task.title[:40]} → readiness 99")
+
+                    # Record trail
+                    try:
+                        from fleet.core.trail_recorder import TrailRecorder, TrailEvent, TrailEventType
+                        recorder = TrailRecorder(mc, board_id)
+                        await recorder.record(TrailEvent(
+                            event_type=TrailEventType.GATE_DECIDED,
+                            task_id=target_task.id,
+                            agent="brain",
+                            details={"decision": "approved", "source": "PO"},
+                        ))
+                    except Exception:
+                        pass
+
+                elif is_rejected:
+                    # Regress readiness — PO rejected the gate
+                    await mc.update_task(
+                        board_id, target_task.id,
+                        custom_fields={"task_readiness": 80},
+                    )
+                    state.notes.append(
+                        f"Gate auto-rejected: {target_task.title[:30]} → readiness 80 (needs more work)"
+                    )
+                    await _notify(irc, "#fleet",
+                        f"[brain] PO gate rejected: {target_task.title[:40]} → readiness 80")
+
+            except Exception as e:
+                state.errors.append(f"Gate response processing: {e}")
 
     except Exception as exc:
         state.errors.append(f"Directive processing error: {exc}")
@@ -1378,6 +1469,27 @@ async def _dispatch_ready_tasks(
         state.errors.append(f"Contribution gate check failed: {e}")
 
     all_inbox = [t for t in all_inbox if t.id not in contribution_blocked]
+
+    # Phase gate check — block tasks at phase gates that require PO approval
+    phase_blocked = set()
+    try:
+        from fleet.core.phases import is_phase_gate
+        for t in all_inbox:
+            cf = t.custom_fields
+            phase = cf.delivery_phase or ""
+            progression = cf.phase_progression or "standard"
+            if phase and is_phase_gate(phase, progression):
+                # Task is at a phase gate — check if PO approved
+                # PO approval is indicated by readiness >= 99 (PO confirms)
+                if (cf.task_readiness or 0) < 99:
+                    phase_blocked.add(t.id)
+                    state.notes.append(
+                        f"Phase gate: {t.title[:30]} at {phase} — PO approval required (readiness={cf.task_readiness})"
+                    )
+    except Exception as e:
+        state.errors.append(f"Phase gate check failed: {e}")
+
+    all_inbox = [t for t in all_inbox if t.id not in phase_blocked]
 
     # Auto-set task_stage on each task based on readiness + task_type + verbatim.
     # This is the bridge between the PO setting readiness and the agent seeing

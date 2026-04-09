@@ -3,42 +3,101 @@
 # This config drives agent_lifecycle.py behavior.
 # Each role gets tuned thresholds for sleep/wake transitions.
 #
-# Rectified 2026-04-01: No DROWSY state. After 1 HEARTBEAT_OK the brain
-# takes over evaluation (silent heartbeat). Cron never stops.
 # States: ACTIVE → IDLE → SLEEPING → OFFLINE
+# After 1 HEARTBEAT_OK the brain takes over evaluation (silent heartbeat).
+# Cron never stops — brain intercepts for free.
+#
+# PO directive: "fine tune the timing for the sleep and offline and
+# silent heartbeat and all the reasoning and real logical settings
+# for a proficient autonomous fleet"
 
 defaults:
   idle_after_heartbeat_ok: 1       # 1 HEARTBEAT_OK → brain takes over (silent)
-  sleeping_after_seconds: 1800     # 30 min idle → SLEEPING (longer cron interval)
+  sleeping_after_seconds: 1800     # 30 min idle → SLEEPING
   offline_after_seconds: 14400     # 4 hours sleeping → OFFLINE
+
+# ─── Per-Role Overrides ────────────────────────────────────────────────
+#
+# Drivers (PM, fleet-ops) need fast response — shorter sleep, faster wake.
+# Contributors (architect, devsecops, QA) need medium response — moderate timing.
+# Workers (engineer, devops, writer, UX) are task-driven — standard timing.
+# Accountability is periodic — longest intervals.
 
 overrides:
   project-manager:
+    sleeping_after_seconds: 900     # 15 min — PM must be responsive to triage
+    offline_after_seconds: 7200     # 2 hours — PM shouldn't sleep long
     wake_triggers:
       - unassigned_inbox           # always wake for unassigned tasks
       - po_directive               # PO commands are highest priority
       - blocked_task               # PM resolves blockers
+      - gate_response              # PO responded to a gate
 
   fleet-ops:
+    sleeping_after_seconds: 1200    # 20 min — reviews should be processed quickly
+    offline_after_seconds: 7200     # 2 hours — stale reviews block the fleet
     wake_triggers:
       - pending_approval           # core job: review work
       - security_alert             # security is urgent
       - storm_warning              # storm needs attention
       - health_alert               # fleet health issues
 
+  architect:
+    sleeping_after_seconds: 1800    # 30 min — design work isn't urgent
+    offline_after_seconds: 10800    # 3 hours — but shouldn't go dark too long
+    wake_triggers:
+      - design_review_needed       # tasks needing architecture input
+      - high_complexity_task       # complex tasks need architect
+      - po_directive
+
   devsecops-expert:
+    sleeping_after_seconds: 1200    # 20 min — security must be responsive
+    offline_after_seconds: 7200     # 2 hours — security can't go dark
     wake_triggers:
       - security_alert             # immediate
       - pr_created                 # review every PR for security
       - dependency_vulnerability   # CVE alerts
       - crisis_mode                # crisis = devsecops active
 
-  architect:
+  software-engineer:
+    sleeping_after_seconds: 1800    # 30 min — standard, task-driven
+    offline_after_seconds: 14400    # 4 hours — wakes when tasks assigned
     wake_triggers:
-      - design_review_needed       # tasks needing architecture input
-      - high_complexity_task       # complex tasks need architect
-      - po_directive
+      - task_assigned              # dispatched work
+      - review_feedback            # fleet-ops gave feedback
 
-  # All other agents (workers) use defaults
-  # Workers are dispatched TO — they don't need fast wake
-  # They wake when tasks are assigned, which the orchestrator handles
+  qa-engineer:
+    sleeping_after_seconds: 1800    # 30 min — standard
+    offline_after_seconds: 14400    # 4 hours
+    wake_triggers:
+      - contribution_task          # QA test predefinition needed
+      - review_task                # validation during review
+
+  devops:
+    sleeping_after_seconds: 2400    # 40 min — infra tasks less frequent
+    offline_after_seconds: 14400    # 4 hours
+    wake_triggers:
+      - task_assigned
+      - infrastructure_alert       # service down
+
+  technical-writer:
+    sleeping_after_seconds: 3600    # 60 min — docs aren't urgent
+    offline_after_seconds: 21600    # 6 hours — proactive but not fast
+    wake_triggers:
+      - contribution_task          # documentation outline needed
+      - task_assigned
+      - staleness_detected         # proactive scan found stale docs
+
+  ux-designer:
+    sleeping_after_seconds: 3600    # 60 min — UX contributions are planned
+    offline_after_seconds: 21600    # 6 hours
+    wake_triggers:
+      - contribution_task          # UX spec needed
+      - task_assigned
+
+  accountability-generator:
+    sleeping_after_seconds: 3600    # 60 min — periodic compliance work
+    offline_after_seconds: 28800    # 8 hours — longest intervals, sprint-boundary work
+    wake_triggers:
+      - sprint_boundary            # compliance report due
+      - compliance_pattern         # immune system flagged a pattern

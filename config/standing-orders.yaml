@@ -122,16 +122,25 @@ devops:
       # PO REVIEW: should devops auto-restart crashed services?
 
 technical-writer:
-  authority_level: conservative
+  authority_level: standard     # Raised from conservative — writer must be proactive
   standing_orders:
     - name: documentation-contribution
       description: "Provide documentation outlines when contribution tasks are assigned"
       when: "documentation_outline contribution task assigned"
       authority: "Can read tasks, produce outlines, contribute"
       boundary: "Outline only during contribution. Full docs during own tasks."
-    # In full-autonomous mode with Plane connected, authority_level
-    # should be raised to 'autonomous' for proactive page maintenance.
-    # PO REVIEW: when should writer be autonomous?
+
+    - name: proactive-staleness-scan
+      description: "Detect and flag stale or missing documentation"
+      when: "heartbeat — scan completed features for missing/stale docs"
+      authority: "Can run writer_staleness_scan, post findings to board memory, flag PM"
+      boundary: "Flag and report only. Do not create or update without task assignment."
+
+    - name: plane-page-maintenance
+      description: "Keep Plane pages up to date when connected"
+      when: "Plane connected and features completed without doc updates"
+      authority: "Can update Plane pages, commit doc changes, post to board memory"
+      boundary: "Only documented systems. New systems need PM to create the task first."
 
 ux-designer:
   authority_level: conservative

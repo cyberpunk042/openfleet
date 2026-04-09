@@ -69,12 +69,16 @@ def format_complete(
 
     lines.append(f"\n### Summary\n{summary}")
 
+    # Trainee warning — visible BEFORE labor table if non-expert model produced this
+    if labor_stamp and labor_stamp.trainee_warning:
+        lines.append(f"\n{labor_stamp.trainee_warning}\n")
+
     # Labor attribution — provenance of the work
     if labor_stamp:
         lines.append(_format_labor_table(labor_stamp))
 
-    stamp_label = labor_stamp.short_label if labor_stamp else "unknown"
-    lines.append(f"\n---\n<sub>{agent_name} \u00b7 {stamp_label}</sub>")
+    stamp_label = labor_stamp.provenance_line if labor_stamp else "unknown"
+    lines.append(f"\n---\n<sub>{stamp_label}</sub>")
 
     return "\n".join(lines)
 
@@ -144,5 +148,7 @@ def _format_labor_table(stamp: "LaborStamp") -> str:
         lines.append(f"| **Skills** | {skills} |")
     if stamp.iteration > 1:
         lines.append(f"| **Iteration** | {stamp.iteration} |")
+    if stamp.is_trainee:
+        lines.append(f"| **⚠️ Trainee** | This output requires extra review scrutiny |")
 
     return "\n".join(lines)

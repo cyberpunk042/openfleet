@@ -1995,6 +1995,17 @@ def register_tools(server: FastMCP) -> None:
             except Exception:
                 pass
 
+            # Increment labor_iteration — next attempt gets escalated effort
+            # This feeds into detect_cascading_fix (3+ iterations → prune)
+            # and effort escalation (rejection_count → higher effort)
+            current_iteration = 1
+            try:
+                t = await ctx.mc.get_task(board_id, resolved_task_id)
+                current_iteration = t.custom_fields.labor_iteration or 1
+            except Exception:
+                pass
+            next_iteration = current_iteration + 1
+
             # Move review → inbox (rework) with readiness/stage regression
             try:
                 await ctx.mc.update_task(
@@ -2004,11 +2015,13 @@ def register_tools(server: FastMCP) -> None:
                     custom_fields={
                         "task_readiness": regressed_readiness,
                         "task_stage": regressed_stage,
+                        "labor_iteration": next_iteration,
                     },
                 )
                 result["task_status"] = "inbox (rework)"
                 result["regressed_readiness"] = regressed_readiness
                 result["regressed_stage"] = regressed_stage
+                result["iteration"] = next_iteration
             except Exception as e:
                 result["transition_error"] = str(e)
 

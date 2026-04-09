@@ -22,6 +22,8 @@ Knowledge pages organized by domain.
 - [Chain/Bus Architecture Audit](architecture/chain-bus-audit.md) — E002 Phase 0: 16 chain builders, 11 wired to MCP, cross-task propagation gap
 - [Brain (Orchestrator) Audit](architecture/brain-audit.md) — E003 Phase 0: 13-step cycle, Layer 1 implemented, Layers 2-3 not built, key gap is contribution wiring
 - [Context Strategy Design](architecture/context-strategy-design.md) — E003: progressive response to context limits (70→80→90→95%), rate limit, fleet math
+- [Effort Escalation Design](architecture/effort-escalation-design.md) — E003: 10-factor adaptive model/effort, budget caps, rate limit pressure
+- [Deterministic Bypass Design](architecture/deterministic-bypass-design.md) — E003: ops without Claude ($0), PO gate auto-processing
 
 ## Planning
 - [Path-to-Live Reconciliation](planning/path-to-live-reconciliation.md) — 24 steps mapped to 17 epics, ~52% of path-to-live, ~28% of full vision

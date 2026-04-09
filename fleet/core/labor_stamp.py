@@ -100,14 +100,81 @@ class LaborStamp:
             )
 
     @property
+    def is_trainee(self) -> bool:
+        """Whether this artifact was produced by a trainee-tier model.
+
+        Trainee work needs extra review scrutiny. Fleet-ops should know
+        this during the 7-step review — it affects confidence in the output.
+        PO directive: "flagged as trainee's work like any other variant
+        in what was used to generate the artifacts."
+        """
+        return self.confidence_tier in ("trainee", "community")
+
+    @property
     def requires_challenge(self) -> bool:
         """Whether this tier requires adversarial challenge before approval."""
         return self.confidence_tier in ("trainee", "community", "hybrid")
 
     @property
+    def trainee_warning(self) -> str:
+        """Warning text for trainee-produced artifacts. Empty for expert/standard."""
+        if not self.is_trainee:
+            return ""
+        if self.confidence_tier == "trainee":
+            return f"⚠️ TRAINEE OUTPUT — produced by {self.model} (LocalAI). Requires extra review scrutiny."
+        if self.confidence_tier == "community":
+            return f"⚠️ COMMUNITY OUTPUT — produced by {self.model} (free tier). Must verify correctness."
+        return ""
+
+    @property
     def short_label(self) -> str:
         """Short label for footers: 'opus-4-6 · expert'."""
         return f"{self.model} · {self.confidence_tier}"
+
+    @property
+    def provenance_line(self) -> str:
+        """One-line provenance for PR bodies, comments, and IRC.
+
+        Shows: agent · model · tier · effort. Trainee gets warning prefix.
+        """
+        prefix = "⚠️ " if self.is_trainee else ""
+        return f"{prefix}{self.agent_name} · {self.model} · {self.confidence_tier} · effort:{self.effort}"
+
+    @property
+    def full_signature(self) -> str:
+        """Full signature with all metrics for detailed transparency.
+
+        PO directive: "all the detail about the effort, context size,
+        consumed and etc.... this way we use the agent identity and all
+        his metrics and settings to actually generate transparency."
+        """
+        parts = [
+            f"Agent: {self.agent_name}",
+            f"Model: {self.model} ({self.confidence_tier})",
+            f"Backend: {self.backend}",
+            f"Effort: {self.effort}",
+        ]
+        if self.duration_seconds:
+            mins = self.duration_seconds // 60
+            secs = self.duration_seconds % 60
+            parts.append(f"Duration: {mins}m{secs}s")
+        if self.estimated_tokens:
+            parts.append(f"Tokens: ~{self.estimated_tokens:,}")
+        if self.estimated_cost_usd:
+            parts.append(f"Cost: ${self.estimated_cost_usd:.4f}")
+        if self.lines_added or self.lines_removed:
+            parts.append(f"Lines: +{self.lines_added}/-{self.lines_removed}")
+        if self.cache_read_tokens:
+            parts.append(f"Cache: {self.cache_read_tokens:,} tokens read")
+        if self.iteration > 1:
+            parts.append(f"Iteration: {self.iteration}")
+        if self.challenge_rounds_survived:
+            parts.append(f"Challenge: {self.challenge_rounds_survived} rounds passed")
+        if self.session_type:
+            parts.append(f"Session: {self.session_type}")
+        if self.fallback_from:
+            parts.append(f"Fallback from: {self.fallback_from}")
+        return " | ".join(parts)
 
     def to_dict(self) -> dict:
         """Serialize for storage in custom fields or events."""

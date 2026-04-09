@@ -172,6 +172,9 @@ roles:
       - skill: fleet-sprint-planning
         source: workspace
         why: "Sprint capacity, contribution tax, velocity tracking, realistic commitment"
+      - skill: fleet-build-order
+        source: workspace
+        why: "Scaffold→Foundation→Infrastructure→Features — the order of building"
     plugin_skills:
       - skill: annotate
         plugin: plannotator
@@ -270,6 +273,9 @@ roles:
       - skill: fleet-design-pattern-selection
         source: workspace
         why: "When each pattern fits/doesn't — selection flows into design_input contributions"
+      - skill: fleet-build-order
+        source: workspace
+        why: "Scaffold→Foundation→Infrastructure→Features — phase-appropriate architecture depth"
     investigation:
       - skill: fleet-option-exploration
         source: workspace
