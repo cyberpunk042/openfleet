@@ -52,7 +52,8 @@
       "Bash(.venv/bin/python -m pytest fleet/tests/core/test_event_chain.py fleet/tests/core/test_chain_runner.py -x -q)",
       "Bash(.venv/bin/python -c ':*)",
       "Edit(/.claude/skills/fleet-threat-modeling/**)",
-      "Edit(/.claude/skills/fleet-phase-testing/**)"
+      "Edit(/.claude/skills/fleet-phase-testing/**)",
+      "WebSearch"
     ]
   }
 }

@@ -178,7 +178,17 @@ def _build_agent_context(agent_dir: Path, config: Dict[str, Any]) -> str:
 
     Order (fleet-elevation/02):
     IDENTITY → SOUL → CLAUDE → TOOLS → AGENTS → context/ → HEARTBEAT
+
+    Limits match the real gateway (OpenArms/OpenClaw):
+      - Per file: 20,000 chars (src/config/schema.help.ts)
+      - Total: 150,000 chars across all bootstrap files
+      - Context files: 20,000 chars each, no limit on count
     """
+    import os
+    MAX_PER_FILE = int(os.environ.get("FLEET_BOOTSTRAP_MAX_PER_FILE", "20000"))
+    MAX_TOTAL = int(os.environ.get("FLEET_BOOTSTRAP_MAX_TOTAL", "150000"))
+    WARN_PER_FILE = int(os.environ.get("FLEET_BOOTSTRAP_WARN_PER_FILE", "8000"))
+    WARN_TOTAL = int(os.environ.get("FLEET_BOOTSTRAP_WARN_TOTAL", "60000"))
     parts = []
 
     # Agent identity from config (fallback if IDENTITY.md not present)
@@ -187,35 +197,57 @@ def _build_agent_context(agent_dir: Path, config: Dict[str, Any]) -> str:
     if mission:
         parts.append(f"You are the {name} agent. Mission: {mission}")
 
+    import logging
+    _log = logging.getLogger("gateway.executor")
+
+    def _read_bootstrap(path: Path, label: str) -> str:
+        content = path.read_text(errors="replace")
+        if len(content) > WARN_PER_FILE:
+            _log.warning(
+                "Agent %s %s is %d chars (warn: %d, cap: %d). "
+                "Bloated files degrade focus — use skills/context for per-case detail.",
+                agent_dir.name, label, len(content), WARN_PER_FILE, MAX_PER_FILE,
+            )
+        return content[:MAX_PER_FILE]
+
     # Layer 1-2: Identity and values (grounding + boundaries)
     for identity_file in ("IDENTITY.md", "SOUL.md"):
         path = agent_dir / identity_file
         if path.exists():
-            parts.append(path.read_text(errors="replace")[:4000])
+            parts.append(_read_bootstrap(path, identity_file))
 
     # Layer 3: Role-specific rules
     claude_md = agent_dir / "CLAUDE.md"
     if claude_md.exists():
-        parts.append(claude_md.read_text(errors="replace")[:4000])
+        parts.append(_read_bootstrap(claude_md, "CLAUDE.md"))
 
     # Layer 4-5: Capabilities and team knowledge
     for knowledge_file in ("TOOLS.md", "AGENTS.md"):
         path = agent_dir / knowledge_file
         if path.exists():
-            parts.append(path.read_text(errors="replace")[:4000])
+            parts.append(_read_bootstrap(path, knowledge_file))
 
     # Layer 6-7: Dynamic context — FULL data, not compressed.
-    # Each file can be up to 8000 chars. No limit on number of files.
     context_dir = agent_dir / "context"
     if context_dir.exists():
         for f in sorted(context_dir.iterdir()):
             if f.is_file() and f.suffix in (".md", ".txt", ".yaml", ".json"):
-                content = f.read_text(errors="replace")[:8000]
+                content = f.read_text(errors="replace")[:MAX_PER_FILE]
                 parts.append(f"Context ({f.name}):\n{content}")
 
     # Layer 8: Action protocol (last — drives immediate behavior)
     heartbeat_md = agent_dir / "HEARTBEAT.md"
     if heartbeat_md.exists():
-        parts.append(heartbeat_md.read_text(errors="replace")[:4000])
+        parts.append(_read_bootstrap(heartbeat_md, "HEARTBEAT.md"))
 
-    return "\n\n".join(parts) if parts else ""
+    # Enforce total limit with warnings
+    result = "\n\n".join(parts) if parts else ""
+    import logging
+    _log = logging.getLogger("gateway.executor")
+    if len(result) > WARN_TOTAL:
+        _log.warning(
+            "Agent %s bootstrap total %d chars exceeds warning threshold %d. "
+            "Consider reducing file sizes — focused agents perform better than bloated ones.",
+            agent_dir.name, len(result), WARN_TOTAL,
+        )
+    return result[:MAX_TOTAL]

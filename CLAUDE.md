@@ -223,25 +223,42 @@ fleet plane list-projects  # List Plane projects
 5. **Standards first** — conventional commits, changelogs, good patterns
 6. **Local-first** — LocalAI for routine, Claude for complex (AICP mission)
 
-## Documentation (Start Here)
+## Documentation — 3 Layers
 
+### Wiki (LLM-friendly, start here for planning)
+- **Backlog**: `wiki/backlog/_index.md` — 17 epics (E001-E017), modules, tasks
+- **Log**: `wiki/log/` — PO directives verbatim, chronological, sacrosanct
+- **Domains**: `wiki/domains/` — knowledge pages by domain
+- Pattern: LLM wiki (Karpathy) — YAML frontmatter, typed relationships, status lifecycle
+- Feeds into: `../devops-solutions-research-wiki` (cross-project second brain)
+
+### Docs (front-facing, architecture and systems)
 - **Navigation**: `docs/README.md` — master index for ~100 docs, 5-layer hierarchy
 - **Architecture**: `docs/ARCHITECTURE.md` — 20 systems, how they relate
 - **Integration**: `docs/INTEGRATION.md` — 12 cross-system data flows
 - **Spec vs Code**: `docs/SPEC-TO-CODE.md` — 69 specs mapped to 94 modules
-- **Work Backlog**: `docs/WORK-BACKLOG.md` — 31 prioritized items
 - **System Docs**: `docs/systems/01-22` — per-system reference (10,283 lines)
-- **Milestones**: `docs/milestones/active/MASTER-INDEX.md` — 255 milestones, honest status
+- **Milestones**: `docs/milestones/active/MASTER-INDEX.md` — 255 milestones
+
+### Code docs (inner, in the code)
+- Module docstrings, type hints, inline comments
+- Lives with the code it documents
 
 ## Config
 
 - **Agent tooling**: `config/agent-tooling.yaml` — per-role MCP/plugins/skills
 - **Agent autonomy**: `config/agent-autonomy.yaml` — per-role lifecycle thresholds
 - **Phases**: `config/phases.yaml` — PO-defined delivery phases
-- **Skills**: `config/skill-assignments.yaml` — skill → agent mapping
+- **Skills**: `config/skill-stage-mapping.yaml` — skills → methodology stages × roles
+- **CRONs**: `config/agent-crons.yaml` — 17 scheduled operations
+- **Standing orders**: `config/standing-orders.yaml` — per-role autonomous authority
+- **Hooks**: `config/agent-hooks.yaml` — structural enforcement per role
+- **Synergy matrix**: `config/synergy-matrix.yaml` — contribution requirements
 
 ## Related
 
+- **Research Wiki**: `../devops-solutions-research-wiki` — LLM wiki second brain (cross-project)
+- **OpenArms**: `../openarms` — gateway fork with wiki/backlog pattern
 - **DSPD mission**: `../devops-solution-product-development/config/mission.yaml`
 - **AICP LocalAI**: `../devops-expert-local-ai/CLAUDE.md`
 - **Strategic vision**: `docs/milestones/active/strategic-vision-localai-independence.md`
