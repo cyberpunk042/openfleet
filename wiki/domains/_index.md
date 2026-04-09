@@ -21,6 +21,7 @@ Knowledge pages organized by domain.
 - [Navigator Intent Expansion](architecture/navigator-intent-expansion.md) — 19 new intents designed, pack skills + sub-agents for all 52 intents
 - [Chain/Bus Architecture Audit](architecture/chain-bus-audit.md) — E002 Phase 0: 16 chain builders, 11 wired to MCP, cross-task propagation gap
 - [Brain (Orchestrator) Audit](architecture/brain-audit.md) — E003 Phase 0: 13-step cycle, Layer 1 implemented, Layers 2-3 not built, key gap is contribution wiring
+- [Context Strategy Design](architecture/context-strategy-design.md) — E003: progressive response to context limits (70→80→90→95%), rate limit, fleet math
 
 ## Planning
-- [Path-to-Live Reconciliation](planning/path-to-live-reconciliation.md) — 24 steps mapped to 17 epics: 7 done, 5 partial, 12 remaining (~37%)
+- [Path-to-Live Reconciliation](planning/path-to-live-reconciliation.md) — 24 steps mapped to 17 epics, ~52% of path-to-live, ~28% of full vision

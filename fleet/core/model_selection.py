@@ -44,8 +44,11 @@ def select_model_for_task(
     task: Task,
     agent_name: str = "",
     backend_mode: str = "claude",
+    budget_mode: str = "standard",
+    rate_limit_pct: float = 0.0,
+    rejection_count: int = 0,
 ) -> ModelConfig:
-    """Select model and effort based on task + agent + methodology stage.
+    """Select model and effort based on task + agent + stage + budget + pressure.
 
     Priority:
     1. Backend mode override (localai/hybrid short-circuits all logic below)
@@ -55,6 +58,9 @@ def select_model_for_task(
     5. Agent role (deep reasoning agents get opus on medium+ tasks)
     6. Default: sonnet with medium effort
     7. Stage adjustment: thinking stages raise effort floor
+    8. Budget mode cap: economic/minimal modes cap model tier and effort
+    9. Rate limit pressure: >85% drops effort, >95% blocks
+    10. Rejection escalation: re-attempts get more resource
 
     Returns:
         ModelConfig with model, effort, and reason for the selection.
@@ -89,6 +95,16 @@ def select_model_for_task(
     stage = task.custom_fields.task_stage if task.custom_fields else ""
     if stage:
         config = _apply_stage_adjustment(config, stage)
+
+    # Budget mode cap — economic/minimal modes limit model tier + effort
+    config = _apply_budget_cap(config, budget_mode)
+
+    # Rate limit pressure — conserve when approaching limits
+    config = _apply_rate_limit_pressure(config, rate_limit_pct)
+
+    # Rejection escalation — re-attempts get more cognitive resource
+    if rejection_count > 0:
+        config = _apply_rejection_escalation(config, rejection_count)
 
     return config
 
@@ -134,6 +150,105 @@ def _apply_stage_adjustment(config: ModelConfig, stage: str) -> ModelConfig:
         )
 
     return config
+
+
+# ─── Budget Mode Caps ──────────────────────────────────────────────
+
+# Model tier ordering for cap/escalation
+_MODEL_ORDER = {"haiku": 0, "localai": 0, "sonnet": 1, "opus": 2}
+_MODEL_NAMES = {0: "haiku", 1: "sonnet", 2: "opus"}
+
+# Budget mode → maximum model tier + maximum effort
+_BUDGET_CAPS = {
+    "turbo": {"model_cap": "opus", "effort_cap": "max"},
+    "standard": {"model_cap": "opus", "effort_cap": "high"},
+    "economic": {"model_cap": "sonnet", "effort_cap": "medium"},
+    "minimal": {"model_cap": "haiku", "effort_cap": "low"},
+}
+
+
+def _apply_budget_cap(config: ModelConfig, budget_mode: str) -> ModelConfig:
+    """Cap model tier and effort based on fleet budget mode."""
+    caps = _BUDGET_CAPS.get(budget_mode)
+    if not caps:
+        return config
+
+    model_cap = caps["model_cap"]
+    effort_cap = caps["effort_cap"]
+
+    current_model = _MODEL_ORDER.get(config.model, 1)
+    cap_model = _MODEL_ORDER.get(model_cap, 2)
+
+    current_effort = _EFFORT_ORDER.get(config.effort, 1)
+    cap_effort = _EFFORT_ORDER.get(effort_cap, 2)
+
+    capped_model = config.model
+    capped_effort = config.effort
+    reasons = []
+
+    if current_model > cap_model:
+        capped_model = model_cap
+        reasons.append(f"budget:{budget_mode} caps model to {model_cap}")
+
+    if current_effort > cap_effort:
+        capped_effort = effort_cap
+        reasons.append(f"budget:{budget_mode} caps effort to {effort_cap}")
+
+    if reasons:
+        return ModelConfig(
+            model=capped_model,
+            effort=capped_effort,
+            reason=f"{config.reason} + {' + '.join(reasons)}",
+        )
+
+    return config
+
+
+def _apply_rate_limit_pressure(config: ModelConfig, rate_limit_pct: float) -> ModelConfig:
+    """Reduce effort when rate limit is under pressure."""
+    if rate_limit_pct <= 0:
+        return config  # No data — don't adjust
+
+    if rate_limit_pct >= 95:
+        # Critical — minimum effort
+        return ModelConfig(
+            model=config.model,
+            effort="low",
+            reason=f"{config.reason} + rate_limit:{rate_limit_pct:.0f}% CRITICAL",
+        )
+
+    if rate_limit_pct >= 85:
+        # Conserve — drop effort by one level
+        current = _EFFORT_ORDER.get(config.effort, 1)
+        reduced = max(0, current - 1)
+        effort_name = {0: "low", 1: "medium", 2: "high", 3: "max"}.get(reduced, "medium")
+        return ModelConfig(
+            model=config.model,
+            effort=effort_name,
+            reason=f"{config.reason} + rate_limit:{rate_limit_pct:.0f}% conserving",
+        )
+
+    return config
+
+
+def _apply_rejection_escalation(config: ModelConfig, rejection_count: int) -> ModelConfig:
+    """Escalate effort for re-attempts after rejection.
+
+    When work was rejected, the next attempt gets more cognitive resource.
+    This is the opposite of budget cap — rejection RAISES effort.
+    """
+    if rejection_count <= 0:
+        return config
+
+    current_effort = _EFFORT_ORDER.get(config.effort, 1)
+    escalated = min(3, current_effort + 1)  # Raise by 1 level
+    effort_name = {0: "low", 1: "medium", 2: "high", 3: "max"}.get(escalated, "high")
+
+    return ModelConfig(
+        model=config.model,
+        effort=effort_name,
+        reason=f"{config.reason} + rejection #{rejection_count} → effort escalated",
+    )
 
 
 def _select_unconstrained(task: Task, agent_name: str) -> ModelConfig:

@@ -2370,8 +2370,8 @@ def test_approve_reject_calls_chain_runner():
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def test_progress_emits_readiness_changed_event():
-    """fleet_task_progress at >0% should emit readiness_changed event."""
+def test_progress_emits_progress_changed_event():
+    """fleet_task_progress at >0% should emit progress_changed event."""
     ctx, task = make_mock_ctx()
     events = []
 
@@ -2385,9 +2385,9 @@ def test_progress_emits_readiness_changed_event():
 
             run_async(progress_fn(done="Some work", next_step="More work", progress_pct=30))
 
-            readiness_events = [e for e in events if "readiness_changed" in str(e)]
-            assert len(readiness_events) >= 1, \
-                f"Progress at 30% should emit readiness_changed event. Events: {events}"
+            progress_events = [e for e in events if "progress_changed" in str(e)]
+            assert len(progress_events) >= 1, \
+                f"Progress at 30% should emit progress_changed event. Events: {events}"
 
 
 def test_reject_regresses_stage_to_reasoning():

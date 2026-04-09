@@ -569,7 +569,9 @@ def register_tools(server: FastMCP) -> None:
         try:
             await ctx.mc.post_comment(board_id, ctx.task_id, comment)
 
-            # Update task_progress custom field if provided
+            # Update task_progress (agent-driven work tracking, NOT readiness)
+            # task_readiness = PO-driven dispatch authorization (0-99). Only PM/PO sets this.
+            # task_progress = agent-driven work lifecycle (0-100). Agent updates this.
             if progress_pct > 0:
                 try:
                     await ctx.mc.update_task(
@@ -579,13 +581,13 @@ def register_tools(server: FastMCP) -> None:
                 except Exception:
                     pass
 
-                # Readiness change event (always when progress changes)
+                # Progress change event (distinct from readiness — readiness is PO-driven)
                 _emit_event(
-                    "fleet.methodology.readiness_changed",
+                    "fleet.methodology.progress_changed",
                     subject=ctx.task_id,
                     agent=agent,
                     progress=progress_pct,
-                    tags=["methodology", "readiness"],
+                    tags=["methodology", "progress"],
                 )
 
                 # Strategic checkpoint at 50% — notify PO (informational)

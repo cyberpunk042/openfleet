@@ -38,16 +38,40 @@ def test_large_task_gets_opus():
     assert config.effort == "high"
 
 
-def test_epic_gets_opus_max():
-    config = select_model_for_task(_task(task_type="epic"), "project-manager")
+def test_epic_gets_opus_max_in_turbo():
+    config = select_model_for_task(_task(task_type="epic"), "project-manager", budget_mode="turbo")
     assert config.model == "opus"
     assert config.effort == "max"
+
+
+def test_epic_capped_to_high_in_standard():
+    config = select_model_for_task(_task(task_type="epic"), "project-manager", budget_mode="standard")
+    assert config.model == "opus"
+    assert config.effort == "high"  # standard mode caps effort at high
 
 
 def test_blocker_gets_opus():
     config = select_model_for_task(_task(task_type="blocker"), "devops")
     assert config.model == "opus"
     assert config.effort == "high"
+
+
+def test_economic_mode_caps_model():
+    config = select_model_for_task(_task(sp=8, task_type="story"), "software-engineer", budget_mode="economic")
+    assert config.model == "sonnet"  # economic caps at sonnet
+    assert config.effort == "medium"  # economic caps at medium
+
+
+def test_rate_limit_pressure_reduces_effort():
+    config = select_model_for_task(_task(sp=5), "architect", rate_limit_pct=87.0)
+    # 85%+ rate limit drops effort by one level
+    assert _EFFORT_ORDER[config.effort] < _EFFORT_ORDER["high"]
+
+
+def test_rejection_escalates_effort():
+    config = select_model_for_task(_task(sp=3), "software-engineer", rejection_count=1)
+    # Rejection raises effort by one level from the base selection
+    assert config.effort in ("medium", "high")  # base would be medium or low, escalated
 
 
 def test_medium_story_gets_opus():
@@ -129,9 +153,9 @@ def test_stage_never_lowers_high():
     assert config.effort == "high"
 
 
-def test_epic_max_survives_reasoning():
-    """Epic already at max: reasoning doesn't change it."""
-    config = select_model_for_task(_task(task_type="epic", sp=5, stage="reasoning"), "project-manager")
+def test_epic_max_survives_reasoning_in_turbo():
+    """Epic already at max in turbo: reasoning doesn't change it."""
+    config = select_model_for_task(_task(task_type="epic", sp=5, stage="reasoning"), "project-manager", budget_mode="turbo")
     assert config.effort == "max"
 
 

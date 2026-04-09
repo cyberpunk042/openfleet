@@ -711,3 +711,84 @@ restrictions:
       - executing-plans
       - test-driven-development
     reason: "Reasoning plans the approach — execute after PO confirms"
+
+# ─── Ecosystem Packs — Ready for Deployment ───────────────────────────
+# These packs are identified, evaluated, and per-agent allocated.
+# They deploy through: skill-packs.yaml → OCMC marketplace → agents.
+# When installed, Navigator intent-map.yaml references them.
+# See: wiki/domains/architecture/agent-ecosystem-allocation.md
+
+packs:
+  superpowers:
+    source: "obra/superpowers"
+    status: "configured in agent-tooling.yaml, not installed"
+    agents: [all]
+    skills_count: 30
+    key_skills:
+      - brainstorming          # all conversation/analysis
+      - writing-plans          # all reasoning
+      - test-driven-development # engineer/QA work
+      - systematic-debugging   # all analysis/investigation
+      - verification-before-completion # all work
+      - subagent-driven-development # engineer/QA work
+      - dispatching-parallel-agents # all investigation
+      - preserving-productive-tensions # architect reasoning
+
+  ring:
+    source: "LerianStudio/ring"
+    status: "not installed — needs evaluation"
+    key_skills_per_team:
+      dev-team:
+        agents: [software-engineer, devops, qa-engineer]
+        skills: [dev-implementation, dev-unit-testing, dev-integration-testing, dev-refactor, dev-docker-security, dev-helm, dev-sre]
+        stages: [work]
+      pm-team:
+        agents: [project-manager, architect]
+        skills: [pre-dev-task-breakdown, pre-dev-delivery-planning, pre-dev-api-design, pre-dev-data-model, pre-dev-dependency-map]
+        stages: [reasoning]
+      pmo-team:
+        agents: [project-manager, accountability-generator]
+        skills: [portfolio-planning, project-health-check, delivery-reporting, risk-management]
+        stages: [work, analysis]
+      tw-team:
+        agents: [technical-writer]
+        skills: [writing-api-docs, writing-functional-docs, documentation-review, documentation-structure, voice-and-tone]
+        stages: [work]
+      default-reviewers:
+        agents: [fleet-ops, qa-engineer]
+        skills: [code-reviewer, security-reviewer, test-reviewer, dead-code-reviewer, consequences-reviewer]
+        stages: [work]
+
+  trailofbits:
+    source: "trailofbits/skills-curated"
+    status: "not installed — needs evaluation"
+    agents: [devsecops-expert, software-engineer]
+    key_skills:
+      - openai-security-threat-model   # devsecops analysis
+      - openai-security-ownership-map  # devsecops analysis
+      - openai-security-best-practices # devsecops all
+      - security-awareness             # all agents
+      - python-code-simplifier         # engineer work
+      - scv-scan                       # devsecops investigation
+
+  neolabhq:
+    source: "NeoLabHQ/context-engineering-kit"
+    status: "not installed — needs evaluation"
+    agents: [architect, software-engineer]
+    key_skills:
+      - ddd       # Domain-Driven Design — architect reasoning
+      - sadd      # Software Architecture Design Doc — architect reasoning
+      - sdd       # Software Design Doc — architect reasoning
+      - tdd       # Test-Driven Development — engineer/QA work
+      - kaizen    # Continuous improvement — all work
+      - tech-stack # Technology evaluation — architect investigation
+
+  borghei-compliance:
+    source: "borghei/Claude-Skills (ra-qm-team)"
+    status: "not installed — needs evaluation"
+    agents: [accountability-generator, devsecops-expert]
+    key_skills:
+      - soc2-compliance-expert     # accountability analysis/work
+      - nist-csf-specialist        # accountability analysis/work
+      - risk-management-specialist # accountability analysis
+      - gdpr-dsgvo-expert          # devsecops compliance (future)

@@ -26,6 +26,8 @@ async def _run_dispatch(
     task_id: str,
     project_name: str = "",
     backend_mode: str = "claude",
+    budget_mode: str = "standard",
+    rate_limit_pct: float = 0.0,
 ) -> int:
     """Dispatch a task to an agent."""
     loader = ConfigLoader()
@@ -109,8 +111,13 @@ async def _run_dispatch(
         localai_available=localai_available,
     )
 
-    # Stage-aware model/effort selection (includes methodology stage adjustment)
-    model_config = select_model_for_task(task, agent_name=agent_name, backend_mode=backend_mode)
+    # Stage-aware model/effort selection (includes methodology stage, budget cap, rate limit)
+    rejection_count = task.custom_fields.labor_iteration - 1 if task.custom_fields.labor_iteration > 1 else 0
+    model_config = select_model_for_task(
+        task, agent_name=agent_name, backend_mode=backend_mode,
+        budget_mode=budget_mode, rate_limit_pct=rate_limit_pct,
+        rejection_count=rejection_count,
+    )
 
     # For Claude backends, use model_config (stage-aware) for model/effort.
     # For non-Claude backends (localai, openrouter), use routing's model.

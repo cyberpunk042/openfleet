@@ -42,6 +42,9 @@ from fleet.core.teaching import adapt_lesson, format_lesson_for_injection, Disea
 from fleet.core.storm_monitor import StormMonitor, StormSeverity, severity_index
 from fleet.core.gateway_guard import check_gateway_duplication
 _budget_monitor = BudgetMonitor()
+
+from fleet.core.context_strategy import ContextStrategy
+_context_strategy = ContextStrategy()
 _storm_monitor = StormMonitor()
 
 
@@ -530,6 +533,25 @@ async def _refresh_agent_contexts(
                 agents_online=online_count,
                 agents_total=total_count,
             )
+
+            # Context strategy — evaluate pressure and append awareness
+            try:
+                rate_limit = 0.0
+                try:
+                    if _budget_monitor._last_reading:
+                        rate_limit = _budget_monitor._last_reading.weekly_all_pct or 0.0
+                except Exception:
+                    pass
+
+                ctx_eval = _context_strategy.evaluate(
+                    agent_name=agent_name,
+                    context_pct=0.0,  # Filled when session telemetry is wired
+                    rate_limit_pct=rate_limit,
+                )
+                if ctx_eval.message:
+                    heartbeat_text += f"\n\n## Context Awareness\n{ctx_eval.message}\n"
+            except Exception:
+                pass
 
             write_heartbeat_context(agent_name, heartbeat_text)
 
@@ -1460,9 +1482,20 @@ async def _dispatch_ready_tasks(
             continue
 
         try:
+            # Pass budget mode and rate limit for adaptive effort escalation
+            _budget_mode = fleet_state.budget_mode if fleet_state else "standard"
+            _rate_limit = 0.0
+            try:
+                if _budget_monitor._last_reading:
+                    _rate_limit = _budget_monitor._last_reading.weekly_all_pct or 0.0
+            except Exception:
+                pass
+
             result = await _run_dispatch(
                 agent.name, task.id, project,
                 backend_mode=fleet_state.backend_mode if fleet_state else "claude",
+                budget_mode=_budget_mode,
+                rate_limit_pct=_rate_limit,
             )
             if result == 0:
                 state.tasks_dispatched += 1

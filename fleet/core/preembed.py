@@ -105,8 +105,11 @@ def build_task_preembed(task: Task, completeness_summary: str = "") -> str:
     lines.append(f"# YOUR STAGE: {stage or 'unset'}")
     lines.append("")
 
-    # § 4. Readiness
-    lines.append(f"# READINESS: {readiness}%")
+    # § 4. Readiness (PO-set, gates dispatch) + Progress (agent-driven, tracks work)
+    progress = cf.task_progress or 0
+    lines.append(f"# READINESS: {readiness}% (PO-set — gates dispatch)")
+    if progress > 0:
+        lines.append(f"# PROGRESS: {progress}% (your work — 0=started, 50=halfway, 70=implementation done, 80=challenged, 90=reviewed)")
     lines.append("")
 
     # § 5. Verbatim requirement (THE ANCHOR)

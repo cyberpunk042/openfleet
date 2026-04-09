@@ -97,6 +97,22 @@ tools:
     chain: "task created → inbox → event → IRC #fleet → board memory"
     input: "title, description, agent_name, task_type, parent_task, custom_fields"
     auto: "Agent notification (heartbeat picks it up), sprint tracking"
+    ins:
+      - "title (clear, actionable)"
+      - "agent_name (who should do this)"
+      - "task_type (subtask/task/story)"
+      - "parent_task (your task ID if this is a child)"
+    middles:
+      - create task in MC → inbox status
+      - set all custom fields (type, stage, readiness, agent, parent)
+      - "post board memory [task-created]"
+      - notify IRC #fleet
+      - emit event (fleet.task.created)
+      - record trail (TASK_CREATED)
+    outs:
+      - task visible in inbox (assigned agent sees on next heartbeat)
+      - PM notified of new work
+      - trail recorded
 
   fleet_chat:
     what: "Post message to board memory with optional @mention"
@@ -104,6 +120,18 @@ tools:
     chain: "board memory (tagged mention:{agent}) → IRC #fleet → agent sees in MESSAGES"
     input: "message, mention (optional agent name)"
     auto: "IRC routing, mention routing to agent heartbeat"
+    ins:
+      - "message (what you want to communicate)"
+      - "mention (optional — @agent-name for directed message)"
+    middles:
+      - "post to board memory with tags [chat, mention:{agent}]"
+      - route to IRC #fleet
+      - "if mention:PO → route to ntfy"
+      - emit event (fleet.chat.posted)
+    outs:
+      - mentioned agent sees message in MESSAGES section on next heartbeat
+      - IRC shows the message
+      - trail of communication preserved in board memory
 
   fleet_alert:
     what: "Post alert to IRC channel"
@@ -111,6 +139,20 @@ tools:
     chain: "IRC #alerts → board memory → ntfy if high/critical"
     input: "category, severity, details"
     auto: "IRC routing, ntfy escalation for critical"
+    ins:
+      - "category (security/quality/architecture/workflow/tooling)"
+      - "severity (critical/high/medium/low)"
+      - "details (specific finding with evidence)"
+    middles:
+      - "post board memory [alert, {severity}, {category}]"
+      - "route to IRC #alerts (high/critical) or #fleet (medium/low)"
+      - "if critical → ntfy to PO with urgent priority"
+      - "if security + critical → set security_hold on task"
+      - emit event (fleet.alert.raised)
+    outs:
+      - fleet-ops sees alert in health monitoring
+      - PO notified if critical
+      - "security_hold blocks approval (if security alert)"
 
   fleet_escalate:
     what: "Escalate blocker or decision to PO/senior"
@@ -118,6 +160,17 @@ tools:
     chain: "ntfy (urgent) → IRC #alerts → board memory [escalation]"
     input: "title, details, severity"
     auto: "PO notification via ntfy"
+    ins:
+      - "title (what needs PO attention)"
+      - "details (context, options considered, recommendation)"
+    middles:
+      - "post board memory [escalation, mention:human]"
+      - notify IRC #alerts
+      - send ntfy to PO (urgent priority)
+      - emit event (fleet.escalation.raised)
+    outs:
+      - PO receives push notification
+      - escalation visible in board memory for PM
 
   fleet_notify_human:
     what: "Send push notification to PO"
@@ -132,6 +185,18 @@ tools:
     chain: "comment posted → event → PM notified"
     input: "reason"
     auto: "PM sees blocker in next heartbeat"
+    ins:
+      - "reason (what's blocking you — be specific)"
+      - "needed (what you need to continue)"
+    middles:
+      - post blocker comment on task
+      - "post board memory [blocked, mention:project-manager]"
+      - notify IRC #fleet
+      - emit event (fleet.task.paused)
+      - record trail (TASK_CHECKPOINT with blocker reason)
+    outs:
+      - PM sees blocker in MESSAGES on next heartbeat
+      - task remains in current stage (not regressed)
 
   fleet_approve:
     what: "Approve or reject a review task"
@@ -208,6 +273,21 @@ tools:
     chain: "ntfy to PO → IRC #gates → board memory [gate, po-required]"
     input: "task_id, gate_type, summary for PO"
     auto: "PO notification via ntfy"
+    ins:
+      - "task_id (which task needs PO gate)"
+      - "gate_type (readiness_90, phase_advance, custom)"
+      - "summary (what PO needs to decide — focused, not raw dump)"
+    middles:
+      - "check phase standards (if phase gate)"
+      - "post board memory [gate, po-required, phase:{name}]"
+      - notify IRC #gates
+      - send ntfy to PO (urgent)
+      - post Plane comment (if mapped)
+      - record trail (GATE_REQUESTED)
+    outs:
+      - PO receives notification with focused summary
+      - task BLOCKED until PO responds
+      - "PM monitors (will route PO response back)"
 
   fleet_artifact_create:
     what: "Create a new structured artifact on the task"
@@ -236,6 +316,21 @@ tools:
     chain: "agent_name updated → context packaged → event → new agent notified"
     input: "task_id, target_agent, context (what the receiving agent needs to know)"
     auto: "Context packaging for receiving agent"
+    ins:
+      - "task_id (task to transfer)"
+      - "target_agent (who receives — usually architect → engineer)"
+      - "context (design decisions, constraints, file targets — what they need to know)"
+    middles:
+      - update task agent_name → target agent
+      - package context as task comment
+      - update task-context.md for target agent
+      - "post board memory [transfer, from:{you}, to:{target}]"
+      - notify IRC #fleet
+      - emit event (fleet.task.transferred)
+      - record trail (TASK_TRANSFERRED)
+    outs:
+      - target agent sees task on next heartbeat with full handoff context
+      - trail shows who transferred and why
 
   fleet_plane_status:
     what: "Get Plane project status"
