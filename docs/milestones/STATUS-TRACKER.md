@@ -170,14 +170,14 @@ Session index: `docs/milestones/active/tools-system-session-index.md`
 
 | Phase | What | Status | Key Metric |
 |-------|------|--------|------------|
-| A: Foundation | 30 elevated tools, 9 building blocks, chain builders, stage-aware effort | ~80% | 93 tool operation tests, 2218 total |
+| A: Foundation | 30 elevated tools, 9 building blocks, chain builders, stage-aware effort | ~80% | 93 tool operation tests, 2249 total |
 | B: MCP+Plugins | Per-agent mcp.json, plugin evaluation (4 INSTALL) | ~45% | 7/10 workspaces. Install blocked on gateway |
 | C: Group Calls | 36 role-specific tools across 10 roles | ~80% | 89 tests (36 registration + 53 behavioral) |
-| D: Skills | 38 workspace skills, stage mappings, 8 cross-system flow skills | ~55% | 7 gateway + 13 broad + 18 role-specific |
+| D: Skills | **78 workspace skills, 69/69 deep skills, 10/10 roles at 100%** | **~95%** | 77 skill-stage refs, all verified |
 | E: CRONs+Orders | 17 CRONs, 14 standing orders, sync script | ~35% | Deployment blocked on gateway |
-| F: Sub-agents+Hooks | 12 sub-agents, hooks, stage-aware effort in dispatch | ~30% | Role-aware deployment via push-soul.sh |
-| G: Generation | Python pipeline, 66 chain docs (30 generic + 36 role) | ~80% | TOOLS.md per agent (307-358 lines) |
-| H: Validation | 14 config checks, 2218 tests, 19 cross-flow integration | ~50% | 0 errors, 3 warnings (missing workspaces) |
+| F: Sub-agents+Hooks | 12 sub-agents, 10 hooks, 10 role-specific heartbeats | ~50% | All 10 agents: full 7-position directive chain |
+| G: Generation | Python pipeline, 66 chain docs (30 generic + 36 role) | ~90% | TOOLS.md per agent regenerated with all skills |
+| H: Validation | 14 config checks, 2249 tests, 31 heartbeat+MCP tests | ~55% | 0 errors, 77 skill refs verified |
 
 **Test suite: 2218 passed, 0 failures, 19 skipped.**
 

@@ -153,6 +153,15 @@ roles:
       - skill: fleet-blocker-resolution
         source: workspace
         why: "Resolve blocked tasks — 5 options, 2-blocker fleet limit, when to escalate"
+      - skill: fleet-stage-progression
+        source: workspace
+        why: "Monitor and advance task stages — stalled detection, methodology checks, PO gates, dispatch trigger"
+      - skill: fleet-po-communication
+        source: workspace
+        why: "Signal filter for PO — gate requests, escalations, status. Never dump raw data."
+      - skill: fleet-backlog-grooming
+        source: workspace
+        why: "Re-estimate, re-prioritize, identify stale items, prepare for PO — backlog maintenance"
     reasoning:
       - skill: fleet-plan
         source: workspace
@@ -185,9 +194,18 @@ roles:
       - skill: fleet-methodology-compliance
         source: workspace
         why: "Detect methodology violations — code during analysis, skipped stages, readiness jumps, missing contributions"
+      - skill: fleet-board-health-assessment
+        source: workspace
+        why: "Board health monitoring — stuck tasks, stale reviews, offline agents, blocker accumulation"
       - skill: fleet-ops-review-protocol
         source: workspace
         why: "10-step REAL review — verbatim match, trail, contributions, phase standards"
+      - skill: fleet-quality-enforcement
+        source: workspace
+        why: "Systemic quality bars — commit format, PR structure, artifact completeness, comment quality"
+      - skill: fleet-budget-awareness
+        source: workspace
+        why: "Budget health monitoring — spending patterns, mode recommendations, storm connection"
     work:
       - skill: fleet-trail-verification
         source: workspace
@@ -229,6 +247,15 @@ roles:
       - skill: fleet-architecture-health
         source: workspace
         why: "Monitor drift, coupling, pattern inconsistency — continuous vigilance, not just at planning time"
+      - skill: fleet-domain-boundary-enforcement
+        source: workspace
+        why: "Core doesn't depend on infra — dependency direction inward. The structural principle."
+      - skill: fleet-srp-verification
+        source: workspace
+        why: "Single responsibility verification — one reason to change per module/class/function"
+      - skill: fleet-architecture-cron-operations
+        source: workspace
+        why: "Weekly health check CRON — what to scan, how to produce the report, findings flow to immune system"
     analysis:
       - skill: fleet-gap
         source: gateway
@@ -286,6 +313,22 @@ roles:
       - skill: fleet-contribution-consumption
         source: workspace
         why: "How to consume architect/QA/security/UX contributions as REQUIREMENTS, not suggestions"
+      - skill: fleet-conventional-commits
+        source: workspace
+        why: "When each commit type, scoping, task reference — the atomic unit of work"
+      - skill: fleet-implementation-planning
+        source: workspace
+        why: "Map confirmed plan to files and changes — target files, change sequence, TC mapping"
+      - skill: fleet-subtask-creation
+        source: workspace
+        why: "When/how to create subtasks for other agents — docs, security, test gaps during work"
+      - skill: fleet-design-pattern-application
+        source: workspace
+        why: "Apply architect's patterns in code — adapter, repository, builder in the fleet's structure"
+    analysis:
+      - skill: fleet-code-exploration
+        source: workspace
+        why: "Systematic codebase examination — patterns, dependencies, implications. Maps to code-explorer sub-agent"
     work:
       - skill: fleet-test
         source: workspace
@@ -343,6 +386,18 @@ roles:
       - skill: fleet-test-validation
         source: workspace
         why: "Validate completed work against predefined TC-XXX criteria — verify each with evidence"
+      - skill: fleet-regression-testing
+        source: workspace
+        why: "Impact analysis + targeted verification when code changes — what COULD break"
+      - skill: fleet-acceptance-criteria-quality
+        source: workspace
+        why: "Evaluate testability of criteria — specific, checkable, measurable. Catch bad criteria before predefinition"
+      - skill: fleet-integration-testing
+        source: workspace
+        why: "Cross-boundary test design — what to test, isolation, fixture patterns. Beyond unit tests."
+      - skill: fleet-test-contribution-protocol
+        source: workspace
+        why: "Structured TC-XXX output protocol — the format that feeds predefinition-validation cycle"
     reasoning:
       - skill: fleet-test
         source: workspace
@@ -382,6 +437,18 @@ roles:
       - skill: fleet-vulnerability-assessment
         source: workspace
         why: "Dependency audit, code scan, severity classification — maps to sec_dependency_audit and sec_code_scan"
+      - skill: fleet-incident-response
+        source: workspace
+        why: "Security incident handling — triage, contain, assess, remediate, verify, report"
+      - skill: fleet-dependency-audit
+        source: workspace
+        why: "Dependency audit methodology — CVE checking, version pinning, license review, transitive analysis"
+      - skill: fleet-secret-scanning
+        source: workspace
+        why: "Credential detection — API keys, tokens, passwords, git history scanning, response protocol"
+      - skill: fleet-security-compliance
+        source: workspace
+        why: "Verify security controls still in place — auth, validation, secrets, deps, infrastructure"
     analysis:
       - skill: fleet-threat-modeling
         source: workspace
@@ -406,6 +473,21 @@ roles:
       - skill: fleet-deployment-strategy
         source: workspace
         why: "Phase-appropriate deployment — rolling, blue-green, canary. Maps to devops_deployment_contribution"
+      - skill: fleet-fleet-infrastructure
+        source: workspace
+        why: "Fleet services map — MC, gateway, LocalAI, IRC, Plane, daemons. Diagnosis and recovery."
+      - skill: fleet-rollback-procedures
+        source: workspace
+        why: "Safe rollback — database, config, code, sessions. The difference between undo and rollback."
+      - skill: fleet-monitoring-setup
+        source: workspace
+        why: "Health checks, alerting, metrics, dashboards — phase-appropriate observability"
+      - skill: fleet-docker-management
+        source: workspace
+        why: "Dockerfile best practices, multi-stage builds, compose patterns, security. Core fleet infra."
+      - skill: fleet-phase-infrastructure-maturity
+        source: workspace
+        why: "Gap analysis between current infra and phase requirements — what's in place, what's missing, work needed"
     reasoning:
       - skill: fleet-cicd-pipeline
         source: workspace
@@ -444,6 +526,15 @@ roles:
       - skill: fleet-doc-contribution-protocol
         source: workspace
         why: "How to produce documentation_outline contributions — audience-aware, complementary with architect/engineer"
+      - skill: fleet-documentation-structure
+        source: workspace
+        why: "Information architecture — 4 audiences, progressive disclosure, hub-and-spoke vs sequential vs reference"
+      - skill: fleet-changelog-generation
+        source: workspace
+        why: "Changelogs from git history — conventional commits as data, Keep a Changelog format, audience translation"
+      - skill: fleet-terminology-consistency
+        source: workspace
+        why: "Consistent vocabulary across all surfaces — one term per concept, glossary discipline"
     work:
       - skill: fleet-api-documentation
         source: workspace
@@ -468,6 +559,12 @@ roles:
       - skill: fleet-interaction-design
         source: workspace
         why: "ux_spec contribution protocol — all states, all interactions, all UX levels"
+      - skill: fleet-ux-contribution-protocol
+        source: workspace
+        why: "The structured 4-step protocol for producing ux_spec — surface inventory, state definition, accessibility, delivery"
+      - skill: fleet-component-patterns
+        source: workspace
+        why: "Consistent component patterns — reuse existing, define new properly, ensure compliance across implementations"
     analysis:
       - skill: fleet-gap
         source: gateway
@@ -493,6 +590,12 @@ roles:
       - skill: fleet-compliance-verification
         source: workspace
         why: "Sprint compliance reports — stage traversal, contributions, gates, trail completeness for PO"
+      - skill: fleet-pattern-detection
+        source: workspace
+        why: "Recurring compliance patterns — systemic trends that feed the immune system's Doctor"
+      - skill: fleet-compliance-reporting
+        source: workspace
+        why: "Structured compliance reports for PO — sprint reports, agent summaries, trend analysis"
 
 # ─── Plugins to Evaluate ─────────────────────────────────────────────
 # From research (skills-and-plugins-ecosystem-research.md §NOT YET ASSIGNED).

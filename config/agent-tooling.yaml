@@ -159,7 +159,8 @@ agents:
         package: "@modelcontextprotocol/server-filesystem"
         args: ["{{WORKSPACE}}"]
       - name: docker
-        package: "@modelcontextprotocol/server-docker"
+        package: "@hypnosis/docker-mcp-server"
+        # Same package as devops — original @modelcontextprotocol/server-docker not in npm registry
       - name: semgrep
         command: "semgrep"
         args: ["--mcp"]

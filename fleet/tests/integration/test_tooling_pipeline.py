@@ -375,6 +375,55 @@ class TestSynergyMatrix:
 
 # ── Stage-Aware Model Selection ──────────────────────────────────
 
+class TestMCPPackageConsistency:
+    """MCP package names are consistent across agents sharing the same server."""
+
+    def test_same_server_same_package(self):
+        """If two agents use 'docker' MCP server, they should use the same package."""
+        tooling = load_yaml(CONFIG / "agent-tooling.yaml")
+        server_packages: dict[str, set[str]] = {}
+        for agent, cfg in tooling.get("agents", {}).items():
+            for srv in cfg.get("mcp_servers", []):
+                name = srv.get("name", "")
+                pkg = srv.get("package", srv.get("command", ""))
+                if name and pkg:
+                    if name not in server_packages:
+                        server_packages[name] = set()
+                    server_packages[name].add(pkg)
+        for name, packages in server_packages.items():
+            assert len(packages) <= 1, \
+                f"MCP server '{name}' has inconsistent packages across agents: {packages}"
+
+
+class TestHeartbeatTemplates:
+    """All agents have role-specific heartbeat templates."""
+
+    TEMPLATE_DIR = FLEET_DIR / "agents" / "_template" / "heartbeats"
+
+    @pytest.mark.parametrize("agent", AGENT_ROSTER)
+    def test_heartbeat_template_exists(self, agent):
+        path = self.TEMPLATE_DIR / f"{agent}.md"
+        assert path.exists(), f"agents/_template/heartbeats/{agent}.md not found — agent uses generic worker fallback"
+
+    @pytest.mark.parametrize("agent", AGENT_ROSTER)
+    def test_heartbeat_has_po_directives(self, agent):
+        """Every heartbeat should start with PO directives section."""
+        path = self.TEMPLATE_DIR / f"{agent}.md"
+        if not path.exists():
+            pytest.skip(f"No heartbeat for {agent}")
+        content = path.read_text()
+        assert "PO Directives" in content or "PO directives" in content
+
+    @pytest.mark.parametrize("agent", AGENT_ROSTER)
+    def test_heartbeat_has_heartbeat_ok(self, agent):
+        """Every heartbeat should define when HEARTBEAT_OK is appropriate."""
+        path = self.TEMPLATE_DIR / f"{agent}.md"
+        if not path.exists():
+            pytest.skip(f"No heartbeat for {agent}")
+        content = path.read_text()
+        assert "HEARTBEAT_OK" in content
+
+
 class TestStageAwareModelSelection:
     """Stage-aware effort config is valid."""
 
