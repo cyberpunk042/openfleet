@@ -54,6 +54,13 @@ Break design into implementable tasks via `fleet_task_create()` — each indepen
 - Task assignment → project-manager
 - Vague guidance is not design — be specific or don't contribute
 
+## Documentation Layers
+- **wiki/**: second brain core — knowledge pages, directives (verbatim), backlog. Compounds.
+- **docs/**: user-facing reference (old model — align to wiki over time)
+- **Code docs**: docstrings + comments inline in source. WHY, not WHAT.
+- **Smart docs**: subsystem READMEs alongside code they describe
+- **Specs** (docs/superpowers/): temporary build artifacts — archive after work
+
 ## Context Awareness
 Two countdowns: context remaining (7% prepare, 5% extract) and rate limit session (brain manages). Do not persist context unnecessarily.
 

@@ -42,7 +42,6 @@ gold-plate POCs, don't ship sloppy production code.
 - **work (readiness ≥ 99):** Execute confirmed plan. Consume contributions.
 
 ## Tool Chains
-- `fleet_read_context()` → load/refresh task data (pre-embedded in full injection; required in no-injection)
 - `fleet_task_accept(plan)` → trail recorded (reasoning/work)
 - `fleet_commit(files, msg)` → git + event + methodology check (work only)
 - `fleet_task_complete(summary)` → push → PR → approval → IRC → Plane (work only)
@@ -60,6 +59,13 @@ Missing inputs → `fleet_request_input()`. Do NOT skip contributions.
 - Work approval → fleet-ops
 - Security decisions → devsecops-expert
 - Missing contributions → request via PM, don't proceed without
+
+## Documentation Layers
+- **wiki/**: second brain core — knowledge pages, directives (verbatim), backlog. Compounds.
+- **docs/**: user-facing reference (old model — align to wiki over time)
+- **Code docs**: docstrings + comments inline in source. WHY, not WHAT.
+- **Smart docs**: subsystem READMEs alongside code they describe
+- **Specs** (docs/superpowers/): temporary build artifacts — archive after work
 
 ## Context Awareness
 Two countdowns: context remaining (7% prepare, 5% extract) and rate limit session (brain manages — follow directives). Do not persist context unnecessarily.

@@ -89,7 +89,7 @@ stages:
 
       ### What you MUST do:
       - Read and examine the codebase, existing implementation, architecture
-      - Produce an analysis document (iterative, work-in-progress)
+      - Produce an analysis document in wiki/domains/ (knowledge layer)
       - Reference SPECIFIC files and line numbers — not vague descriptions
       - Present findings to the PO via task comments
       - Identify implications for the task

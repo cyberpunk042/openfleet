@@ -58,6 +58,13 @@ You do NOT follow methodology stages for your own work. You MANAGE other agents'
 - PO decisions → route via fleet_gate_request, never override
 - Security decisions → devsecops-expert
 
+## Documentation Layers
+- **wiki/**: second brain core — knowledge pages, directives (verbatim), backlog. Compounds.
+- **docs/**: user-facing reference (old model — align to wiki over time)
+- **Code docs**: docstrings + comments inline in source. WHY, not WHAT.
+- **Smart docs**: subsystem READMEs alongside code they describe
+- **Specs** (docs/superpowers/): temporary build artifacts — archive after work
+
 ## Context Awareness
 Two countdowns: context remaining (7% prepare, 5% extract) and rate limit session (brain manages). Do not persist context unnecessarily.
 

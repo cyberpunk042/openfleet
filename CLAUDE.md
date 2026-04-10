@@ -251,26 +251,72 @@ fleet plane list-projects  # List Plane projects
 5. **Standards first** — conventional commits, changelogs, good patterns
 6. **Local-first** — LocalAI for routine, Claude for complex (AICP mission)
 
-## Documentation — 3 Layers
+## Methodology — How Work Proceeds
 
-### Wiki (LLM-friendly, start here for planning)
-- **Backlog**: `wiki/backlog/_index.md` — 17 epics (E001-E017), modules, tasks
-- **Log**: `wiki/log/` — PO directives verbatim, chronological, sacrosanct
-- **Domains**: `wiki/domains/` — knowledge pages by domain
-- Pattern: LLM wiki (Karpathy) — YAML frontmatter, typed relationships, status lifecycle
-- Feeds into: `../devops-solutions-research-wiki` (cross-project second brain)
+Follows the shared Methodology Framework from `devops-solutions-research-wiki/wiki/spine/model-methodology.md`.
 
-### Docs (front-facing, architecture and systems)
-- **Navigation**: `docs/README.md` — master index for ~100 docs, 5-layer hierarchy
-- **Architecture**: `docs/ARCHITECTURE.md` — 20 systems, how they relate
-- **Integration**: `docs/INTEGRATION.md` — 12 cross-system data flows
-- **Spec vs Code**: `docs/SPEC-TO-CODE.md` — 69 specs mapped to 94 modules
-- **System Docs**: `docs/systems/01-22` — per-system reference (10,283 lines)
-- **Milestones**: `docs/milestones/active/MASTER-INDEX.md` — 255 milestones
+**Named methodology models** — not one pipeline. Different task types run different models:
+- Feature Development: conversation → analysis → investigation → reasoning → work (the default)
+- Contribution: analyze target → produce contribution → fleet_contribute() (no PO gates)
+- Rework: read rejection → fix root cause → re-submit (labor_iteration ≥ 2)
+- Research/Spike: conversation → investigation → reasoning (NO work stage)
+- Documentation: analysis → reasoning → work
+- Review: fleet-ops review protocol (its own model)
 
-### Code docs (inner, in the code)
-- Module docstrings, type hints, inline comments
-- Lives with the code it documents
+**Model selection** by conditions: task_type, contribution_type, labor_iteration, delivery_phase, urgency. The context injection system renders the SELECTED model's protocol, not a generic one.
+
+**Stage boundaries are enforced.** Each stage has MUST/MUST NOT rules. The MCP server blocks forbidden tool calls. The doctor detects violations after the fact.
+
+**Stage artifacts go to specific layers:**
+- conversation/analysis/investigation findings → wiki/domains/ (knowledge)
+- PO directives and session records → wiki/log/ (verbatim)
+- reasoning plans and specs → docs/superpowers/ (temporary execution artifacts)
+- work: code → fleet/ with docstrings (code docs), subsystem READMEs (smart docs)
+- work completion → wiki/log/ (session record), knowledge → wiki/domains/
+
+**Three parallel tracks** run simultaneously:
+- **Execution**: orchestrator dispatch → agent stages → fleet_task_complete
+- **PM**: Plane integration, sprint planning, backlog hierarchy (epic → story → task)
+- **Knowledge**: wiki/ pages, Navigator knowledge context, research wiki feed
+
+**Quality dimension** — explicit, not accidental:
+- Skyscraper: full process, all stages, all gates (Expert tier)
+- Pyramid: deliberate compression, lighter artifacts (Capable/Lightweight tier)
+- Mountain: accidental chaos, stages skipped (the anti-pattern to prevent)
+
+Config: `config/methodology.yaml` (stages, task types, readiness ranges, protocols).
+Shared models: `../devops-solutions-research-wiki/wiki/spine/model-methodology.md`
+
+## Documentation — 5 Layers
+
+Five documentation layers. Different lifecycle, different audience, different quality bar, different location. Agents must not conflate them. The LLM Wiki IS the standard for ALL projects in the ecosystem.
+
+Follows: `../devops-solutions-research-wiki/wiki/spine/model-llm-wiki.md` + `model-second-brain.md`
+
+### 1. Wiki Knowledge (`wiki/`) — The second brain's core
+Synthesized, structured, evolving knowledge. YAML frontmatter, typed relationships, quality gates. Knowledge compounds here — pages gain relationships, evolve through density layers, become canonical.
+- **Log** (`wiki/log/`): PO directives VERBATIM, session notes, completion records. Sacrosanct.
+- **Backlog** (`wiki/backlog/`): epics, modules, tasks with stage gates. Work at task level. Readiness flows upward.
+- **Domains** (`wiki/domains/`): knowledge pages by domain. One concept per page.
+
+Analysis findings, design decisions, knowledge synthesis, architecture analysis → wiki/domains/.
+PO directives, session records → wiki/log/.
+
+### 2. Public Docs (`docs/`) — User-facing reference
+For humans consuming the project. Architecture, systems, integration flows, milestones.
+- `docs/ARCHITECTURE.md`, `docs/INTEGRATION.md`, `docs/systems/`, `docs/milestones/`
+- `docs/knowledge-map/` — Navigator knowledge base
+
+Old model in OpenFleet — predates wiki adoption. Tolerate, align incrementally. Over time, knowledge migrates to wiki/domains/ as concept pages with frontmatter and relationships.
+
+### 3. Code Docs — Inline in source
+Docstrings, type hints, parameter annotations, inline comments explaining WHY. Lives WITH the code. Never in wiki/ or docs/.
+
+### 4. Smart Docs — Subsystem documentation alongside code
+Documentation files distributed throughout source directories explaining subsystems. README.md inside fleet/core/ explaining the domain layer. More structured than comments, more local than docs/. Aggregated view of a subsystem living next to the code it describes.
+
+### 5. Specs and Plans (`docs/superpowers/`) — Temporary execution artifacts
+Brainstorming specs, implementation plans. Serve the BUILD PROCESS, not the knowledge base. Once work completes: knowledge → wiki/ (permanent), code → fleet/ (implementation), spec → archive.
 
 ## Config
 
