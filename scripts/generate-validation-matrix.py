@@ -446,6 +446,28 @@ render_task_scenario("TK-10-nearly-complete.md",
     notes="Progress 70% = implementation done. Should run tests, then fleet_task_complete.",
 )
 
+# TK-11: Analysis stage — should reference wiki/domains/ as output location
+render_task_scenario("TK-11-analysis.md",
+    "Task: Analysis stage — examine codebase, produce analysis document",
+    make_task(custom_fields=TaskCustomFields(
+        task_stage="analysis", task_readiness=30,
+        requirement_verbatim="Add health dashboard with agent grid, task pipeline, storm indicator, budget gauge",
+        agent_name="software-engineer", task_type="story", story_points=5,
+    )),
+    notes="Analysis stage. Output should go to wiki/domains/. NO solutions, NO code. Reference specific files and lines.",
+)
+
+# TK-12: Investigation stage — should reference wiki/domains/ as output location
+render_task_scenario("TK-12-investigation.md",
+    "Task: Investigation stage — research approaches",
+    make_task(custom_fields=TaskCustomFields(
+        task_stage="investigation", task_readiness=60,
+        requirement_verbatim="Add health dashboard with agent grid, task pipeline, storm indicator, budget gauge",
+        agent_name="software-engineer", task_type="story", story_points=5,
+    )),
+    notes="Investigation stage. Output should go to wiki/domains/. Multiple options required. NO decisions.",
+)
+
 # TK-34: Engineer role-specific reasoning
 render_task_scenario("TK-34-engineer-reasoning.md",
     "Task: Engineer reasoning — role-specific protocol",

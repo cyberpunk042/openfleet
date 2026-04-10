@@ -249,13 +249,13 @@ def build_task_preembed(
         if stage == "conversation":
             lines.append("Read the verbatim requirement above. Ask specific clarifying questions. Do NOT produce code or solutions.")
         elif stage == "analysis":
-            lines.append("Examine the codebase for areas related to the requirement. Produce an analysis_document with specific file references.")
+            lines.append("Examine the codebase. Produce an analysis document in wiki/domains/ with file and line references. Do NOT produce solutions yet.")
         elif stage == "investigation":
-            lines.append("Research multiple approaches (minimum 2). Document options with tradeoffs. Do NOT decide yet.")
+            lines.append("Research multiple approaches (minimum 2). Produce an investigation document in wiki/domains/ with findings and tradeoffs. Do NOT decide yet.")
         elif stage == "reasoning":
-            lines.append("Produce a plan that REFERENCES the verbatim requirement above. Specify target files and acceptance criteria mapping.")
+            lines.append("Produce a plan (docs/superpowers/plans/ or task comment). REFERENCE the verbatim requirement. Specify target files and acceptance criteria mapping.")
         elif stage == "work":
-            lines.append("Execute the confirmed plan. Your task data and contributions are pre-embedded above. `fleet_task_accept()` then implement. fleet_read_context() only to load a different task.")
+            lines.append("Execute the confirmed plan. Your task data and contributions are pre-embedded above. `fleet_task_accept()` then implement.")
         else:
             lines.append("Follow the stage protocol above.")
     lines.append("")
@@ -271,7 +271,11 @@ def build_task_preembed(
     lines.append("- Every tool call fires automatic chains — you don't update multiple places manually.")
     lines.append("")
 
-    return "\n".join(lines)
+    result = "\n".join(lines)
+    # Strip contribution marker if no contributions were inserted
+    result = result.replace("<!-- CONTRIBUTIONS_ABOVE -->\n", "")
+    result = result.replace("<!-- CONTRIBUTIONS_ABOVE -->", "")
+    return result
 
 
 def build_heartbeat_preembed(

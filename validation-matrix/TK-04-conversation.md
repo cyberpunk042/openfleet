@@ -55,7 +55,6 @@ You are in the conversation protocol. Your task is NOT ready for work.
 Your job is to UNDERSTAND, not to BUILD.
 
 ## INPUTS FROM COLLEAGUES
-<!-- CONTRIBUTIONS_ABOVE -->
 ### Required Contributions
 - **design_input** from architect — *awaiting delivery*
 - **qa_test_definition** from qa-engineer — *awaiting delivery*

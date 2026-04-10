@@ -128,7 +128,7 @@ stages:
 
       ### What you MUST do:
       - Research solutions, explore options, examine prior art
-      - Produce an investigation document with findings
+      - Produce an investigation document in wiki/domains/ (knowledge layer)
       - Explore MULTIPLE options — not just the first one you find
       - Cite sources where applicable
       - Present findings to the PO
@@ -166,7 +166,7 @@ stages:
 
       ### What you MUST do:
       - Decide on an approach based on requirements + analysis + investigation
-      - Produce an implementation plan
+      - Produce a plan (docs/superpowers/plans/ or task comment — temporary execution artifact)
       - The plan MUST reference the verbatim requirement explicitly
       - Specify target files and components
       - Map acceptance criteria to specific implementation steps

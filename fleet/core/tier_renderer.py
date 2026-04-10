@@ -354,23 +354,24 @@ class TierRenderer:
                     "Reviewed. Final polish, then `fleet_task_complete()`."
                 )
 
-        # Non-work stages
+        # Non-work stages — each directive includes WHERE the artifact goes
         stage_directives: dict[str, str] = {
             "conversation": (
                 "Ask clarifying questions. Post them to the task comments. "
                 "Do NOT write code. Your job is to understand, not to build."
             ),
             "analysis": (
-                "Examine the codebase. Produce an analysis document with file and line references. "
-                "Do NOT produce solutions yet."
+                "Examine the codebase. Produce an analysis document in wiki/domains/ "
+                "with file and line references. Do NOT produce solutions yet."
             ),
             "investigation": (
                 "Research options. Explore multiple approaches. "
-                "Produce an investigation document with findings and tradeoffs."
+                "Produce an investigation document in wiki/domains/ with findings and tradeoffs."
             ),
             "reasoning": (
-                "Produce a plan. Reference the verbatim requirement explicitly. "
-                "Use `fleet_task_accept()` to submit the plan for PO confirmation."
+                "Produce a plan in docs/superpowers/plans/ or as a task comment. "
+                "Reference the verbatim requirement explicitly. "
+                "Use `fleet_task_accept()` to submit for PO confirmation."
             ),
         }
 
@@ -583,7 +584,7 @@ class TierRenderer:
         )
 
         protocol = protocol.replace(
-            "Produce an implementation plan",
+            "Produce a plan (docs/superpowers/plans/ or task comment — temporary execution artifact)",
             f"Produce a {output_desc}",
         )
         protocol = protocol.replace(

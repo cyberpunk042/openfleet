@@ -1,6 +1,6 @@
-# Task: Architect producing design_input contribution
+# Task: Analysis stage — examine codebase, produce analysis document
 
-**Expected:** Architect examining codebase for design. Should show CONTRIBUTION TASK section with target task verbatim, fleet_contribute() reference.
+**Expected:** Analysis stage. Output should go to wiki/domains/. NO solutions, NO code. Reference specific files and lines.
 
 ## task-context.md
 
@@ -8,29 +8,21 @@
 # MODE: task | injection: full
 # Your task data is pre-embedded below. fleet_read_context() only if you need fresh data or a different task.
 
-# YOU ARE: architect
+# YOU ARE: software-engineer
 
-# YOUR TASK: Contribute design_input for: fleet health dashboard
-- ID: task-con
-- Priority: medium
-- Type: subtask
+# YOUR TASK: Add fleet health dashboard
+- ID: task-a1b
+- Priority: high
+- Type: story
+- Story Points: 5
+- Description: Dashboard with agent grid, task pipeline, storm, budget
 
 # YOUR STAGE: analysis
 
-# READINESS: 50% (PO-set — gates dispatch)
+# READINESS: 30% (PO-set — gates dispatch)
 
 ## VERBATIM REQUIREMENT
-> Provide design_input: approach, target files, patterns for the fleet health dashboard
-
-## CONTRIBUTION TASK
-**Type:** design_input
-**Target task:** task-a1b
-**Title:** Add fleet health dashboard to MC frontend
-**Verbatim:** Add a health dashboard showing: agent grid (online/idle/sleeping/offline), task pipeline (inbox/progress/review/done counts), storm indicator with severity color, budget gauge with percentage
-**Delivery phase:** mvp
-**Stage:** work
-
-Call `fleet_contribute()` when your contribution is ready.
+> Add health dashboard with agent grid, task pipeline, storm indicator, budget gauge
 
 ## Current Stage: ANALYSIS
 
@@ -64,7 +56,9 @@ You are in the analysis protocol. Examine what exists.
 Your job is to UNDERSTAND WHAT EXISTS, not to solve the problem.
 
 ## INPUTS FROM COLLEAGUES
-*(No contributions required.)*
+### Required Contributions
+- **design_input** from architect — *awaiting delivery*
+- **qa_test_definition** from qa-engineer — *awaiting delivery*
 
 ## WHAT TO DO NOW
 Examine the codebase. Produce an analysis document in wiki/domains/ with file and line references. Do NOT produce solutions yet.

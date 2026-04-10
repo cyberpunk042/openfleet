@@ -41,7 +41,6 @@ Execute the confirmed plan. Stay in scope.
 - Do NOT skip tests
 
 ## INPUTS FROM COLLEAGUES
-<!-- CONTRIBUTIONS_ABOVE -->
 ### Required Contributions
 - **design_input** from architect — *awaiting delivery*
 - **qa_test_definition** from qa-engineer — *awaiting delivery*

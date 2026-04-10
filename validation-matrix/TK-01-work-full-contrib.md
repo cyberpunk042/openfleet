@@ -53,32 +53,6 @@ Execute the confirmed plan. Stay in scope.
 7. Tests for TC-001 through TC-007
 
 ## INPUTS FROM COLLEAGUES
-
-## CONTRIBUTION: design_input (from architect)
-
-**Approach:** DashboardHealth component in fleet/ui/components/ using React.
-- AgentGrid: 10 cards, color-coded by status
-- TaskPipeline: horizontal bar chart (inbox/progress/review/done)
-- StormIndicator: circular gauge with severity colors
-- BudgetGauge: arc gauge with 5h and 7d usage
-
-**Target files:** fleet/ui/components/DashboardHealth.tsx, fleet/ui/hooks/useFleetStatus.ts
-**Patterns:** Observer (real-time), Adapter (API → component)
-**Constraints:** Existing MC build pipeline. No new deps.
-
----
-## CONTRIBUTION: qa_test_definition (from qa-engineer)
-
-TC-001: AgentGrid shows 10 agent cards | unit | required
-TC-002: Agent card color matches status | unit | required
-TC-003: TaskPipeline segments sum to total | unit | required
-TC-004: StormIndicator correct severity color | unit | required
-TC-005: BudgetGauge shows API percentage | integration | required
-TC-006: Dashboard refreshes on status change | integration | recommended
-TC-007: Keyboard navigation works | e2e | required
-
----
-
 ### Required Contributions
 - **design_input** ✓ from architect — *received*
 - **qa_test_definition** ✓ from qa-engineer — *received*

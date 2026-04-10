@@ -61,11 +61,10 @@ You are in the reasoning protocol. Plan your approach.
 Your job is to PLAN, not to execute.
 
 ## INPUTS FROM COLLEAGUES
-<!-- CONTRIBUTIONS_ABOVE -->
 *(No contributions required.)*
 
 ## WHAT TO DO NOW
-Produce a plan. Reference the verbatim requirement explicitly. Use `fleet_task_accept()` to submit the plan for PO confirmation.
+Produce a plan in docs/superpowers/plans/ or as a task comment. Reference the verbatim requirement explicitly. Use `fleet_task_accept()` to submit for PO confirmation.
 
 ## WHAT HAPPENS WHEN YOU ACT
 - `fleet_artifact_create/update()` → Plane HTML + completeness check
