@@ -64,6 +64,7 @@ You are in the analysis protocol. Examine what exists.
 Your job is to UNDERSTAND WHAT EXISTS, not to solve the problem.
 
 ## INPUTS FROM COLLEAGUES
+<!-- CONTRIBUTIONS_ABOVE -->
 *(No contributions required.)*
 
 ## WHAT TO DO NOW

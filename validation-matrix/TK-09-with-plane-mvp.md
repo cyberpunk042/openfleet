@@ -14,7 +14,9 @@
 - ID: task-a1b
 - Priority: high
 - Type: story
+- Story Points: 5
 - Description: Dashboard with agent grid, task pipeline, storm, budget
+- Plane: issue-ab
 
 # YOUR STAGE: work
 
@@ -26,37 +28,20 @@
 
 ## Current Stage: WORK
 
-You are in the work protocol. Execute the confirmed plan.
+Execute the confirmed plan. Stay in scope.
 
-### What you MUST do:
-- Execute the plan that was confirmed in reasoning stage
-- Follow existing conventions: conventional commits, proper testing
-- Stay within scope — work from the verbatim requirement and confirmed plan
-- Your task data is pre-embedded in your context (verbatim, stage, contributions)
-- Call fleet_task_accept with your plan
-- Call fleet_commit for each logical change
-- Call fleet_task_complete when done
-- fleet_read_context only if you need to load a DIFFERENT task's data
+### MUST:
+- Execute the plan confirmed in reasoning stage
+- Stay within scope — verbatim requirement and confirmed plan only
+- Consume all contributions before implementing
+- Commit each logical change via fleet_commit
+- Complete via fleet_task_complete when done
 
-### What you MUST NOT do:
+### MUST NOT:
 - Do NOT deviate from the confirmed plan
-- Do NOT add unrequested scope ("while I'm here" changes)
-- Do NOT modify files outside the plan's target files
+- Do NOT add unrequested scope
+- Do NOT modify files outside the plan's target
 - Do NOT skip tests
-
-### Required tool sequence:
-1. fleet_task_accept (confirm plan — your task data is already pre-embedded)
-2. fleet_commit (one or more — conventional format)
-3. fleet_task_complete (push, PR, review)
-Note: fleet_read_context only needed to load another task's context or refresh stale data
-
-### Standards:
-- Conventional commit format
-- Task ID in commit messages
-- Tests for new functionality
-- PR with description referencing the task
-
-Your job is to EXECUTE THE PLAN, not to redesign.
 
 ## INPUTS FROM COLLEAGUES
 
@@ -84,11 +69,12 @@ TC-006: Dashboard refreshes on status change | integration | recommended
 TC-007: Keyboard navigation works | e2e | required
 
 ---
-Required contributions (received content appears below if delivered):
-- **design_input** from architect
-- **qa_test_definition** from qa-engineer
 
-If contributions are NOT shown below → `fleet_request_input()`. Do NOT proceed without required contributions in work stage.
+### Required Contributions
+- **design_input** ✓ from architect — *received*
+- **qa_test_definition** ✓ from qa-engineer — *received*
+
+If any contribution above shows *awaiting delivery* → `fleet_request_input()`. Do NOT proceed without required contributions in work stage.
 
 ## DELIVERY PHASE: mvp
 - **tests:** main flows and critical edges

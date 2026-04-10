@@ -341,3 +341,12 @@ class TestFormatStageProtocol:
         result_arch = renderer.format_stage_protocol("work", "architect")
         assert result_eng == result_arch
         assert "WORK" in result_eng
+
+    def test_work_rework_adapts_protocol(self):
+        """BUG-03: Work protocol adapts for rework — no 'Execute the confirmed plan'."""
+        renderer = TierRenderer("expert")
+        result = renderer.format_stage_protocol("work", "software-engineer", iteration=2)
+        assert "ROOT CAUSE" in result
+        assert "rejection feedback" in result.lower()
+        # Should NOT say "Execute the confirmed plan"
+        assert "Execute the confirmed plan" not in result

@@ -55,11 +55,10 @@ You are in the conversation protocol. Your task is NOT ready for work.
 Your job is to UNDERSTAND, not to BUILD.
 
 ## INPUTS FROM COLLEAGUES
-Required contributions (received content appears below if delivered):
-- **design_input** from architect
-- **qa_test_definition** from qa-engineer
-
-If contributions are NOT shown below → `fleet_request_input()`. Do NOT proceed without required contributions in work stage.
+<!-- CONTRIBUTIONS_ABOVE -->
+### Required Contributions
+- **design_input** from architect — *awaiting delivery*
+- **qa_test_definition** from qa-engineer — *awaiting delivery*
 
 ## WHAT TO DO NOW
 Ask clarifying questions. Post them to the task comments. Do NOT write code. Your job is to understand, not to build.

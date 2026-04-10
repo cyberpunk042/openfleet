@@ -61,6 +61,7 @@ You are in the reasoning protocol. Plan your approach.
 Your job is to PLAN, not to execute.
 
 ## INPUTS FROM COLLEAGUES
+<!-- CONTRIBUTIONS_ABOVE -->
 *(No contributions required.)*
 
 ## WHAT TO DO NOW

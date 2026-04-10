@@ -264,14 +264,30 @@ print("TASK MODE:")
 
 def render_task_scenario(filename, title, task, injection="full",
                          contribs="", nav="", notes="",
-                         renderer=None, rejection_feedback="", target_task=None):
+                         renderer=None, rejection_feedback="", target_task=None,
+                         confirmed_plan=""):
     r = renderer or EXPERT_RENDERER
     base = build_task_preembed(task, injection_level=injection,
                                 renderer=r, rejection_feedback=rejection_feedback,
-                                target_task=target_task)
+                                target_task=target_task, confirmed_plan=confirmed_plan)
     if contribs:
-        base = base.replace("## INPUTS FROM COLLEAGUES",
-            f"## INPUTS FROM COLLEAGUES\n\n{contribs}", 1)
+        # Insert contribution content at the marker and update checklist
+        insert_marker = "<!-- CONTRIBUTIONS_ABOVE -->"
+        if insert_marker in base:
+            base = base.replace(insert_marker, f"\n{contribs}\n", 1)
+        # Mark delivered types as received in checklist
+        import re
+        for ctype_match in re.findall(r'## CONTRIBUTION:\s*(\S+)', contribs):
+            base = base.replace(
+                f"**{ctype_match}** from",
+                f"**{ctype_match}** ✓ from",
+            )
+            # Only replace awaiting on the specific line
+            lines_list = base.split("\n")
+            for i, line in enumerate(lines_list):
+                if f"**{ctype_match}**" in line and "awaiting delivery" in line:
+                    lines_list[i] = line.replace("— *awaiting delivery*", "— *received*")
+            base = "\n".join(lines_list)
     parts = [
         f"**Expected:** {notes}\n",
         f"## task-context.md\n\n```\n{base}\n```\n",
@@ -288,11 +304,12 @@ render_task_scenario("TK-01-work-full-contrib.md",
         task_stage="work", task_readiness=99, task_progress=40,
         requirement_verbatim="Add health dashboard with agent grid, task pipeline, storm indicator, budget gauge",
         agent_name="software-engineer", task_type="story", story_points=5,
-        delivery_phase="mvp",
+        delivery_phase="mvp", parent_task="epic-fleet-ui-001",
     )),
     contribs=ARCH_CONTRIB + "\n" + QA_CONTRIB,
     nav=NAV_WORK,
     notes="Engineer has everything. Follow plan, commit, complete. fleet_read_context NOT needed.",
+    confirmed_plan="1. Create DashboardHealth.tsx component\n2. Implement AgentGrid (10 cards, color-coded)\n3. Implement TaskPipeline (horizontal bar chart)\n4. Implement StormIndicator (circular gauge)\n5. Implement BudgetGauge (arc gauge)\n6. Wire useFleetStatus.ts hook\n7. Tests for TC-001 through TC-007",
 )
 
 # TK-02: Work stage, full injection, NO contributions (missing)

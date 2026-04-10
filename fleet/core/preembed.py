@@ -74,6 +74,7 @@ def build_task_preembed(
     renderer: Optional["TierRenderer"] = None,
     rejection_feedback: str = "",
     target_task: Optional[Task] = None,
+    confirmed_plan: str = "",
 ) -> str:
     """Build task pre-embed in autocomplete chain order.
 
@@ -121,12 +122,18 @@ def build_task_preembed(
     lines.append(f"- ID: {task.id[:8]}")
     lines.append(f"- Priority: {task.priority}")
     lines.append(f"- Type: {cf.task_type or 'unset'}")
+    if cf.story_points:
+        lines.append(f"- Story Points: {cf.story_points}")
+    if cf.parent_task:
+        lines.append(f"- Parent: {cf.parent_task[:8]}")
     if task.description:
         lines.append(f"- Description: {task.description[:300]}")
     if task.is_blocked:
         lines.append(f"- BLOCKED by: {task.blocked_by_task_ids}")
     if cf.pr_url:
         lines.append(f"- PR: {cf.pr_url}")
+    if cf.plane_issue_id:
+        lines.append(f"- Plane: {cf.plane_issue_id[:8]}")
     if completeness_summary:
         lines.append(f"- Artifact: {completeness_summary}")
     lines.append("")
@@ -163,7 +170,7 @@ def build_task_preembed(
     # § 6. Stage protocol (MUST/MUST NOT/CAN)
     if stage:
         if renderer:
-            protocol = renderer.format_stage_protocol(stage, agent_name)
+            protocol = renderer.format_stage_protocol(stage, agent_name, iteration)
             if protocol:
                 lines.append(protocol)
                 lines.append("")
@@ -177,6 +184,12 @@ def build_task_preembed(
             except Exception:
                 pass
 
+    # § 6b. Confirmed plan (if work stage and plan available)
+    if confirmed_plan and stage == "work":
+        lines.append("## CONFIRMED PLAN")
+        lines.append(confirmed_plan)
+        lines.append("")
+
     if renderer:
         rejection_ctx = renderer.format_rejection_context(iteration, rejection_feedback)
         if rejection_ctx:
@@ -184,10 +197,13 @@ def build_task_preembed(
             lines.append("")
 
     # § 7. Inputs from colleagues (contributions)
-    # The base template shows what's REQUIRED. The orchestrator's context refresh
-    # cycle preserves ACTUAL contribution content (## CONTRIBUTION: sections)
-    # that fleet_contribute() appends. Those appear below the requirements list.
+    # The orchestrator's context refresh preserves ACTUAL contribution content
+    # (## CONTRIBUTION: sections) that fleet_contribute() appends.
+    # This section renders AFTER any contribution content.
+    # The marker <!-- CONTRIBUTIONS_ABOVE --> tells the orchestrator where
+    # to insert contribution content when refreshing.
     lines.append("## INPUTS FROM COLLEAGUES")
+    lines.append("<!-- CONTRIBUTIONS_ABOVE -->")
     try:
         from fleet.core.contributions import load_synergy_matrix, get_skip_types
         task_type = cf.task_type or "task"
@@ -197,11 +213,12 @@ def build_task_preembed(
             specs = matrix.get(agent_name, [])
             required = [s for s in specs if s.priority == "required"]
             if required:
-                lines.append("Required contributions (received content appears below if delivered):")
+                lines.append("### Required Contributions")
                 for s in required:
-                    lines.append(f"- **{s.contribution_type}** from {s.role}")
-                lines.append("")
-                lines.append("If contributions are NOT shown below → `fleet_request_input()`. Do NOT proceed without required contributions in work stage.")
+                    lines.append(f"- **{s.contribution_type}** from {s.role} — *awaiting delivery*")
+                if stage == "work":
+                    lines.append("")
+                    lines.append("If any contribution above shows *awaiting delivery* → `fleet_request_input()`. Do NOT proceed without required contributions in work stage.")
             else:
                 lines.append("*(No contributions required for this task type.)*")
         else:

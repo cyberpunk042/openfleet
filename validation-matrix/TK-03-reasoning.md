@@ -14,6 +14,7 @@
 - ID: task-a1b
 - Priority: high
 - Type: story
+- Story Points: 5
 - Description: Dashboard with agent grid, task pipeline, storm, budget
 
 # YOUR STAGE: reasoning
@@ -56,11 +57,10 @@ You are in the reasoning protocol. Plan your approach.
 Your job is to PLAN, not to execute.
 
 ## INPUTS FROM COLLEAGUES
-Required contributions (received content appears below if delivered):
-- **design_input** from architect
-- **qa_test_definition** from qa-engineer
-
-If contributions are NOT shown below → `fleet_request_input()`. Do NOT proceed without required contributions in work stage.
+<!-- CONTRIBUTIONS_ABOVE -->
+### Required Contributions
+- **design_input** from architect — *awaiting delivery*
+- **qa_test_definition** from qa-engineer — *awaiting delivery*
 
 ## WHAT TO DO NOW
 Produce a plan. Reference the verbatim requirement explicitly. Use `fleet_task_accept()` to submit the plan for PO confirmation.

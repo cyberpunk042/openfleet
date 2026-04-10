@@ -592,6 +592,21 @@ async def _refresh_agent_contexts(
                     except Exception:
                         pass  # Rejection feedback loading must not break context refresh
 
+                # Load confirmed plan from task comments (posted by fleet_task_accept)
+                confirmed_plan = ""
+                if current_task.custom_fields.task_stage == "work":
+                    try:
+                        if not (iteration >= 2 and comments):
+                            # Only load comments if we didn't already load them for rejection
+                            comments = await mc.list_comments(board_id, current_task.id)
+                        for c in (comments or []):
+                            content = c.get("content", "") if isinstance(c, dict) else getattr(c, "content", "")
+                            if "plan" in content.lower()[:50] and ("fleet_task_accept" in content.lower() or "accepted" in content.lower()):
+                                confirmed_plan = content[:1000]
+                                break
+                    except Exception:
+                        pass  # Plan loading must not break context refresh
+
                 # Load target task for contribution tasks
                 target_task_obj = None
                 if current_task.custom_fields.contribution_target:
@@ -605,6 +620,7 @@ async def _refresh_agent_contexts(
                     renderer=renderer,
                     rejection_feedback=rejection_feedback,
                     target_task=target_task_obj,
+                    confirmed_plan=confirmed_plan,
                 )
 
                 # Preserve existing contribution sections in task-context.md
@@ -615,19 +631,37 @@ async def _refresh_agent_contexts(
                     existing_path = AGENTS_DIR / agent_name / "context" / "task-context.md"
                     if existing_path.exists():
                         existing = existing_path.read_text()
-                        # Extract contribution sections (## CONTRIBUTION: ... blocks)
                         contrib_marker = "## CONTRIBUTION:"
                         if contrib_marker in existing:
-                            # Find first contribution section
-                            idx = existing.index(contrib_marker)
-                            contrib_sections = existing[idx:]
-                            # Inject into INPUTS FROM COLLEAGUES section
-                            if "## INPUTS FROM COLLEAGUES" in task_text:
-                                task_text = task_text.replace(
-                                    "## INPUTS FROM COLLEAGUES",
-                                    f"## INPUTS FROM COLLEAGUES\n\n{contrib_sections}\n",
-                                    1,
-                                )
+                            # Extract all ## CONTRIBUTION: blocks
+                            import re
+                            contrib_blocks = re.findall(
+                                r'(## CONTRIBUTION:.*?)(?=## (?!CONTRIBUTION:)|### Required|\Z)',
+                                existing, re.DOTALL,
+                            )
+                            if contrib_blocks:
+                                contrib_text = "\n".join(b.rstrip() for b in contrib_blocks)
+                                # Insert at marker
+                                insert_marker = "<!-- CONTRIBUTIONS_ABOVE -->"
+                                if insert_marker in task_text:
+                                    task_text = task_text.replace(insert_marker, f"\n{contrib_text}\n", 1)
+                                # Update checklist: mark each delivered type
+                                for block in contrib_blocks:
+                                    type_match = re.match(r'## CONTRIBUTION:\s*(\S+)', block)
+                                    if type_match:
+                                        ctype = type_match.group(1)
+                                        # Replace only the specific line for this type
+                                        old_line = f"**{ctype}** from"
+                                        # Find the full line containing this type and replace its status
+                                        for old_status in ["— *awaiting delivery*"]:
+                                            # Match: "- **design_input** from architect — *awaiting delivery*"
+                                            # Replace with: "- **design_input** ✓ from architect — *received*"
+                                            lines_list = task_text.split("\n")
+                                            for i, line in enumerate(lines_list):
+                                                if old_line in line and old_status in line:
+                                                    lines_list[i] = line.replace(old_line, f"**{ctype}** ✓ from").replace(old_status, "— *received*")
+                                                    break
+                                            task_text = "\n".join(lines_list)
                 except Exception:
                     pass  # Contribution preservation must not break context refresh
 

@@ -474,26 +474,38 @@ class TierRenderer:
 
     # ── Stage protocol ───────────────────────────────────────────────────────
 
-    def format_stage_protocol(self, stage: str, role: str) -> str:
-        """Format the stage protocol with role-specific language.
+    def format_stage_protocol(self, stage: str, role: str, iteration: int = 1) -> str:
+        """Format the stage protocol with role-specific and iteration-aware language.
 
-        Fixes I5.  Loads protocol from stage_context, then applies
-        role-specific substitutions for the reasoning stage.
-
-        For the reasoning stage:
-            "Produce an implementation plan" → role-specific output description
-            "Implementation plans with specific file/component references" → role-specific text
+        Fixes I5 (role-specific reasoning) and BUG-03 (rework protocol confusion).
 
         Args:
             stage: Methodology stage name.
             role:  Agent role name.
+            iteration: labor_iteration (>=2 adapts work protocol for rework).
 
         Returns:
-            Protocol text (possibly role-adapted).
+            Protocol text (possibly role-adapted and iteration-adapted).
         """
         from fleet.core.stage_context import get_stage_instructions
 
         protocol = get_stage_instructions(stage)
+
+        # Work stage + rework: replace "Execute the confirmed plan" with fix-oriented language
+        if stage == "work" and iteration >= 2:
+            protocol = protocol.replace(
+                "Execute the confirmed plan. Stay in scope.",
+                "Fix the rejected work. Address the ROOT CAUSE identified in rejection feedback.",
+            )
+            protocol = protocol.replace(
+                "Execute the plan confirmed in reasoning stage",
+                "Fix the specific issues from the rejection feedback",
+            )
+            protocol = protocol.replace(
+                "Consume all contributions before implementing",
+                "Re-read contributions and rejection feedback before fixing",
+            )
+            return protocol
 
         if stage != "reasoning":
             return protocol
