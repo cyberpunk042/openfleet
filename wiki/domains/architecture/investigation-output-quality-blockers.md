@@ -19,6 +19,10 @@ Options for each of the 10 systemic issues. No decisions.
 
 ---
 
+## Summary
+
+Investigation of solution options for the 10 context-output-quality blockers identified during TK-01 analysis. Per blocker (contribution marker stripped, fleet state missing, confirmed plan loader, tier-aware contribution depth, dead heartbeat code, generator Navigator gap, etc.), lists candidate fixes and their tradeoffs — feeds the reasoning-stage plan.
+
 ## Finding 1: Contribution content marker stripped
 
 ### Option A: Stop stripping the marker

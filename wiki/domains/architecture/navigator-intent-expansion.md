@@ -23,6 +23,10 @@ phase: "1 — Design"
 
 # Navigator Intent-Map Expansion
 
+## Summary
+
+Scope and proposed expansion for Navigator's intent map — adding the 19 intents identified as missing in the gap analysis, plus new pack-skills wiring. Defines the intent keys, role×mode activation, and which skills/commands/tools each intent should surface when Navigator assembles role context.
+
 ## Scope
 
 1. **19 missing intents** identified in navigator-intent-gap-analysis.md

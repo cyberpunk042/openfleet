@@ -14,7 +14,7 @@ sources: []
 
 ## Summary
 
-11 validation scenarios reviewed line-by-line. ~25 issues found. Most fixed in-session. This page catalogs what was found, categorized by status.
+Catalog of ~25 issues found during the 2026-04-09 line-by-line review of 11 context-injection validation scenarios (TK-01, TK-06, TK-07, TK-34, HB-04, HB-05, and others). Categorizes findings by status: fixed-in-session, pending, deferred. Source material for subsequent plan authoring and anti-pattern extraction. Evidence that the rendering pipeline ADAPTS — whether it adapts CORRECTLY requires per-scenario PO review, which this catalog drives.
 
 ## Fixed in Session
 
@@ -58,3 +58,10 @@ sources: []
 3. **Methodology protocols were static per stage, not per model** — resolved by named models
 4. **Stage boundaries (tools_blocked) may be too coarse** — needs per-model-per-stage design (open)
 5. **Three documentation surfaces were wrong** — corrected to five layers per PO directive
+
+## Relationships
+
+- RELATES TO: [[Validation Issues Catalog — Every Problem Found]]
+- RELATES TO: [[15 Anti-Patterns from TierRenderer Session]]
+- FEEDS INTO: [[OpenFleet — Identity Profile]]
+- FEEDS INTO: [[Session: Context Injection System Evolution]]

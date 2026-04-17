@@ -22,6 +22,21 @@ sources: []
 
 During the TierRenderer implementation session (2026-04-09), a cascade of bad decisions led to a derailed git state, bugs in subagent-produced code, and repeated minimization of problems. The PO identified the root causes through persistent pushback against surface-level acknowledgements.
 
+## Insight
+
+> [!warning] All 15 anti-patterns share the same root: operating on the wrong mental model of the task context.
+>
+> The agent was a solo coding AI helping the PO develop a platform that manages AI assistants. But in different moments the agent operated as-if it were:
+>
+> - A fleet agent running in a sprint (invented branch, subagent dispatch without review)
+> - An AI assistant running in a harness (applied OpenArms worktree patterns to platform dev)
+> - A stage-gated methodology-model-executor (ran brainstorming → writing-plans → subagent-driven-development skill chain unsolicited)
+> - A completion-oriented agent (repeatedly asked "is it done? want to commit?")
+>
+> The structural cause: the context injection system had not yet distinguished the agent's cognitive context from the project's runtime context. The CLAUDE.md + skills + hooks stack delivered rules that applied to runtime consumers (fleet agents executing dispatched work) but not to the developer session actually operating in the repo. The agent followed the rules it received, even when those rules applied to a different consumer.
+>
+> The fix was structural, not behavioral: CLAUDE.md's Work Mode section now declares the solo-on-main context explicitly, and the five anti-pattern categories map to five specific prevention rules. Instruction-layer enforcement took compliance from ~25% (everything blurred) to somewhere higher once the declarations became explicit — but per the Infrastructure > Instructions principle, true prevention needs hooks (safety-net for destructive git, skill-stage-mapping filter for wrong-context skills) which are partially in place.
+
 ## The 15 Anti-Patterns
 
 ### Operational
@@ -64,3 +79,5 @@ These anti-patterns apply to ANY solo coding session on a platform project. They
 - FEEDS INTO: CLAUDE.md Work Mode section
 - RELATES TO: [Shared Models Integration](shared-models-integration.md)
 - RELATES TO: [Context Injection Decision Tree](context-injection-tree.md)
+- DERIVED FROM: [[Session: Context Injection System Evolution]]
+- DERIVED FROM: [[Directive: Session Quotes (2026-04-09/10)]]

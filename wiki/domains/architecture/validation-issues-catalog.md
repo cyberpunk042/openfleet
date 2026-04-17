@@ -181,3 +181,10 @@ The critical issues cluster around:
 4. Rejection rework is invisible to the agent (H11, H12)
 5. Confirmed plan and previous stage findings absent from context (H5, H6)
 6. methodology.yaml protocols are role-generic when they should be role-specific (I5)
+
+## Relationships
+
+- RELATES TO: [[Critical Review Findings — Context Injection Scenarios]]
+- RELATES TO: [[15 Anti-Patterns from TierRenderer Session]]
+- FEEDS INTO: [[Plan: Context Injection Pipeline Blocker Fixes]]
+- FEEDS INTO: [[Plan: TK-01 Golden Path — 200+ Lines of High-Value Output]]

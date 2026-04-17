@@ -127,5 +127,7 @@ Tier 4 structural reached. Tier 2+ operational depth per OpenArms pattern. Remai
 ## Relationships
 
 - BUILDS ON: [[OpenFleet — Identity Profile]]
+- RELATES TO: [[Verify Before Contributing to External Knowledge Systems]] (lesson authored from this session's self-failures)
+- RELATES TO: [[Wiki Structure Gaps — LLM Wiki Model Alignment]] (gaps this session closed structurally)
 - RELATES TO: [[Second Brain Integration Chain]]
 - FEEDS INTO: next session's handoff

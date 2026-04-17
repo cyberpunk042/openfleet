@@ -56,3 +56,9 @@ OpenFleet already implements many shared model concepts under different names. T
 - Not forcing — letting the overlaps become natural
 
 The PO explicitly stated this is progressive, not a sudden rewrite. The models are "not perfect yet" and "a good start."
+
+## Relationships
+
+- FEEDS INTO: [[Shared Models Integration — LLM Wiki + Methodology in OpenFleet]]
+- FEEDS INTO: [[Methodology Models Rationale]]
+- FEEDS INTO: [[Tier Rendering Design Rationale]]

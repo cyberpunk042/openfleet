@@ -70,6 +70,28 @@ See: [wiki/domains/architecture/agent-ecosystem-allocation.md](../../domains/arc
 - Ensure Navigator intent-map.yaml recommends pack skills at right stages
 - All installation flows through setup pipeline — zero manual steps
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Register 5+ major packs in skill-packs.yaml (superpowers, ring, trailofbits, NeoLabHQ, borghei)
+- [ ] Evaluate and quality-filter each pack for fleet-relevant skills per role
+- [ ] Map pack skills to agents via skill-assignments.yaml with metadata
+- [ ] Deploy all configured plugins to agent workspaces via IaC
+- [ ] Create custom /commands per role where skills don't fit
+- [ ] Explore reverse hooks concept and implement where valuable
+- [ ] Ensure skill-stage-mapping.yaml includes pack skills in stage recommendations
+- [ ] Ensure Navigator intent-map.yaml recommends pack skills at right stages
+- [ ] All installation flows through setup pipeline — zero manual steps
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Per-Role Skill Groups (Target)
 
 | Agent | Plugins | Pack Skills | Fleet Skills | Total |

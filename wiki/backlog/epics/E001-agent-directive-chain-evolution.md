@@ -33,6 +33,26 @@ Full revision of all agent files — not just one file, but the complete templat
 - Respect operational modes, events, notifications, sub-tasks, comments, relations, cowork, stages, gates, states, transfers, trails, mentions
 - Apply SRP, Domain, Onion standards to agent file structure
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Revise every agent file across all 10 agents for quality, consistency, and completeness
+- [ ] Address TOOLS.md 4000-char truncation in gateway executor (311-363 lines won't fit)
+- [ ] Design file split strategy: main + extended, domain folders, per-role files
+- [ ] Ensure the autocomplete chain naturally leads agents to the correct tool/bus/chain
+- [ ] Make artifact creation easy and natural at every methodology stage
+- [ ] Respect operational modes, events, notifications, sub-tasks, comments, relations, cowork, stages, gates, states, transfers, trails, mentions
+- [ ] Apply SRP, Domain, Onion standards to agent file structure
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Phases
 
 ### Phase 0: Document & Audit — COMPLETE
@@ -137,3 +157,5 @@ Full revision of all agent files — not just one file, but the complete templat
 - RELATES_TO: E003 (Brain Evolution — brain decides what to inject)
 - RELATES_TO: E014 (Autocomplete Web — the map feeds into directive content)
 - DEPENDS_ON: E007 (Plugin/Skill Ecosystem — agents need to know their tools)
+- RELATES TO: [[Agent Ecosystem Allocation — Skills, Plugins, Packs Per Role]]
+- RELATES TO: [[TOOLS.md Redesign — Focused Desk, Detail On-Demand]]

@@ -26,6 +26,10 @@ phase: "0 — Research"
 
 # Brain (Orchestrator) Audit
 
+## Summary
+
+Audit of the orchestrator (the Brain) as the starting artifact for E003 Phase 0. Documents the current 13-step dispatch cycle, identifies components (storm monitor, budget monitor, fleet mode, effort profile, change detector), and surfaces the bypass / escalation / context-strategy design questions that drive the E003 reasoning stage.
+
 ## Current Cycle (13 steps in code)
 
 ```

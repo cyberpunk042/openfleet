@@ -48,7 +48,21 @@ sources:
 
 The research wiki defines two foundational models — LLM Wiki (what knowledge IS) and Methodology (how work PROCEEDS) — that apply at every level: solo session, single assistant, fleet of assistants, full platform. OpenFleet already implements many of these concepts under different names. This page maps the shared model vocabulary to OpenFleet's existing architecture, identifies where they already align, where they diverge, and what evolving toward the shared models means for the context injection system and beyond.
 
-## What Already Aligns
+## Key Insights
+
+1. **OpenFleet already implements most of the brain's Methodology + LLM Wiki concepts under different names.** The integration is a NAMING + CONSISTENCY exercise more than a capability-building exercise. The brain's "task_type" aligns with our task_type. Their "stages" align with our conversation/analysis/investigation/reasoning/work/review. Their "contribution" concept IS our synergy matrix + contributions.
+
+2. **Divergences are legitimate per the Methodology-Is-Flexible principle.** Our 6-stage model vs brain's 5-stage, our quality tiers (Expert/Capable/Flagship-local/Lightweight/Direct) vs brain's (Skyscraper/Pyramid/Mountain), our selection conditions including `contribution_type` and `labor_iteration`. These are fleet-scale refinements that the framework anticipates.
+
+3. **The integration is bidirectional.** We adopt brain vocabulary where it aligns. We contribute OpenFleet-evolved concepts back: immune system, tier progression, contribution gating, validation matrix pattern (all already extracted by the brain as patterns).
+
+4. **At all four levels — solo / Assistant / Fleet / Full Platform — the shared vocabulary holds.** A solo coding session follows a methodology model. A single OpenArms agent follows methodology.yaml + agent-directive.md. Fleet runs 10 instances simultaneously. Platform spans 5 projects sharing the framework. Same vocabulary, different scale.
+
+5. **Context injection is the delivery mechanism for methodology model instances.** When an agent is dispatched, the orchestrator selects the model, then the tier renderer produces a context injection shaped by that model × stage × tier × agent trust. Model selection is the first branch of the autocomplete chain after identity.
+
+## Deep Analysis
+
+### What Already Aligns
 
 OpenFleet independently built many of the same patterns. The shared models give them names and structure.
 
@@ -107,7 +121,7 @@ OpenFleet independently built many of the same patterns. The shared models give 
 | Pyramid (deliberate compression) | Capable/Flagship-Local tier — condensed, adapted |
 | Mountain (accidental chaos) | Lightweight tier without proper guidance = risk |
 
-## Where They Diverge
+### Where They Diverge
 
 ### Stage Names
 
@@ -147,7 +161,7 @@ Currently: rework tasks (iteration ≥ 2) get adapted protocol text ("Fix ROOT C
 
 The shared model says: bug-fix is a separate model (document → implement → test, NO design stage). Rework is even simpler — the problem IS documented (the rejection feedback), so it's closer to hotfix (implement → test). The model should be selected by the condition (labor_iteration ≥ 2 → rework model), not patched onto the regular model.
 
-## What This Means for Context Injection
+### What This Means for Context Injection
 
 The context injection system IS the delivery mechanism for methodology model instances. Every scenario in the decision tree (91 mapped) is a specific model instance rendered for a specific agent situation.
 
@@ -201,3 +215,4 @@ The choice is EXPLICIT per dispatch, not accidental. The tier selection logic in
 - FEEDS INTO: config/methodology.yaml — evolution toward named models
 - FEEDS INTO: fleet/core/preembed.py — model-driven rendering
 - FEEDS INTO: fleet/core/tier_renderer.py — quality dimension implementation
+- DERIVED FROM: [[Directive: Integrate Shared Models (LLM Wiki + Methodology)]]

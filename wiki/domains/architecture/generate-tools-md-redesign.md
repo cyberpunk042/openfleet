@@ -23,6 +23,10 @@ phase: "1 — Design"
 
 # generate-tools-md.py Redesign — Algorithm Specification
 
+## Summary
+
+Algorithm specification for the redesigned generate-tools-md.py. Today's script produces 15–18K-char TOOLS.md per agent in 9 sections — over the gateway truncation threshold and mixed in role-irrelevant content. The redesign reshapes into focused desk + detail-on-demand structure aligned with tier-aware loading.
+
 ## Current Algorithm (9 sections, produces 15-18K)
 
 ```

@@ -4,7 +4,7 @@ type: index
 domain: log
 status: active
 created: 2026-04-08
-updated: 2026-04-08
+updated: 2026-04-17
 tags: [log, notes, directives, messages]
 confidence: medium
 sources: []
@@ -12,8 +12,17 @@ sources: []
 
 # Log
 
-Directives, session notes, and decision records. Chronological.
+Operator directives (sacrosanct, verbatim), session summaries, and integration records. Chronological.
 
 ## Entries
 
-- [2026-04-08 — Fleet Evolution Vision](2026-04-08-fleet-evolution-vision.md) — Operator directives establishing the full fleet evolution beyond tools system elevation. 17 epics, research findings, existing patterns.
+| Date | Page | Type | What it is |
+|---|---|---|---|
+| 2026-04-08 | [[Fleet Evolution Vision]] | directive | Founding vision establishing the 17-epic fleet evolution |
+| 2026-04-09 | [[Directive: Five Documentation Layers]] | directive | Five distinct doc layers (wiki / public / code / smart / specs) |
+| 2026-04-09 | [[Directive: Integrate Shared Models (LLM Wiki + Methodology)]] | directive | Integrate brain's LLM Wiki + Methodology shared models |
+| 2026-04-10 | [[Directive: Multi-Level Tasks + Tools_Blocked Rethink]] | directive | Ops-board vs Plane task levels; per-model-per-stage tools_blocked |
+| 2026-04-10 | [[Directive: Session Quotes (2026-04-09/10)]] | directive | Verbatim PO quotes anchoring derivative pages |
+| 2026-04-10 | [[Session: Context Injection System Evolution]] | session | 2-day session evolving the tier rendering + methodology models + shared models |
+| 2026-04-11 | [[Directive: Plan Types — Design Plan vs Operations Plan]] | directive | The critical plan-type distinction: design vs ops |
+| 2026-04-16 | [[Second Brain Integration — First Live Session (2026-04-16)]] | session | First live bidirectional second-brain integration session |

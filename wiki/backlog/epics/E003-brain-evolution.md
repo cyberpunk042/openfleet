@@ -35,6 +35,26 @@ Evolve the orchestrator brain to avoid giving needless work to AI, manage contex
 - IDLE/SLEEPING/OFFLINE evaluation without wasting Claude calls
 - Session management across context compactions
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Brain avoids dispatching work that can be handled deterministically
+- [ ] Context-aware compaction strategy (detect approaching limits, prepare, trigger if needed)
+- [ ] Adaptive effort escalation (stage → effort → model → source)
+- [ ] Fine-tuned heartbeat timing (responsive but not wasteful)
+- [ ] Automatic contribution subtask creation from synergy matrix
+- [ ] IDLE/SLEEPING/OFFLINE evaluation without wasting Claude calls
+- [ ] Session management across context compactions
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Phases
 
 ### Phase 0: Document — COMPLETE
@@ -96,3 +116,7 @@ Evolve the orchestrator brain to avoid giving needless work to AI, manage contex
 - ENABLES: E008 (Agent Lifecycle Fine-Tuning — brain controls timing)
 - ENABLES: E012 (Full Autonomous Mode — brain drives autonomous operation)
 - RELATES_TO: E006 (Budget & Tempo — brain respects budget modes)
+- RELATES TO: [[Brain (Orchestrator) Audit — E003 Phase 0]]
+- RELATES TO: [[Context Strategy Design — E003]]
+- RELATES TO: [[Deterministic Bypass Design — E003]]
+- RELATES TO: [[Effort Escalation Design — E003]]

@@ -33,6 +33,26 @@ Knowledge base and memory persistence through Docker purge. Constant IaC backup 
 - Fleet compose includes all services (MC, LightRAG, IRC, Plane)
 - setup.sh restores full state from IaC — zero data loss
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] All fleet state persists through Docker purge (volumes, IaC export, git-tracked config)
+- [ ] LightRAG KB data backed up to IaC automatically
+- [ ] claude-mem data survives purge (SQLite file in git-tracked location)
+- [ ] Board memory exportable and restorable
+- [ ] Agent session data (context/, artifacts) backed up before purge
+- [ ] Fleet compose includes all services (MC, LightRAG, IRC, Plane)
+- [ ] setup.sh restores full state from IaC — zero data loss
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Existing Foundation
 
 - setup.sh — 17-step master orchestration (from zero to running fleet)

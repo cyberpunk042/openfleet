@@ -35,6 +35,26 @@ Integrate LightRAG as the fleet's knowledge graph system. Build indexing process
 - Enable cross-project knowledge sharing (fleet, AICP, DSPD, NNRT)
 - Build multiple overlapping maps that aggregate
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Add LightRAG to fleet Docker compose
+- [ ] Build indexing process for fleet documentation, system docs, Plane artifacts
+- [ ] Ensure KB persistence through Docker purge (IaC backup/restore)
+- [ ] Connect to Claude Code agents via MCP or plugin
+- [ ] Connect to LocalAI when available (dual backend)
+- [ ] Enable cross-project knowledge sharing (fleet, AICP, DSPD, NNRT)
+- [ ] Build multiple overlapping maps that aggregate
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Research Needed
 
 - LightRAG's current API and integration patterns (OpenSearch backend, March 2026)

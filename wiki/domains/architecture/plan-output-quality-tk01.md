@@ -16,6 +16,10 @@ sources: []
 
 # Plan: TK-01 Golden Path Output
 
+## Summary
+
+Design plan for TK-01 golden-path output quality: what the 200+-line target deliverable looks like (every autocomplete-chain section task-specific, tier-adapted, verbatim-anchored) and how we reach there. Architecture, data flow (preembed + Navigator + orchestrator), target files, traceability back to the verbatim operator requirement.
+
 ## What we deliver
 
 A correct TK-01 output where every section of the autocomplete chain contains real, task-specific, tier-adapted content from the systems that produce it. The output demonstrates that the rendering pipeline works — that the 20+ systems feed into 3 context files that give an agent everything they need without a single MCP call.
@@ -235,3 +239,11 @@ Generator (offline)
 - Lightweight tier scenario (TK-31) shows names_only contributions
 - All existing tests pass
 - New tests cover: marker preservation, contributions depth, fleet_state rendering
+
+## Relationships
+
+- DERIVED FROM: [[Analysis: Why TK-01 Produces 88 Lines of Low-Value Output]]
+- DERIVED FROM: [[Investigation: Solutions for Context Output Quality]]
+- RELATES TO: [[Tier Rendering Design Rationale]]
+- RELATES TO: [[Context Injection Decision Tree]]
+- FEEDS INTO: TK-01 validation scenario

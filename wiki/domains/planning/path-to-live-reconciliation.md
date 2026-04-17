@@ -18,6 +18,10 @@ confidence: medium
 
 # Path-to-Live Reconciliation — Where We Are
 
+## Summary
+
+Reconciliation of two parallel plans toward fleet-live operation: the original path-to-live.md (24 operational steps across 8 phases A-H, focused on infrastructure + provisioning) and the evolving methodology-integration plan (second-brain adoption + context injection + validation matrix). Names overlaps, divergences, and the single merged sequence.
+
 ## Two Plans, One Goal
 
 **path-to-live.md** (2026-04-02) — 24 operational steps across 8 phases (A-H) to reach fleet live operation. Focused on fixing blockers, building agent files, wiring brain modules.
@@ -142,3 +146,9 @@ To reach the minimum viable live test, these must be done:
 | E017 (Federation) | Multi-fleet, shared Plane, agent namespacing |
 
 These are EVOLUTION beyond the live fleet baseline. Path-to-live gets the fleet running. Epics make it intelligent, knowledgeable, independent, and scalable.
+
+## Relationships
+
+- RELATES TO: [[Wiki Structure Gaps — LLM Wiki Model Alignment]]
+- RELATES TO: [[OpenFleet — Identity Profile]]
+- FEEDS INTO: all epics E001-E017 (work ordering)

@@ -15,6 +15,10 @@ sources: []
 
 # Investigation: Context Injection Pipeline Blocker Solutions
 
+## Summary
+
+Investigation stage output for the context-injection-pipeline track: for each blocker identified in the analysis phase (model selection evaluator bug, generator fixtures, tier rendering coverage, validation matrix gap), enumerates solution options with tradeoffs and cites evidence. Reasoning-stage input, not a plan.
+
 ## Finding 1: Model Selection Condition Evaluator
 
 ### Additional discovery during investigation

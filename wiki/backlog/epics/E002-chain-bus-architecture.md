@@ -30,6 +30,25 @@ Validate and evolve the tool chain/bus system so agents naturally call the right
 - Design the "ins and outs and middles" for every group of operations
 - Integrate with brain/orchestrator for sync and event handling
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Validate existing 16 chain builders cover all operations needed
+- [ ] Design cross-task tracking (PM task → ops subtasks → results propagate back)
+- [ ] Ensure every tool call produces proper trail, events, notifications
+- [ ] Make chain selection natural — agents don't think about buses, they call one tool and the chain handles propagation
+- [ ] Design the "ins and outs and middles" for every group of operations
+- [ ] Integrate with brain/orchestrator for sync and event handling
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Phases
 
 ### Phase 0: Document — COMPLETE
@@ -80,3 +99,4 @@ Validate and evolve the tool chain/bus system so agents naturally call the right
 - ENABLES: E003 (Brain Evolution — brain coordinates chain execution)
 - ENABLES: E009 (Signatures — chains produce the provenance data)
 - RELATES_TO: E012 (Full Autonomous Mode — autonomous agents rely on automatic propagation)
+- RELATES TO: [[Chain/Bus Architecture Audit — E002 Phase 0]]

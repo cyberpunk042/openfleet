@@ -33,6 +33,24 @@ Add budget mode config to Mission Control as a dropdown, fine-tune spending spee
 - Preferred work window support (off-peak scheduling)
 - Integration with free model routing for economic mode
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Budget mode dropdown in Mission Control UI (like existing dropdowns)
+- [ ] Multiple modes: aggressive, normal, conservative, economic, minimal
+- [ ] Each mode controls: dispatch rate, model tier, effort level, heartbeat frequency
+- [ ] Preferred work window support (off-peak scheduling)
+- [ ] Integration with free model routing for economic mode
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Phases
 
 ### Phase 0: Document

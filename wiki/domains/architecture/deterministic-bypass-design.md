@@ -20,6 +20,10 @@ confidence: medium
 
 # Deterministic Bypass Design
 
+## Summary
+
+E003 design enforcing the "deterministic shell, LLM core" principle: every operation decidable in Python is decided in Python (zero-cost); Claude calls are reserved for work that genuinely needs reasoning. Specifies the bypass catalog, decision heuristics, and the measurement surface that proves bypasses actually save cost.
+
 ## PO Directive
 
 > "we need to be smart and fine tune the brain we know that a lot does not require agent."

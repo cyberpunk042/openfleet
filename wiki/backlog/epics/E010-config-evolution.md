@@ -30,6 +30,25 @@ Differentiate work_readiness (ready to start working on) from work_progress (rea
 - Support custom progressions (release: alpha→beta→rc→release)
 - Requirements can evolve at any stage — not locked once set
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Split task_readiness (0-99, pre-dispatch authorization) from task_progress (0-100, post-dispatch work tracking)
+- [ ] task_readiness: PO controls, gates dispatch. 0=not started, 50=investigating, 80=reasoning, 99=ready to work
+- [ ] task_progress: Agent drives, tracks work. 0=accepted, 30=implementing, 70=done, 80=challenged, 90=reviewed, 100=complete
+- [ ] Make delivery phases (idea→conceptual→poc→mvp→staging→production) configurable and extensible
+- [ ] Support custom progressions (release: alpha→beta→rc→release)
+- [ ] Requirements can evolve at any stage — not locked once set
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Existing Foundation
 
 - TaskCustomFields: task_readiness (int, 0-99), task_progress (int, 0-100) — ALREADY split in models.py

@@ -135,3 +135,6 @@ OpenFleet's self-declared Goldilocks identity profile — authored from our own 
 - RELATES TO: [[methodology-is-a-framework-not-a-fixed-pipeline|Methodology Is a Framework, Not a Fixed Pipeline]]
 - CONTRASTS WITH: brain's retrospective profile of OpenFleet at `devops-solutions-research-wiki/wiki/ecosystem/project_profiles/openfleet/identity-profile.md` — same project, different perspective (retrospective brain view vs self-declared platform view)
 - FEEDS INTO: `../../../CLAUDE.md` — the identity fields declared here are the source of truth our CLAUDE.md should route to
+- RELATES TO: [[Tier Rendering Design Rationale]]
+- RELATES TO: [[Methodology Models Rationale]]
+- RELATES TO: [[Context Injection Decision Tree]]

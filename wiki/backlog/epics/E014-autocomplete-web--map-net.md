@@ -57,6 +57,28 @@ See: [wiki/domains/architecture/navigator-intent-gap-analysis.md](../../domains/
 - Adapt injection depth per model capacity (opus: full, sonnet: condensed, localai: minimal)
 - Make the map a living system — updates as fleet docs and code change
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Fill 19 missing Navigator intents (P1: 8, P2: 7, P3: 4)
+- [ ] Add pack skills (superpowers, ring, trailofbits) to ALL intents
+- [ ] Add sub-agent recommendations to relevant intents
+- [ ] Connect LightRAG for graph-based knowledge queries (entity relationships)
+- [ ] Connect claude-mem for agent-specific cross-session observations
+- [ ] Build the indexing process that populates LightRAG from fleet docs
+- [ ] Create multiple overlapping maps (system map, role map, task map, knowledge map)
+- [ ] Adapt injection depth per model capacity (opus: full, sonnet: condensed, localai: minimal)
+- [ ] Make the map a living system — updates as fleet docs and code change
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Phases
 
 ### Phase 0: Document & Research
@@ -112,3 +134,6 @@ See: [wiki/domains/architecture/navigator-intent-gap-analysis.md](../../domains/
 - ENABLES: E003 (Brain — brain's context refresh drives Navigator)
 - ENABLES: E012 (Autonomous — agents need focused, adaptive context for autonomous work)
 - RELATES_TO: E013 (IaC — knowledge map and LightRAG must persist)
+- RELATES TO: [[Navigator Intent-Map Gap Analysis]]
+- RELATES TO: [[Navigator Intent-Map Expansion — 19 Missing Intents + Pack Skills]]
+- RELATES TO: [[Context Injection Decision Tree]]

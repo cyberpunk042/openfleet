@@ -30,6 +30,25 @@ General review, simulation, and diagram writing to validate flow and logic acros
 - Validate all 20 system interconnections
 - Validate agent file injection order produces correct behavior
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Simulate every integration flow (12 flows from INTEGRATION.md) end-to-end
+- [ ] Produce diagrams validating each flow
+- [ ] Multi-agent iteration protocol for challenge→fix→re-challenge cycles
+- [ ] Validate autocomplete chain engineering (data arrangement → correct behavior)
+- [ ] Validate all 20 system interconnections
+- [ ] Validate agent file injection order produces correct behavior
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Existing Foundation
 
 - docs/INTEGRATION.md — 12 integration flows documented textually

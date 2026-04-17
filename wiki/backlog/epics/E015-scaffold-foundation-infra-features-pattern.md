@@ -32,6 +32,25 @@ The repeated pattern at every level of building. Scaffold is the basics (config,
 - Engineer follows the order when implementing
 - The fleet itself follows this pattern in its own evolution (E001-E017 follow this order)
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Codify the scaffold→foundation→infrastructure→features progression in methodology
+- [ ] Agents understand which phase their task belongs to and what standards apply
+- [ ] PM uses this pattern when breaking epics into work
+- [ ] Architect uses this when designing systems
+- [ ] Engineer follows the order when implementing
+- [ ] The fleet itself follows this pattern in its own evolution (E001-E017 follow this order)
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Existing Foundation
 
 - config/phases.yaml — delivery phases (idea→conceptual→poc→mvp→staging→production) — related but not the same pattern

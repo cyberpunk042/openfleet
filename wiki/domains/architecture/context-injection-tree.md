@@ -18,6 +18,10 @@ Every path from root to leaf = one validated scenario.
 > "I would not overwhelm my trainee"
 > — PO, 2026-04-09
 
+## Summary
+
+The decision tree controlling how context is injected per agent per cycle. Three fleet-level axes (OCMC dropdowns) gate everything below them; downstream branches select tier, model, stage, protocol adaptations, and skill/plugin loads. Canonical reference for every pre-embed, heartbeat, and task-injection pipeline decision.
+
 ## Fleet-Level Axes (apply to EVERYTHING below)
 
 These three axes are set at the fleet level via OCMC dropdowns. They affect
@@ -715,3 +719,11 @@ Each gets:
 2. Inspected line by line
 3. PO confirmed or corrected
 4. Locked by pessimistic test
+
+## Relationships
+
+- RELATES TO: [[Tier Rendering Design Rationale]]
+- RELATES TO: [[Shared Models Integration — LLM Wiki + Methodology in OpenFleet]]
+- RELATES TO: [[Operational Modes — Heartbeat vs Task, Injection Levels]]
+- BUILDS ON: [[Methodology Models Rationale]]
+- FEEDS INTO: all context injection validation scenarios

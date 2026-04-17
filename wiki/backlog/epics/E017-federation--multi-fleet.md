@@ -27,6 +27,24 @@ Multiple fleets connected to the same Plane. Each fleet has its own number, its 
 - Cross-fleet communication: federation protocol for fleet-to-fleet coordination
 - Machine identity: fleet knows what machine it runs on (for multi-machine deployment)
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Fleet identity: fleet number, fleet name, agent prefix (alpha-architect vs beta-architect)
+- [ ] Agent namespacing: each agent has fleet-prefixed username for cross-fleet disambiguation
+- [ ] Shared Plane: two fleets can work on the same Plane project without conflict
+- [ ] Cross-fleet communication: federation protocol for fleet-to-fleet coordination
+- [ ] Machine identity: fleet knows what machine it runs on (for multi-machine deployment)
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Existing Foundation
 
 - config/fleet-identity.yaml — fleet.id ("alpha"), fleet.name ("Fleet Alpha"), fleet.number (1)

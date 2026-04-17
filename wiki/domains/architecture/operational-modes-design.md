@@ -17,6 +17,10 @@ phase: "1 — Design"
 
 # Operational Modes — Heartbeat vs Task
 
+## Summary
+
+Design for separating OpenFleet's operational modes — heartbeat vs task — that current agent files (CLAUDE.md, HEARTBEAT.md, TOOLS.md) conflate. Specifies per-mode injection depth, per-mode file ownership, and how Navigator assembles mode-appropriate context rather than one-size-fits-all content.
+
 ## PO Observation
 
 > "isn't fleet_read_context() only for when you want to consult another task that you might not already have in your context? it's as if you were in mode no pre-injected context..."

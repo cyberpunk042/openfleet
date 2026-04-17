@@ -48,3 +48,8 @@ One use case: handing brainless work to a cheap/free model that can't reason. Th
 When the methodology says "produce a plan" in reasoning stage, it means a DESIGN PLAN. An operations plan (TODO list) should never be presented as a plan deliverable. The methodology is about the development and engineering pipeline, not about step-by-step instructions.
 
 Operations plans don't need documents — they're personal working notes. Design plans are the artifact the reasoning stage produces and the PO reviews.
+
+## Relationships
+
+- FEEDS INTO: [[Plan: Context Injection Pipeline Blocker Fixes]]
+- FEEDS INTO: [[Plan: TK-01 Golden Path — 200+ Lines of High-Value Output]]

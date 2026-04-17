@@ -48,3 +48,7 @@ The system works WITHOUT Plane. Plane augments but is not required. All tool blo
 - Should tools_blocked move from per-stage to per-model-per-stage?
 - How does fleet_task_complete relate to contribution completion (fleet_contribute)?
 - When an agent creates child tasks on the Ops board, how do those relate to the Plane story?
+
+## Relationships
+
+- FEEDS INTO: [[Operational Modes — Heartbeat vs Task, Injection Levels]]

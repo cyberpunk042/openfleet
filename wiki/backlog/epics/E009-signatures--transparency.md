@@ -30,6 +30,25 @@ Agent signatures at every level — individual tools, tool chains, and group cal
 - PR body, completion comments, board memory, Plane comments all carry provenance
 - Fleet-ops can see at review time: what model produced this, at what effort, how much context was used
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Signatures on tool calls: agent identity, model, effort, context size at call time
+- [ ] Signatures on chains: aggregate stamp for multi-surface operations
+- [ ] Signatures on group calls: composite stamp covering all operations in the tree
+- [ ] Trainee flagging: LocalAI, MiMo, Qwen, free model output marked in labor stamps
+- [ ] PR body, completion comments, board memory, Plane comments all carry provenance
+- [ ] Fleet-ops can see at review time: what model produced this, at what effort, how much context was used
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Existing Foundation
 
 - fleet/core/labor_stamp.py — DispatchRecord, assemble_stamp(), LaborStamp dataclass

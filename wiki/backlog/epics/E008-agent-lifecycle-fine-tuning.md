@@ -32,6 +32,25 @@ Fine-tune sleep/offline/silent heartbeat timing for a proficient autonomous flee
 - Preferred work window support (off-peak hours = doubled usage limits)
 - Budget mode adjusts heartbeat intervals (turbo = fast, economic = slow)
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Fine-tune IDLE/SLEEPING/OFFLINE thresholds per role (not one-size-fits-all)
+- [ ] Brain-evaluated heartbeats for IDLE+ agents ($0 silent when nothing to do)
+- [ ] Context-aware compaction strategy (detect approaching limits, prepare artifacts, self-trigger)
+- [ ] Effort escalation logic (stage → complexity → effort → model → source, adaptive)
+- [ ] Preferred work window support (off-peak hours = doubled usage limits)
+- [ ] Budget mode adjusts heartbeat intervals (turbo = fast, economic = slow)
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Existing Foundation
 
 - fleet/core/agent_lifecycle.py — ACTIVE→IDLE→SLEEPING→OFFLINE state machine

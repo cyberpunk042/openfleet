@@ -38,6 +38,29 @@ Full autonomous operation when Plane is connected and PO activates the mode. Wri
 - All agents respect fleet state, budget mode, storm level
 - 24-hour autonomous operation with PO monitoring via Plane + IRC + ntfy
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Writer proactively maintains Plane pages when completed features have no docs
+- [ ] Architect automatically provides design_input when tasks enter reasoning
+- [ ] QA automatically predefines tests (TC-XXX) when tasks enter reasoning
+- [ ] DevSecOps automatically provides security_requirements for security-relevant tasks
+- [ ] UX automatically provides ux_spec for user-facing tasks at all levels
+- [ ] Brain orchestrates contribution creation from synergy matrix automatically
+- [ ] Multiple agent iteration on rejection — not just one-pass fix, challenge until right
+- [ ] PM monitors and routes PO gates without PO having to check constantly
+- [ ] All agents respect fleet state, budget mode, storm level
+- [ ] 24-hour autonomous operation with PO monitoring via Plane + IRC + ntfy
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Existing Foundation
 
 - config/synergy-matrix.yaml — who contributes what to whom (defined)

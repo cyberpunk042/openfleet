@@ -45,6 +45,25 @@ Evolve beyond Claude-only to a use-case-based multi-model strategy. Codex for ad
 - Implement trainee/provenance flagging in labor stamps
 - Evaluate free model load balancers (ClawRouters, LiteLLM)
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Install Codex plugin for Claude Code agents (adversarial reviews)
+- [ ] Evaluate MiMo-V2-Pro for reasoning tasks via OpenRouter
+- [ ] Research TurboQuant impact on LocalAI viability (8GB+11GB setup)
+- [ ] Design use-case routing logic (which model for which task type)
+- [ ] Implement trainee/provenance flagging in labor stamps
+- [ ] Evaluate free model load balancers (ClawRouters, LiteLLM)
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Phases
 
 ### Phase 0: Research

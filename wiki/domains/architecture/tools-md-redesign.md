@@ -26,6 +26,10 @@ phase: "1 — Design"
 
 # TOOLS.md Redesign — Focused Desk, Detail On-Demand
 
+## Summary
+
+Redesign of per-agent TOOLS.md to end the 15–18K-char bloat that exceeds the gateway injection threshold and stuffs role-irrelevant content into every agent's context. Target: focused desk (essential commands, current-cycle tooling) plus detail-on-demand pointers — tier-aware, role-aware, mode-aware.
+
 ## PO Directive
 
 > "we do not want to flood our agent with things it doesn't need to know... bloated files are still sign that there might be something wrong"

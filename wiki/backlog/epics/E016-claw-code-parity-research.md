@@ -38,6 +38,23 @@ Research ultraworkers/claw-code-parity for AICP features the fleet needs. Unders
 - Research claw-code-parity's architecture for implementation guidance
 - Prioritize AICP features by fleet dependency (what breaks without Claude?)
 
+## Done When
+
+Derived from the Goals section above; each goal is a verifiable end-state. Epic is done when all of these hold AND the common verification gates at the bottom pass.
+
+- [ ] Understand which Claude Code features the fleet depends on
+- [ ] Identify which features AICP needs to implement for LocalAI independence
+- [ ] Research claw-code-parity's architecture for implementation guidance
+- [ ] Prioritize AICP features by fleet dependency (what breaks without Claude?)
+
+**Common verification gates:**
+
+- [ ] `pytest fleet/tests/ -v` — 0 failures
+- [ ] `python3 tools/lint.py --summary` — no new issues introduced
+- [ ] All artifacts committed + linked from the epic's Phases section (if present)
+- [ ] PO review + approval before marking `status: done`
+
+
 ## Existing Foundation
 
 - devops-expert-local-ai (AICP repo) — LocalAI inference, basic agent capabilities

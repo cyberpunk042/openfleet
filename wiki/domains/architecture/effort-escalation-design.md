@@ -23,6 +23,10 @@ confidence: medium
 
 # Effort Escalation Design
 
+## Summary
+
+E003 design for how model_selection.py chooses model × effort based on task properties, labor iteration, priority, contribution type, and agent trust tier. Defines the escalation ladder (lightweight → capable → expert → flagship-local → direct) and the data signals that trigger each rung up or down.
+
 ## PO Directive
 
 > "There is a logic of escalation of effort and model and source that is also necessary also adaptive based on the settings."

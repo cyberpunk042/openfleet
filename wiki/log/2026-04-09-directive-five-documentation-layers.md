@@ -55,3 +55,7 @@ The LLM Wiki IS the standard for ALL projects in the ecosystem. No regression. I
 | Implementation plan | specs (temporary) | docs/superpowers/plans/ |
 | Session notes | wiki knowledge | wiki/log/ |
 | Knowledge synthesis | wiki knowledge | wiki/domains/ |
+
+## Relationships
+
+- FEEDS INTO: [[Wiki Structure Gaps — LLM Wiki Model Alignment]]

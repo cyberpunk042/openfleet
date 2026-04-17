@@ -20,6 +20,10 @@ confidence: medium
 
 # Context Strategy Design
 
+## Summary
+
+E003 design of context strategy — how the orchestrator decides what to inject, at what depth, for which consumer, in a way that honors the two countdowns (session context budget + task budget). Ties tier-aware rendering, effort profiles, bypass heuristics, and Goldilocks identity into one coherent strategy.
+
 ## PO Directive
 
 > "strategical in context switching and mindful of the current context size relative to the next forced compact that require adapting preparing and potentially even triggering it ourself before rechaining to regather the context to continue working if necessary"

@@ -23,6 +23,10 @@ phase: "0 — Research"
 
 # Navigator Intent-Map Gap Analysis
 
+## Summary
+
+Gap analysis of Navigator's current intent map. Measures coverage (33 intents across 10 roles = 41% of the theoretical 80-intent matrix), identifies the 19 missing intents, and names the operational modes where role×mode cells produce empty or wrong context for fleet agents.
+
 ## Current State
 
 33 intents defined in intent-map.yaml across 10 roles. Coverage: **41%** of theoretical maximum (80 = 10 roles × 8 modes).

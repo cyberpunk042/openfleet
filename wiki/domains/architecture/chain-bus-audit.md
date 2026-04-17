@@ -23,6 +23,10 @@ phase: "0 — Research"
 
 # Chain/Bus Architecture Audit
 
+## Summary
+
+Audit of OpenFleet's chain and bus architecture as E002 Phase 0 input. Inventories the 16 chain builders and the bus infrastructure currently in code, maps responsibilities, and identifies the overlap, drift, and simplification opportunities that motivate the E002 chain-bus redesign track.
+
 ## Current State
 
 ### Chain Builders (16)

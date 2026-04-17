@@ -24,7 +24,7 @@ sources:
 
 ## Summary
 
-OpenFleet's wiki/ partially implements the LLM Wiki model. Three layers exist (backlog, domains, log). Seven are missing. Alignment is incremental per the old-model-tolerance directive.
+Gap analysis between OpenFleet's `wiki/` structure (as of 2026-04-10: only backlog/, domains/, log/ existed) and the brain's LLM Wiki model (which prescribes spine/, sources/, comparisons/, lessons/, patterns/, decisions/, ecosystem/, config/ plus maturity subfolders and frontmatter schema). Enumerates each gap and its migration cost. Feeds into the second-brain integration milestones — most of these gaps were closed on 2026-04-16 when wiki/config/ + knowledge-layer directories were seeded from the brain.
 
 ## Current State
 
@@ -63,3 +63,10 @@ Per the old-model-tolerance directive: introduce new layers as additions, not re
 4. **wiki/patterns/** — SFIF, autocomplete chain, contribution lifecycle are all patterns
 
 The existing docs/ continues to serve its purpose (old model tolerance). Knowledge migrates to wiki/ over time, not all at once.
+
+## Relationships
+
+- RELATES TO: [[Shared Models Integration — LLM Wiki + Methodology in OpenFleet]]
+- RELATES TO: [[Path-to-Live Reconciliation — Where We Are]]
+- FEEDS INTO: [[OpenFleet — Identity Profile]]
+- FEEDS INTO: [[Second Brain Integration — First Live Session (2026-04-16)]]

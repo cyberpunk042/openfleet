@@ -29,6 +29,10 @@ phase: "0 — Research"
 
 # Agent Ecosystem Allocation — Skills, Plugins, Packs Per Role
 
+## Summary
+
+Cross-ecosystem inventory of skills, plugins, and skill-packs available to fleet agents — mapping what Anthropic ships by default, what OpenArms contributes, what ClawHub offers, and what we allocate per role. Acts as the input register for skill-stage-mapping.yaml and agent-tooling.yaml so each of the 10 roles receives a calibrated, non-overlapping tooling envelope.
+
 ## PO Directive
 
 > "we will also make sure that we use all the superpower and main skills from high quality repositories marketplaces packs"

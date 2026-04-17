@@ -16,6 +16,10 @@ sources: []
 
 # Plan: Context Injection Pipeline Blocker Fixes
 
+## Summary
+
+Reasoning-stage plan to fix the 4 context-injection-pipeline blockers identified in analysis + investigation: repair model-selection condition evaluator in config/methodology.yaml, align generator fixtures to real provider data shapes, raise tier-rendering coverage, and close the validation matrix gap. Operations-plan in style since the blockers are bugfixes with known root causes.
+
 ## Step 1: Fix model selection
 
 ### config/methodology.yaml
@@ -86,3 +90,10 @@ Step 1 → Step 2 → Step 3 → Step 4.
 - 12 new tier rendering tests pass
 - Regenerated scenarios reflect fixed code
 - All existing tests still pass
+
+## Relationships
+
+- DERIVED FROM: [[Analysis: Context Injection Pipeline Blockers]]
+- DERIVED FROM: [[Investigation: Context Injection Pipeline Blocker Solutions]]
+- RELATES TO: [[Context Injection Decision Tree]]
+- FEEDS INTO: epic E003 (Brain Evolution) + E014 (Autocomplete Web / Map / Net)
