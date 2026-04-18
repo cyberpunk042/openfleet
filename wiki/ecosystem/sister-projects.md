@@ -35,19 +35,21 @@ OpenFleet operates within a 5-project ecosystem plus adjacent projects, each wit
 |---------|------|--------------------------|------------|
 | **OpenArms** | Single AI-assistant runtime (harness v1→v2→v3) | Our fleet's per-agent runtime technology. Each OpenFleet agent workspace embeds OpenArms-style templates (SOUL.md, HEARTBEAT.md, WORKSPACE.md). | `../openarms` (if cloned) |
 | **OpenFleet** | Fleet orchestration platform (this project) | IS this project. A platform that manages 10 role-specific AI assistants with immune system, contribution gating, tier-based context depth. | `/home/jfortin/openfleet` |
-| **AICP** | Capability profile registry | Source-of-truth for AI capability profiles (`default`, `code-review`, `dual-gpu`, `fleet-light`, `fast`). Our `config/tier-profiles.yaml` maps to AICP profile names. | `../aicp` |
-| **DSPD** | DevOps Solutions Platform Dev | Broader devops-solutions platform; OpenFleet is one subsystem within this ecosystem. | `../devops-solutions-platform-dev` |
+| **AICP** | AI Control Platform — complexity-based inference routing (LocalAI for routine, Claude for complex) | Source-of-truth for AI capability profiles (`default`, `code-review`, `dual-gpu`, `fleet-light`, `fast`). Our `config/tier-profiles.yaml` maps to AICP profile names. 5-stage roadmap targets 80%+ Claude API cost reduction. | `../devops-expert-local-ai` (AICP is the product name; devops-expert-local-ai is the repo) |
+| **devops-control-plane** | Operational governance origin — 16 post-mortems → 24 rules → OpenFleet's immune system | Origin of `doctor.py`'s 24 governance rules. Rules are static files imported at runtime, not an API. | `../devops-control-plane` |
 | **Research Wiki (second brain)** | Shared LLM Wiki / knowledge hub | Master knowledge source — 360+ pages, 2,400+ relationships, 16 models, 22 standards, 4 principles, 57 lessons. Our `tools/lint.py`, `tools/gateway.py`, `tools/evolve.py` forward to brain's venv. | `../devops-solutions-research-wiki` |
 
 ## Adjacent Projects
 
-| Project | Role | Relationship to OpenFleet |
-|---------|------|--------------------------|
-| **NNRT** | Neural Network Runtime | Referenced in AGENTS.md as an ecosystem project. Integration specifics not yet documented here. |
-| **OpenClaw** | Code execution / IPC system | Vendored into OpenFleet at `vendor/openclaw/`. Used for specific execution patterns. |
-| **Plane** | Project management tool | Bidirectional sync via `fleet/cli/plane.py`. Backlog entries synced to Plane issues; fleet-side agents update Plane as work progresses. |
-| **LightRAG** | Graph-enhanced retrieval layer | Scripts at `scripts/setup-lightrag.sh`, `scripts/lightrag-index.sh`. Additive to wiki navigation once pages cross the ~200-page index-navigation ceiling (brain is at ~317, approaching). |
-| **Mission Control** | Fleet command surface | Companion to OpenFleet for orchestrator observability. Referenced in openclaw-* fleet skills. |
+| Project | Role | Relationship to OpenFleet | Local path |
+|---------|------|--------------------------|------------|
+| **OpenClaw** | WebSocket gateway connecting agents + Mission Control | Vendored into OpenFleet at `vendor/openclaw/`. Agents connect as clients. | (vendored) |
+| **Mission Control** | Fleet command surface | Companion to OpenFleet for orchestrator observability. Referenced in openclaw-* fleet skills. | — |
+| **Plane** | Project management tool | Bidirectional sync via `fleet/cli/plane.py`. Backlog entries synced to Plane issues; fleet-side agents update Plane as work progresses. | — |
+| **LightRAG** | Graph-enhanced retrieval layer | Scripts at `scripts/setup-lightrag.sh`, `scripts/lightrag-index.sh`. Additive to wiki navigation once pages cross the ~200-page index-navigation ceiling (brain is at ~317, approaching). | — |
+| **devops-solutions-information-hub** | Information hub within devops-solutions product family | Sibling project under the devops-solutions umbrella. Integration specifics not yet documented here. | `../devops-solutions-information-hub` |
+| **DSPD** (devops-solution-product-development) | Self-hosted Plane host — PM integration | Hosts the Plane instance the fleet syncs to. Cross-project PM integration already operational. | `../devops-solution-product-development` |
+| **NNRT** | Narrative-to-Neutral-Report-Transformer NLP pipeline | Report transformation NLP. Referenced in AGENTS.md as ecosystem project. Integration specifics not yet documented here. | `../Narrative-to-Neutral-Report-Transformer` |
 
 ## How OpenFleet Relates to Each
 
@@ -57,13 +59,17 @@ OpenArms is our runtime TECHNOLOGY for individual agents. Each OpenFleet agent (
 
 Divergence: OpenArms optimizes for single-assistant solo/harness work. OpenFleet optimizes for multi-agent coordination, contribution gating, immune system. Both inherit from the brain's Methodology model but adapt its stages, quality dimensions, and enforcement to their scale.
 
-### To AICP
+### To AICP (devops-expert-local-ai)
 
-AICP owns capability profiles. Our 5-tier vocabulary (Expert/Capable/Flagship-local/Lightweight/Direct) maps to AICP profile names. A fleet dispatch selects a tier; the tier selects an AICP profile; the profile configures the actual inference backend (Claude Opus/Sonnet for Expert, qwen3-8b/gemma4-26b/qwen3-4b for local tiers).
+AICP is the product name; the repo is `devops-expert-local-ai`. AICP owns capability profiles and complexity-based inference routing. Our 5-tier vocabulary (Expert/Capable/Flagship-local/Lightweight/Direct) maps to AICP profile names. A fleet dispatch selects a tier; the tier selects an AICP profile; the profile configures the actual inference backend (Claude Opus/Sonnet for Expert, qwen3-8b/gemma4-26b/qwen3-4b for local tiers). Brain's model-ecosystem describes the economic dimension: 5-stage AICP roadmap targets 80%+ Claude API cost reduction — critical to fleet economics at 10 continuous agents.
 
-### To DSPD
+### To devops-control-plane
 
-DSPD is the larger platform OpenFleet sits within. We're a subsystem. DSPD-level concerns (infrastructure across multiple subsystems, cross-project CI, deployment topology) are handled by DSPD; OpenFleet focuses on the fleet of AI-agent workspaces inside that platform.
+devops-control-plane is our operational-governance DNA donor. 16 post-mortems across its operational history produced 24 rules that became OpenFleet's immune system. The knowledge flow: failure → post-mortem → rule → enforcement. Our `fleet/core/doctor.py` imports those 24 rules as static files — no API, no runtime service dependency. When a new failure occurs in OpenFleet operation, the lesson flows BACK: post-mortem → rule update → next generation of immune-system detection.
+
+### To devops-solutions umbrella projects (DSPD + information-hub)
+
+OpenFleet sits within the broader devops-solutions product family. DSPD (devops-solution-product-development) hosts the Plane instance the fleet PM-syncs with — that integration is operational today. devops-solutions-information-hub is a sibling under the same umbrella; integration specifics not yet formalized. Note: AICP is separately housed at `devops-expert-local-ai` but is treated as a core project (not umbrella sibling) because of its direct fleet-runtime role.
 
 ### To the Second Brain
 

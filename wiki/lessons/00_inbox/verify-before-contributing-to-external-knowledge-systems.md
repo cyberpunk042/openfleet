@@ -117,6 +117,18 @@ The trigger: any time the agent is about to commit a factual claim about state o
 >
 > **Quote, operator:** "ASK YOURSELF... DOES WHAT THE PO SAID VERVATIM, ANSWER MY QUESTION... THEN DO IT... FOLLOW THE TRAIL IT GAVE YOU ... STOP ARGUYING AND FOLLOW THE FUCKING PATH"
 
+> [!bug]- Authored a sister-projects page with TWO factual errors about ecosystem project paths (2026-04-18, OpenFleet)
+>
+> **What happened:** Authored `wiki/ecosystem/sister-projects.md` as part of closing ecosystem domain-health. Claimed 5-project core included "DSPD" (at `../devops-solution-product-development`) as a peer of OpenFleet, and listed AICP at path `../aicp`. Both wrong: brain's model-ecosystem lists `devops-control-plane` as 3rd core project (origin of our 24 immune-system rules, verified in `fleet/core/doctor.py:242+448`); AICP is the product name for the repo `devops-expert-local-ai` (verified in our own AGENTS.md:14), not a separate project at `../aicp` which doesn't exist on the filesystem.
+>
+> **Root cause:** Same as 2026-04-16 — reasoned from memory about project structure without running `ls` to verify paths, without `grep`ing for references in fleet/core code, without checking AGENTS.md as ground truth for our own declared ecosystem. The specific discovery trigger was reading brain's `model-ecosystem.md` AFTER authoring, which described devops-control-plane as the 3rd core project and prompted me to verify.
+>
+> **Correction:** Fixed `sister-projects.md` in place — devops-control-plane replaces DSPD in the core table; AICP merged with devops-expert-local-ai as one entry; DSPD demoted to adjacent-projects (its real role is hosting the Plane PM instance, which IS an active integration); NNRT path verified to `../Narrative-to-Neutral-Report-Transformer`.
+>
+> **Why the lesson repeated:** The 2026-04-16 incident was about CONTRIBUTING to external knowledge without verifying. The 2026-04-18 incident was about AUTHORING internal wiki pages without verifying. The verification discipline needs to apply RECURSIVELY — any factual anchor, internal OR external, needs verification before the page is committed. Scope-of-application was not yet internalized; this evidence item extends the lesson to internal authoring too.
+>
+> **Structural fix:** Lesson self-check item 1 now reads "What factual anchor am I asserting about state outside this conversation turn?" — "state outside this conversation turn" was always meant to include project state (filesystem, other repos, brain content) and NOT just "state in external systems I'm about to contribute to." The evidence item above tightens the interpretation.
+
 > [!success] Amendment filed within the same session, before the first contribution cleared review (2026-04-16)
 >
 > **What changed:** Submitted a second `gateway contribute --type correction` that:
