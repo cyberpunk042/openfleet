@@ -11,6 +11,9 @@ updated: 2026-04-18
 tags: [pattern, configuration, methodology, platform, wiki, hybrid, openfleet, orthogonality]
 derived_from:
   - "OpenFleet two-level configuration directive 2026-04-17"
+instances:
+  - page: "OpenFleet"
+    context: "config/methodology.yaml holds the fleet/runtime methodology dispatched agents execute; wiki/config/methodology.yaml holds the wiki-authoring methodology the repo itself uses. Explicit PO directive 2026-04-17 codified this as intentional architecture rather than drift."
 sources:
   - id: po-directive-2026-04-17
     type: documentation

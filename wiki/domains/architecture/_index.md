@@ -45,6 +45,7 @@ OpenFleet's architecture pages — context injection pipeline, tier rendering, m
 - [[Critical Review Findings — Context Injection Scenarios]] — ~25 issues from line-by-line review
 - [[Validation Issues Catalog — Every Problem Found]] — cumulative catalog
 - [[15 Anti-Patterns from TierRenderer Session]] — operational anti-patterns
+- [[OpenFleet doctor.py Rules Mapped to Agent Failure Taxonomy]] — coverage map of our 10 doctor rules vs brain's 8 taxonomy classes; 5 novel rules flagged as candidate contributions
 
 ## Orchestrator & E003 Design
 
