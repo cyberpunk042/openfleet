@@ -66,7 +66,13 @@ The research wiki defines two foundational models — LLM Wiki (what knowledge I
 
 OpenFleet independently built many of the same patterns. The shared models give them names and structure.
 
+> [!tip] Convergent evolution, not parallel invention
+>
+> The fact that OpenFleet independently produced stage protocols, contribution gating, and tiered quality — without reading the brain's models first — is evidence the brain's models capture STRUCTURAL realities of fleet-scale agent systems, not preferences. The integration is recognition, not retrofitting.
+
 ### Stage-Gate System
+
+**Concept-to-implementation map:**
 
 | Shared Model Concept | OpenFleet Implementation | Where |
 |---------------------|------------------------|-------|
@@ -123,6 +129,10 @@ OpenFleet independently built many of the same patterns. The shared models give 
 
 ### Where They Diverge
 
+> [!warning] Divergences are legitimate domain adaptations, not drift
+>
+> The brain's Methodology model explicitly allows per-project stage overrides and named-model additions. Our vocabulary and stage splits reflect fleet-agent working patterns that differ from OpenArms' solo/harness patterns. These divergences should be DECLARED in a methodology profile, not flagged as deviations.
+
 ### Stage Names
 
 | Shared Model (OpenArms) | OpenFleet | Semantic Match |
@@ -163,7 +173,9 @@ The shared model says: bug-fix is a separate model (document → implement → t
 
 ### What This Means for Context Injection
 
-The context injection system IS the delivery mechanism for methodology model instances. Every scenario in the decision tree (91 mapped) is a specific model instance rendered for a specific agent situation.
+> [!abstract] Context injection = model-instance rendering
+>
+> The context injection system IS the delivery mechanism for methodology model instances. Every scenario in the decision tree (91 mapped) is a specific model instance rendered for a specific agent situation. Moving from `build_task_preembed` with if/elif branches to model-driven rendering is the structural alignment this page argues for.
 
 ### Model-Driven Rendering
 
@@ -197,7 +209,8 @@ The choice is EXPLICIT per dispatch, not accidental. The tier selection logic in
 
 ## Open Questions
 
-- Should OpenFleet's methodology.yaml adopt the shared model's stage names (document/design/scaffold/implement/test) or keep its own (conversation/analysis/investigation/reasoning/work)? Both are valid domain adaptations. The shared vocabulary helps cross-project communication. The existing names are already embedded in code and agent templates.
+> [!question] Stage-name adoption
+> Should OpenFleet's methodology.yaml adopt the shared model's stage names (document/design/scaffold/implement/test) or keep its own (conversation/analysis/investigation/reasoning/work)? Both are valid domain adaptations. The shared vocabulary helps cross-project communication. The existing names are already embedded in code and agent templates.
 
 - How do multiple methodology models coexist in one methodology.yaml? One approach: a `models` section with named model definitions, each with its own stages/protocols/artifacts. The current `stages` section becomes the "feature-development" model. New models are added alongside.
 

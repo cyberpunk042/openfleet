@@ -151,4 +151,8 @@ These are EVOLUTION beyond the live fleet baseline. Path-to-live gets the fleet 
 
 - RELATES TO: [[Wiki Structure Gaps — LLM Wiki Model Alignment]]
 - RELATES TO: [[OpenFleet — Identity Profile]]
+- RELATES TO: [[Critical Review Findings]]
+- BUILDS ON: [[Shared Models Integration — LLM Wiki + Methodology in OpenFleet]]
+- CONSTRAINED BY: [[Verify Before Contributing to External Knowledge Systems]]
+- FEEDS INTO: [[Context Injection Decision Tree]]
 - FEEDS INTO: all epics E001-E017 (work ordering)

@@ -157,4 +157,8 @@ The trigger: any time the agent is about to commit a factual claim about state o
 - BUILDS ON: [[infrastructure-over-instructions-for-process-enforcement|Principle — Infrastructure Over Instructions for Process Enforcement]]
 - RELATES TO: OpenFleet's CLAUDE.md rule on verifying code against real data shapes (extends the rule from internal modules to cross-project contributions)
 - RELATES TO: [[contribution-gating-cross-agent-inputs-before-work|Contribution Gating — Cross-Agent Inputs Before Work]] (contribution-gating verifies the RECEIPT of contributions; this lesson verifies their FACTUAL CONTENT before publication)
+- RELATES TO: [[OpenFleet — Identity Profile]] (identity declares stable fields; this lesson protects every external claim OpenFleet files about those fields)
+- RELATES TO: [[Critical Review Findings]] (catalogues instance of unverified claims that this lesson prevents)
+- CONSTRAINS: [[Shared Models Integration — LLM Wiki + Methodology in OpenFleet]] (integration work that generates brain contributions must apply this lesson before each contribution)
+- CONSTRAINS: [[Path-to-Live Reconciliation — Where We Are]] (path-to-live steps that produce external-facing artifacts must apply this lesson)
 - FEEDS INTO: future gateway evolution — a `gateway contribute --verify-claim <file> --claim "no X exists"` flag could infrastructure-enforce this lesson, turning the check from agent discipline into gate enforcement (Principle 1 applied to this principle's implementation)

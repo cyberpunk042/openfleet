@@ -35,6 +35,10 @@ OpenFleet's methodology.yaml now defines 7 named models instead of one stage seq
 
 ## Deep Analysis
 
+> [!tip] Model selection is the first branch after identity
+>
+> Once an agent's identity is known, model selection is the NEXT decision — it determines stages, protocols, completion tool, and gates. The autocomplete chain: identity → model → stage → tier → prompt.
+
 ### Why Multiple Models
 
 The shared Methodology Framework (research wiki) defines 9+ named models. OpenFleet previously had one stage sequence (conversation → analysis → investigation → reasoning → work) with task_types mapping to stage subsets. This is the Task Type Artifact Matrix pattern — but limited to ONE model with different subsets.

@@ -26,3 +26,4 @@ Operator directives (sacrosanct, verbatim), session summaries, and integration r
 | 2026-04-10 | [[Session: Context Injection System Evolution]] | session | 2-day session evolving the tier rendering + methodology models + shared models |
 | 2026-04-11 | [[Directive: Plan Types — Design Plan vs Operations Plan]] | directive | The critical plan-type distinction: design vs ops |
 | 2026-04-16 | [[Second Brain Integration — First Live Session (2026-04-16)]] | session | First live bidirectional second-brain integration session |
+| 2026-04-17 | [[Directive: OpenFleet Has Two Methodologies (Intentional)]] | directive | Two-methodology layout (fleet + wiki) is intentional architecture for platform-wiki hybrids |

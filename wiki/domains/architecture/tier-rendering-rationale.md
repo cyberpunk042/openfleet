@@ -54,6 +54,10 @@ This is the quality dimension from the Methodology Framework applied to renderin
 
 ### What NEVER Compresses
 
+> [!warning] Safety-critical sections render at full depth regardless of tier
+>
+> Compressing the content below would trade a few tokens for a correctness/safety risk. The tier system explicitly EXCLUDES these from the depth rules.
+
 Regardless of tier:
 1. PO directives — sacrosanct
 2. Verbatim requirement — the anchor
