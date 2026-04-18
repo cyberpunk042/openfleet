@@ -143,6 +143,9 @@ Not covered at all:
 
 ## Relationships
 
-- FEEDS INTO: investigation stage (solution options)
-- RELATES TO: [Context Injection Decision Tree](context-injection-tree.md) — the 91+ leaves that need validation
-- RELATES TO: [Critical Review Findings](critical-review-findings.md) — earlier findings from scenario review
+- FEEDS INTO: [[Investigation: Context Injection Pipeline Blocker Solutions]]
+- FEEDS INTO: [[Plan: Context Injection Pipeline Blocker Fixes]]
+- RELATES TO: [[Context Injection Decision Tree]] (the 91+ leaves that need validation)
+- RELATES TO: [[Critical Review Findings — Context Injection Scenarios]] (earlier findings from scenario review)
+- RELATES TO: [[Shared Models Integration — LLM Wiki + Methodology in OpenFleet]]
+- RELATES TO: [[Methodology Models Rationale]]

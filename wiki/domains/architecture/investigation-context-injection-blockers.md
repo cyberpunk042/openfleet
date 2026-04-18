@@ -160,6 +160,9 @@ Group scenarios by tier. Generate all expert scenarios first (largest group, mos
 
 ## Relationships
 
-- BUILDS ON: [Analysis: Context Injection Blockers](analysis-context-injection-blockers.md)
-- FEEDS INTO: reasoning stage (plan production)
-- RELATES TO: [Context Injection Decision Tree](context-injection-tree.md)
+- BUILDS ON: [[Analysis: Context Injection Pipeline Blockers]]
+- FEEDS INTO: [[Plan: Context Injection Pipeline Blocker Fixes]]
+- RELATES TO: [[Context Injection Decision Tree]]
+- RELATES TO: [[Critical Review Findings — Context Injection Scenarios]]
+- RELATES TO: [[Tier Rendering Design Rationale]]
+- RELATES TO: [[Methodology Models Rationale]]

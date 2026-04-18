@@ -62,3 +62,7 @@ The PO explicitly stated this is progressive, not a sudden rewrite. The models a
 - FEEDS INTO: [[Shared Models Integration — LLM Wiki + Methodology in OpenFleet]]
 - FEEDS INTO: [[Methodology Models Rationale]]
 - FEEDS INTO: [[Tier Rendering Design Rationale]]
+- FEEDS INTO: [[Integration Chain Mapping — OpenFleet Position 2026-04-18]]
+- FEEDS INTO: [[OpenFleet in the Goldilocks Ecosystem — Walkthrough C Reconciled]]
+- RELATES TO: [[Directive: Five Documentation Layers]]
+- RELATES TO: [[Directive: OpenFleet Has Two Methodologies (Intentional)]]
