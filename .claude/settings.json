@@ -62,7 +62,9 @@
       "Bash(python3 -m tools.lint --summary)",
       "Bash(python3 -m tools.gateway what-do-i-need)",
       "Bash(python3 -m tools.gateway query --identity)",
-      "Bash(python3 -m tools.gateway health)"
+      "Bash(python3 -m tools.gateway health)",
+      "Bash(python3 tools/gateway.py health)",
+      "Bash(python3 tools/lint.py)"
     ]
   }
 }

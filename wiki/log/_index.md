@@ -4,7 +4,7 @@ type: index
 domain: log
 status: active
 created: 2026-04-08
-updated: 2026-04-17
+updated: 2026-04-19
 tags: [log, notes, directives, messages]
 confidence: medium
 sources: []
@@ -27,3 +27,4 @@ Operator directives (sacrosanct, verbatim), session summaries, and integration r
 | 2026-04-11 | [[Directive: Plan Types — Design Plan vs Operations Plan]] | directive | The critical plan-type distinction: design vs ops |
 | 2026-04-16 | [[Second Brain Integration — First Live Session (2026-04-16)]] | session | First live bidirectional second-brain integration session |
 | 2026-04-17 | [[Directive: OpenFleet Has Two Methodologies (Intentional)]] | directive | Two-methodology layout (fleet + wiki) is intentional architecture for platform-wiki hybrids |
+| 2026-04-19 | [[Session — 2026-04-19 Brain Integration /loop]] | session | /loop SWALLOW→INTEGRATE: 45 brain docs absorbed + 7 INTEGRATE actions (runtime/session split, memory persistence, chain scorecard update, 17-epic sources, taxonomy refinement) |

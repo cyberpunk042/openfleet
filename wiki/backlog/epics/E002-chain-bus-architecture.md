@@ -10,7 +10,7 @@ tags: [chains, buses, propagation, events, tools, group-calls, cross-task-tracki
 confidence: high
 sources:
   - id: po-vision-2026-04-08
-    type: directive
+    type: notes
     file: wiki/log/2026-04-08-fleet-evolution-vision.md
     title: "PO 17-Epic Vision — Fleet Evolution"
 ---

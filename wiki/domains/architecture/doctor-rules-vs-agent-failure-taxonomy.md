@@ -35,7 +35,7 @@ OpenFleet's `fleet/core/doctor.py` (679 lines) implements 10 detection functions
 
 1. **Our doctor covers 2-3 of the 8 taxonomy classes directly.** The remaining 5-6 classes are largely uncovered at the doctor level — they require different mitigation mechanisms (budget caps, pre-flight gates, dispatch-time generation, policy rules).
 
-2. **OpenFleet has 5 NOVEL detection rules that the brain taxonomy doesn't explicitly name.** These are candidate contributions to the brain: detect_correction_threshold, detect_code_without_reading, detect_cascading_fix, detect_abstraction, detect_not_listening.
+2. **OpenFleet has 5 candidate detection rules vs brain's taxonomy — 4 genuinely novel + 1 overlap** (refined 2026-04-19 after full absorption of brain's [three-lines-of-defense pattern](../../../../devops-solutions-research-wiki/wiki/patterns/03_validated/enforcement/three-lines-of-defense-immune-system-for-agent-quality.md)). **`detect_correction_threshold` overlaps** — brain's Line 2 detection explicitly lists `detect_correction_threshold()` as one of its 4 existing functions. Our contribution to brain for this rule is the fleet-scale reviewer-feedback-count angle, not the rule itself. **Genuinely novel contributions**: detect_code_without_reading, detect_cascading_fix (generalization), detect_abstraction, detect_not_listening.
 
 3. **The fleet-scale context surfaces failure patterns solo agents don't produce.** detect_not_listening (PO interaction) and detect_correction_threshold (multi-iteration rework) are natural fleet concerns. A solo agent doesn't have enough interaction surface area to exhibit them.
 
@@ -58,13 +58,13 @@ OpenFleet's `fleet/core/doctor.py` (679 lines) implements 10 detection functions
 | 7 | **Memory/Wiki conflation** (knowledge in Claude memory not wiki) | — | ❌ NOT COVERED. Brain fix is a behavioral rule, not infrastructure: "if anyone beyond current session needs to read it → wiki." |
 | 8 | **Clean-win scope expansion** (clean-but-unauthorized refactor) | `detect_scope_creep` | ✅ COVERED. Our scope_creep rule targets files-outside-plan, which captures Class-A refactor. Classes B (internal design of new files) and C (additive re-exports) may slip through — need design-implementation drift detection for full coverage. |
 
-### Novel OpenFleet Rules (Not Explicitly Named in Brain's 8 Classes)
+### Candidate OpenFleet Rules vs Brain's 8 Classes
 
-OpenFleet's doctor has 5 detection rules that don't map cleanly to brain's 8 classes. They may be fleet-scale-specific patterns, or they may be gaps in brain's taxonomy that our observations could fill:
+OpenFleet's doctor has 5 candidate detection rules. **Refined 2026-04-19**: 1 overlaps with brain's existing Line-2 detection (`detect_correction_threshold`); 4 are genuinely novel. They may be fleet-scale-specific patterns, or they may be gaps in brain's taxonomy that our observations could fill:
 
 | Rule | Signal | Why It Matters | Candidate for Brain Taxonomy? |
 |------|--------|----------------|------------------------------|
-| `detect_correction_threshold` | Agent corrected too many times on same task | Multi-iteration rework without root-cause fix. Different from Class 3 environment patching — this is any cause, not just env. | Yes — "correction-loop without root-cause" could be Class 9. Fleet-specific because fleet-ops reviews multiple iterations. |
+| `detect_correction_threshold` | Agent corrected too many times on same task | Multi-iteration rework without root-cause fix. Different from Class 3 environment patching — this is any cause, not just env. | **Overlap** — brain's [three-lines-of-defense pattern](../../../../devops-solutions-research-wiki/wiki/patterns/03_validated/enforcement/three-lines-of-defense-immune-system-for-agent-quality.md) already lists `detect_correction_threshold()` as one of 4 Line-2 functions. Our contribution is the fleet-scale angle (reviewer-feedback-count, not agent self-repetition) — would be a refinement of existing, not a new Class 9. |
 | `detect_code_without_reading` | Produced code without reading existing code first | Fleet-scale: agents inherit a large codebase. Not reading before writing produces drift. This overlaps brain's "Never Synthesize from Descriptions Alone" lesson but at a different operational layer. | Yes — could be promoted to a behavioral class. |
 | `detect_cascading_fix` | Fix-on-fix chain | Partial overlap with Class 3 env patching, but cascading_fix is general — any fix-on-fix. Broader class. | Merge candidate — extend Class 3 to general cascading-fix, not just env-specific. |
 | `detect_abstraction` | Replaced literal requirements with abstractions | "Hardcoded instances fail" in reverse — agent abstracts too early. Fleet-scale: specialist agents prefer their abstractions. | Yes — mirror of "hardcoded instances fail" lesson but for premature abstraction. |
@@ -158,8 +158,8 @@ Brain pattern: "Immune system is HIDDEN from agents. Agents experience tool bloc
 > [!question] Should `detect_protocol_violation` move from Line 2 to Line 1?
 > Mechanically checkable → infrastructure principle says this should prevent at tool-call level, not detect after. The MCP tool-blocking already does this; the doctor rule may be redundant with defense-in-depth value. Requires checking whether both fire in practice or whether one silently shadows the other.
 
-> [!question] Are our 5 novel rules worth contributing to brain taxonomy?
-> detect_correction_threshold, detect_code_without_reading, detect_cascading_fix (general form), detect_abstraction, detect_not_listening. Each needs ≥3 independent evidence items (brain's lesson-page-standard) to promote. OpenFleet has operational data for some; we'd need to audit our agent run logs for evidence.
+> [!question] Are our 4 novel rules worth contributing to brain taxonomy?
+> detect_code_without_reading, detect_cascading_fix (general form), detect_abstraction, detect_not_listening. (`detect_correction_threshold` removed — overlaps with brain's existing Line-2 function per 2026-04-19 absorption of three-lines-of-defense pattern.) Each needs ≥3 independent evidence items (brain's lesson-page-standard) to promote. OpenFleet has operational data for some; we'd need to audit our agent run logs for evidence.
 
 > [!question] What's the right Line-1/Line-2/Line-3 split for Class 4 (fatigue cliff)?
 > Brain recommends budget cap (Line 1). We could add quality-trend detection (Line 2) as early warning. Line 3 correction would be forced session-end. Likely a layered approach, not single-line.
