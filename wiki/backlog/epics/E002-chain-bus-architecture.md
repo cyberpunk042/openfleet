@@ -5,10 +5,14 @@ domain: backlog
 status: draft
 priority: P1
 created: 2026-04-08
-updated: 2026-04-08
+updated: 2026-04-19
 tags: [chains, buses, propagation, events, tools, group-calls, cross-task-tracking]
 confidence: high
-sources: []
+sources:
+  - id: po-vision-2026-04-08
+    type: directive
+    file: wiki/log/2026-04-08-fleet-evolution-vision.md
+    title: "PO 17-Epic Vision — Fleet Evolution"
 ---
 
 # Chain/Bus Architecture

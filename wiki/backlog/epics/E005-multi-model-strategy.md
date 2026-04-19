@@ -5,10 +5,14 @@ domain: backlog
 status: draft
 priority: P1
 created: 2026-04-08
-updated: 2026-04-08
+updated: 2026-04-19
 tags: [codex, mimo, qwen, turboquant, localai, routing, free-models, trainee]
 confidence: high
-sources: []
+sources:
+  - id: po-vision-2026-04-08
+    type: directive
+    file: wiki/log/2026-04-08-fleet-evolution-vision.md
+    title: "PO 17-Epic Vision — Fleet Evolution"
 ---
 
 # Multi-Model Strategy

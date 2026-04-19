@@ -5,10 +5,14 @@ domain: backlog
 status: draft
 priority: P2
 created: 2026-04-08
-updated: 2026-04-09
+updated: 2026-04-19
 tags: [scaffold, foundation, infrastructure, features, skyscraper, methodology, pattern, order]
 confidence: high
-sources: []
+sources:
+  - id: po-vision-2026-04-08
+    type: directive
+    file: wiki/log/2026-04-08-fleet-evolution-vision.md
+    title: "PO 17-Epic Vision — Fleet Evolution"
 ---
 
 # Scaffold→Foundation→Infra→Features Pattern
