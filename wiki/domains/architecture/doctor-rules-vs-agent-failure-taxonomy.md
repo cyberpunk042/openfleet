@@ -6,7 +6,7 @@ status: synthesized
 confidence: high
 maturity: seed
 created: 2026-04-18
-updated: 2026-04-18
+updated: 2026-04-20
 tags: [doctor, immune-system, agent-failure-taxonomy, coverage, gaps, openfleet, detection]
 sources:
   - id: openfleet-doctor
@@ -42,6 +42,8 @@ OpenFleet's `fleet/core/doctor.py` (679 lines) implements 10 detection functions
 4. **Line-2 detection is the natural home for behavioral signals, but some classes need Line-1 prevention or Line-3 correction.** Class 4 fatigue (prevent via budget cap, Line 1) and Class 5 sub-agent non-compliance (correct via trustless verification, Line 3) can't be addressed by Line-2 doctor rules alone.
 
 5. **Infrastructure-vs-behavior split applies to our rules too.** detect_protocol_violation (tool-call-level check) is actually Line-1 INFRASTRUCTURE disguised as Line-2 detection — it's machine-checkable. The 9 other rules are genuine Line-2 BEHAVIORAL checks needing judgment heuristics.
+
+6. **Brain 2026-04-19 validates the pattern generalizes across failure domains.** Brain's [[model-quality-failure-prevention|Model — Quality & Failure Prevention]] now tabulates OpenFleet's agent-behavior three-lines against AICP's inference-backend three-lines (per-backend circuit breakers / failover chain / DLQ with retry budget). Cross-scope comparison: Line-1 Prevention = stage-gated tools (ours) ↔ circuit breakers (AICP); Line-2 Detection = doctor.py 30s/10 rules (ours) ↔ failover auto-escalation (AICP); Line-3 Correction = PRUNE/ESCALATE/quarantine (ours) ↔ DLQ persistence (AICP). This is the first ecosystem evidence that three-lines is a domain-agnostic pattern, not an agent-behavior-specific one — our 746-line implementation is explicitly cited alongside AICP's 467-line stack.
 
 ## Deep Analysis
 
